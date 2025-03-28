@@ -1,0 +1,30 @@
+{
+  "app": {
+    "name": "AiStart",
+    "description": "AI-assisted business plan creation SaaS platform"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signOut": "Sign Out",
+    "forgotPassword": "Forgot Password?"
+  },
+  "navigation": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "programs": "Programs",
+    "projects": "Projects",
+    "settings": "Settings"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next"
+  }
+} 
