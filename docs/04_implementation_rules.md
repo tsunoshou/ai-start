@@ -1,6 +1,6 @@
 # 実装ルール・命名規則
 
-最終更新日: 2025-03-26
+最終更新日: 2025-03-31
 
 ## 本ドキュメントの目的
 
@@ -50,6 +50,13 @@ ESLintを使用して以下のルールを強制します：
 - 未使用変数の警告（アンダースコアプレフィックス付き変数は除外）
 - 明示的な関数戻り値型の強制
 - 命名規則の強制（各種型、関数、変数、コンポーネントなど）
+  - 一般関数: camelCase
+  - Reactコンポーネント関数: PascalCase（特定の条件を満たす場合のみ）
+  - 変数: camelCase（PascalCaseやUPPER_CASEも特定の条件下で許可）
+  - グローバル定数: UPPER_CASE（特定の例外あり）
+  - インターフェース: PascalCase（Iプレフィックスなし）
+  - 型定義: PascalCase
+  - enumメンバー: PascalCase
 - インポート順序の管理
 - レイヤー間の依存関係制約
 - ファイル種別に応じた特別ルール
@@ -660,13 +667,56 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 
 ## コードスタイルルール
 
-### 関数・変数命名
+### 関数の命名規則
 
-- 関数名: camelCase、動詞または動詞+名詞 (例: `getUser()`, `calculateTotal()`)
-- 変数名: camelCase (例: `userName`, `totalAmount`)
-- プライベート変数/メソッド: アンダースコアプレフィックス (例: `_privateVar`, `_privateMethod()`)
-- 定数: UPPER_SNAKE_CASE (例: `MAX_ATTEMPTS`, `API_URL`)
-- ブール型変数: is/has/should プレフィックス (例: `isActive`, `hasPermission`)
+関数の命名には以下のルールを適用します：
+
+1. **一般的な関数**
+   - camelCase形式を使用（小文字で始まる）
+   - 動詞または動詞句で開始する
+   - 例: `getData()`, `calculateTotal()`, `convertToModel()`
+
+2. **Reactコンポーネント関数**
+   - PascalCase形式を使用（大文字で始まる）
+   - 以下の条件を満たす場合のみPascalCaseを許可：
+     - Next.js特有のページファイル/コンポーネント (`page.tsx`, `layout.tsx`など)
+     - components/ディレクトリ内の関数
+     - すでに大文字で始まる関数名
+   - 例: `Button()`, `UserProfile()`, `DashboardLayout()`
+
+3. **Reactフック**
+   - camelCase形式を使用
+   - `use`接頭辞を必ず使用
+   - 例: `useState()`, `useEffect()`, `useCustomHook()`
+
+4. **イベントハンドラ**
+   - camelCase形式を使用
+   - `handle`接頭辞を使用
+   - 例: `handleClick()`, `handleSubmit()`, `handleInputChange()`
+
+### 変数の命名規則
+
+変数の命名には以下のルールを適用します：
+
+1. **一般的な変数**
+   - camelCase形式を使用
+   - 明確で説明的な名前を使用
+   - 例: `userData`, `isLoading`, `currentIndex`
+
+2. **グローバル定数**
+   - UPPER_SNAKE_CASE形式を使用（すべて大文字）
+   - 例外: `metadata`, `config`などのフレームワーク固有の特殊な名前
+   - 例: `API_BASE_URL`, `MAX_RETRY_COUNT`, `DEFAULT_TIMEOUT_MS`
+
+3. **コンポーネントProps型**
+   - PascalCase形式を使用
+   - コンポーネント名 + `Props`のサフィックス
+   - 例: `ButtonProps`, `UserProfileProps`
+
+4. **Enum型**
+   - 型自体はPascalCase
+   - メンバーもPascalCase
+   - 例: `enum Role { Admin, User, Guest }`
 
 ### React関連ルール
 
