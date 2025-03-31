@@ -1,0 +1,22 @@
+# ビルド生成物
+.next/
+out/
+build/
+dist/
+
+# 依存関係
+node_modules/
+
+# 設定ファイル
+*.config.js
+next-env.d.ts
+
+# 公開フォルダ
+public/
+
+# テスト関連
+coverage/
+jest.setup.js
+
+# Supabase
+supabase/ 

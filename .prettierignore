@@ -1,0 +1,27 @@
+# ビルド生成物
+.next/
+out/
+build/
+dist/
+
+# 依存関係
+node_modules/
+
+# 各種設定ファイル
+next.config.js
+next-env.d.ts
+postcss.config.js
+tailwind.config.js
+
+# 公開フォルダ
+public/
+
+# ロック/キャッシュファイル
+package-lock.json
+yarn.lock
+.vercel
+.env
+.env.*
+
+# Supabase
+supabase/ 
