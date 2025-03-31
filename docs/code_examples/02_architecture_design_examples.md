@@ -28,7 +28,7 @@ export interface User {
 export enum UserRole {
   ADMIN = 'ADMIN',
   USER = 'USER',
-  GUEST = 'GUEST'
+  GUEST = 'GUEST',
 }
 ```
 
@@ -58,11 +58,11 @@ export class UserService {
   async getUserById(userId: string): Promise<User> {
     this.logger.info(`ユーザー情報取得 ID: ${userId}`);
     const user = await this.userRepository.findById(userId);
-    
+
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
-    
+
     return user;
   }
 }
@@ -88,36 +88,34 @@ export class SupabaseUserRepository implements UserRepository {
 
   async findByEmail(email: string): Promise<User | null> {
     const result = await db.query.users.findFirst({
-      where: eq(users.email, email)
+      where: eq(users.email, email),
     });
-    
+
     if (!result) return null;
-    
+
     return UserMapper.toDomain(result);
   }
 
   async findById(id: string): Promise<User | null> {
     const result = await db.query.users.findFirst({
-      where: eq(users.id, id)
+      where: eq(users.id, id),
     });
-    
+
     if (!result) return null;
-    
+
     return UserMapper.toDomain(result);
   }
 
   async create(user: User): Promise<void> {
     const data = UserMapper.toPersistence(user);
-    
+
     await db.insert(users).values(data);
   }
 
   async update(user: User): Promise<void> {
     const data = UserMapper.toPersistence(user);
-    
-    await db.update(users)
-      .set(data)
-      .where(eq(users.id, user.id));
+
+    await db.update(users).set(data).where(eq(users.id, user.id));
   }
 }
 ```
@@ -163,7 +161,7 @@ export class UserMapper {
       displayName: entity.displayName || '',
       role: entity.role as UserRole,
       createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt
+      updatedAt: entity.updatedAt,
     };
   }
 
@@ -179,7 +177,7 @@ export class UserMapper {
       displayName: domain.displayName,
       role: domain.role,
       createdAt: domain.createdAt,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
   }
 }
@@ -209,13 +207,13 @@ import { LoggerImpl } from '@/infrastructure/services/LoggerImpl';
 export function setupContainer(): void {
   // シングルトンインスタンス
   container.registerSingleton<Logger>('Logger', LoggerImpl);
-  
+
   // マッパー
   container.registerSingleton<UserMapper>('UserMapper', UserMapper);
-  
+
   // リポジトリ
   container.registerSingleton<UserRepository>('UserRepository', SupabaseUserRepository);
-  
+
   // サービス
   container.registerSingleton<UserService>(UserService);
 }
@@ -258,7 +256,7 @@ export class CreateUserUseCase {
     if (existingUser) {
       throw new DuplicateEmailException(dto.email);
     }
-    
+
     // 新規ユーザー作成
     const newUser: User = {
       id: this.idGenerator.generate(),
@@ -266,16 +264,16 @@ export class CreateUserUseCase {
       displayName: dto.displayName,
       role: UserRole.USER,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     // パスワードハッシュ化とユーザー保存は別のサービスに委譲
     const hashedPassword = await this.passwordHasher.hash(dto.password);
-    const createdUser = await this.userRepository.save({...newUser, password: hashedPassword});
-    
+    const createdUser = await this.userRepository.save({ ...newUser, password: hashedPassword });
+
     // ウェルカムメール送信はドメインサービスに委譲
     await this.emailService.sendWelcomeEmail(createdUser.email, createdUser.displayName);
-    
+
     return createdUser;
   }
 }
@@ -296,17 +294,14 @@ import { ApiErrorHandler } from '@/infrastructure/api/ApiErrorHandler';
  * ユーザー情報取得API
  * @description 指定されたIDのユーザー情報を取得する
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const userService = container.resolve(UserService);
     const user = await userService.getUserById(params.id);
-    
+
     return NextResponse.json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (error) {
     return ApiErrorHandler.handle(error);
@@ -317,19 +312,16 @@ export async function GET(
  * ユーザー情報更新API
  * @description 指定されたIDのユーザー情報を更新する
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const userService = container.resolve(UserService);
     const updateData = await request.json();
-    
+
     const updatedUser = await userService.updateUser(params.id, updateData);
-    
+
     return NextResponse.json({
       success: true,
-      data: updatedUser
+      data: updatedUser,
     });
   } catch (error) {
     return ApiErrorHandler.handle(error);
@@ -357,13 +349,13 @@ interface UserPageProps {
  */
 export async function generateMetadata({ params }: UserPageProps): Promise<Metadata> {
   const user = await getUserById(params.id).catch(() => null);
-  
+
   if (!user) {
     return {
       title: 'ユーザーが見つかりません'
     };
   }
-  
+
   return {
     title: `${user.displayName}のプロフィール | AiStart`,
     description: `${user.displayName}のユーザープロフィールページです。`
@@ -375,11 +367,11 @@ export async function generateMetadata({ params }: UserPageProps): Promise<Metad
  */
 export default async function UserPage({ params }: UserPageProps) {
   const user = await getUserById(params.id).catch(() => null);
-  
+
   if (!user) {
     notFound();
   }
-  
+
   return (
     <main className="container mx-auto py-8">
       <UserProfile user={user} />
@@ -443,7 +435,7 @@ model User {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   profile     Profile?
   sessions    Session[]
-  
+
   @@map("users")
 }
 
@@ -456,7 +448,7 @@ model Profile {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("profiles")
 }
 
@@ -468,7 +460,7 @@ model Session {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([token])
   @@map("sessions")
 }
@@ -490,18 +482,18 @@ const execAsync = promisify(exec);
  */
 async function migrate() {
   console.log('🚀 マイグレーションを開始します...');
-  
+
   try {
     // マイグレーション実行
     await execAsync('npx prisma migrate deploy');
     console.log('✅ マイグレーションが完了しました');
-    
+
     // 接続テスト
     const prisma = new PrismaClient();
     await prisma.$connect();
     console.log('✅ データベース接続テスト成功');
     await prisma.$disconnect();
-    
+
     console.log('🎉 すべての操作が完了しました');
   } catch (error) {
     console.error('❌ マイグレーション中にエラーが発生しました:', error);
@@ -531,24 +523,24 @@ export async function middleware(request: NextRequest) {
   if (isPublicPath(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
-  
+
   try {
     const sessionToken = request.cookies.get('session_token')?.value;
-    
+
     // トークンがない場合はログインページにリダイレクト
     if (!sessionToken) {
       return redirectToLogin(request);
     }
-    
+
     // セッショントークンの検証
     const authService = container.resolve(AuthService);
     const session = await authService.validateSession(sessionToken);
-    
+
     // 無効なセッションの場合はログインページにリダイレクト
     if (!session) {
       return redirectToLogin(request);
     }
-    
+
     // ユーザー情報をヘッダーに追加
     const response = NextResponse.next();
     response.headers.set('x-user-id', session.userId);
@@ -564,7 +556,7 @@ export async function middleware(request: NextRequest) {
  */
 function isPublicPath(path: string): boolean {
   const publicPaths = ['/login', '/register', '/api/auth', '/about'];
-  return publicPaths.some(publicPath => path.startsWith(publicPath));
+  return publicPaths.some((publicPath) => path.startsWith(publicPath));
 }
 
 /**
@@ -578,9 +570,7 @@ function redirectToLogin(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|public/).*)'],
 };
 ```
 
@@ -607,18 +597,18 @@ interface RequireAuthProps {
  */
 export function RequireAuth({ children, roles }: RequireAuthProps) {
   const { user, isLoading, error } = useAuth();
-  
+
   // 読み込み中
   if (isLoading) {
     return <LoadingSpinner />;
   }
-  
+
   // 認証エラー
   if (error || !user) {
     redirect('/login');
     return null;
   }
-  
+
   // 権限チェック
   if (roles && !roles.includes(user.role)) {
     return (
@@ -630,7 +620,7 @@ export function RequireAuth({ children, roles }: RequireAuthProps) {
       </div>
     );
   }
-  
+
   // 認証・権限OK
   return <>{children}</>;
 }
@@ -661,66 +651,84 @@ export class ApiErrorHandler {
    */
   static handle(error: any): NextResponse {
     console.error('APIエラー:', error);
-    
+
     if (error instanceof ValidationException) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: error.message,
-          details: error.errors
-        }
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: error.message,
+            details: error.errors,
+          },
+        },
+        { status: 400 }
+      );
     }
-    
+
     if (error instanceof NotFoundException) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: error.message
-        }
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: error.message,
+          },
+        },
+        { status: 404 }
+      );
     }
-    
+
     if (error instanceof UnauthorizedException) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: error.message
-        }
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: error.message,
+          },
+        },
+        { status: 401 }
+      );
     }
-    
+
     if (error instanceof ForbiddenException) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: error.message
-        }
-      }, { status: 403 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: error.message,
+          },
+        },
+        { status: 403 }
+      );
     }
-    
+
     if (error instanceof DomainException) {
-      return NextResponse.json({
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'DOMAIN_ERROR',
+            message: error.message,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 未知のエラー
+    return NextResponse.json(
+      {
         success: false,
         error: {
-          code: 'DOMAIN_ERROR',
-          message: error.message
-        }
-      }, { status: 400 });
-    }
-    
-    // 未知のエラー
-    return NextResponse.json({
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: '内部サーバーエラーが発生しました'
-      }
-    }, { status: 500 });
+          code: 'INTERNAL_ERROR',
+          message: '内部サーバーエラーが発生しました',
+        },
+      },
+      { status: 500 }
+    );
   }
 }
 ```
@@ -793,11 +801,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header className="lg:pl-64" />
-      
+
       <div className="flex flex-1">
         {/* サイドバー - モバイルではオフキャンバス */}
         <Sidebar className="fixed inset-y-0 z-50 lg:relative lg:z-auto" />
-        
+
         {/* メインコンテンツ */}
         <main className="flex-1 p-4 lg:p-8 w-full lg:pl-64 transition-all">
           <div className="max-w-7xl mx-auto">
@@ -815,6 +823,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 このコードサンプルドキュメントは、[02_architecture_design.md](02_architecture_design.md)の設計方針に基づいています。
 
 アーキテクチャとの対応関係:
+
 - [アーキテクチャスタイル選定](#アーキテクチャスタイル実装例) ⇔ 02_architecture_design.md#アーキテクチャスタイルの選定と理由
 - [ディレクトリ構造例](#ディレクトリ構造例と各レイヤーの実装) ⇔ 02_architecture_design.md#ディレクトリ構造と各レイヤーの責務
 - [モジュール分割と依存関係](#モジュール分割と依存関係の設計) ⇔ 02_architecture_design.md#モジュール分割と依存関係の設計

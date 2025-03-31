@@ -9,6 +9,6 @@ module.exports = {
   arrowParens: 'always',
   endOfLine: 'lf',
   jsxSingleQuote: false,
-  jsxBracketSameLine: false,
-  plugins: [require('prettier-plugin-tailwindcss')],
-}; 
+  bracketSameLine: false,
+  plugins: ['prettier-plugin-tailwindcss'],
+};

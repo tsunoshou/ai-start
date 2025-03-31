@@ -26,7 +26,7 @@
 
 ## ドメイン層の実装
 
-*[07_server_implementation.md - ビジネスロジックアーキテクチャパターン](../07_server_implementation.md#ビジネスロジックアーキテクチャパターン)の実装例*
+_[07_server_implementation.md - ビジネスロジックアーキテクチャパターン](../07_server_implementation.md#ビジネスロジックアーキテクチャパターン)の実装例_
 
 ドメイン層は、ビジネスのコアロジックと規則を実装する層です。ここでは、エンティティ、値オブジェクト、ドメインサービス、リポジトリインターフェースなどの実装例を示します。
 
@@ -47,7 +47,7 @@ import { AuthProvider } from '../enums/auth-provider.enum';
 
 export class User {
   private events: DomainEvent[] = [];
-  
+
   // プライベートコンストラクタ - ファクトリメソッドを使用して作成を強制
   private constructor(
     private _id: string,
@@ -116,25 +116,19 @@ export class User {
     providerId?: string
   ): User {
     const id = uuidv4();
-    const user = new User(
-      id,
-      email,
-      name,
-      passwordHash,
-      roles,
-      provider,
-      providerId
-    );
-    
+    const user = new User(id, email, name, passwordHash, roles, provider, providerId);
+
     // ドメインイベント発行
-    user.addEvent(new UserCreatedEvent({
-      userId: id,
-      email: email.value,
-      name,
-      roles,
-      provider
-    }));
-    
+    user.addEvent(
+      new UserCreatedEvent({
+        userId: id,
+        email: email.value,
+        name,
+        roles,
+        provider,
+      })
+    );
+
     return user;
   }
 
@@ -168,17 +162,19 @@ export class User {
     if (this._email.equals(email)) {
       return;
     }
-    
+
     this._email = email;
     this._updatedAt = new Date();
-    
+
     // ドメインイベント発行
-    this.addEvent(new UserUpdatedEvent({
-      userId: this._id,
-      email: email.value,
-      name: this._name,
-      updatedAt: this._updatedAt
-    }));
+    this.addEvent(
+      new UserUpdatedEvent({
+        userId: this._id,
+        email: email.value,
+        name: this._name,
+        updatedAt: this._updatedAt,
+      })
+    );
   }
 
   // 名前更新
@@ -186,47 +182,53 @@ export class User {
     if (this._name === name) {
       return;
     }
-    
+
     this._name = name;
     this._updatedAt = new Date();
-    
+
     // ドメインイベント発行
-    this.addEvent(new UserUpdatedEvent({
-      userId: this._id,
-      email: this._email.value,
-      name: this._name,
-      updatedAt: this._updatedAt
-    }));
+    this.addEvent(
+      new UserUpdatedEvent({
+        userId: this._id,
+        email: this._email.value,
+        name: this._name,
+        updatedAt: this._updatedAt,
+      })
+    );
   }
 
   // パスワードハッシュ更新
   public updatePassword(passwordHash: string): void {
     this._passwordHash = passwordHash;
     this._updatedAt = new Date();
-    
+
     // ドメインイベント発行
-    this.addEvent(new UserUpdatedEvent({
-      userId: this._id,
-      email: this._email.value,
-      name: this._name,
-      updatedAt: this._updatedAt,
-      passwordChanged: true
-    }));
+    this.addEvent(
+      new UserUpdatedEvent({
+        userId: this._id,
+        email: this._email.value,
+        name: this._name,
+        updatedAt: this._updatedAt,
+        passwordChanged: true,
+      })
+    );
   }
 
   // ロール更新
   public updateRoles(roles: UserRole[]): void {
     this._roles = [...roles];
     this._updatedAt = new Date();
-    
+
     // ドメインイベント発行
-    this.addEvent(new UserUpdatedEvent({
-      userId: this._id,
-      email: this._email.value,
-      name: this._name,
-      roles: this._roles,
-      updatedAt: this._updatedAt
-    }));
+    this.addEvent(
+      new UserUpdatedEvent({
+        userId: this._id,
+        email: this._email.value,
+        name: this._name,
+        roles: this._roles,
+        updatedAt: this._updatedAt,
+      })
+    );
   }
 
   // パスワード確認
@@ -282,7 +284,7 @@ export class Email {
     if (!this._value) {
       throw new Error('メールアドレスは必須です');
     }
-    
+
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(this._value)) {
       throw new Error('無効なメールアドレス形式です');
@@ -348,11 +350,7 @@ export class UserService {
   ) {}
 
   // 新規ユーザー登録
-  async registerUser(
-    email: Email,
-    name: string,
-    passwordHash: string
-  ): Promise<Result<User>> {
+  async registerUser(email: Email, name: string, passwordHash: string): Promise<Result<User>> {
     try {
       // メールアドレスの重複チェック
       const existingUser = await this.userRepository.findByEmail(email);
@@ -361,13 +359,7 @@ export class UserService {
       }
 
       // ユーザー作成
-      const user = User.create(
-        email,
-        name,
-        passwordHash,
-        [UserRole.USER],
-        AuthProvider.EMAIL
-      );
+      const user = User.create(email, name, passwordHash, [UserRole.USER], AuthProvider.EMAIL);
 
       // リポジトリに保存
       await this.userRepository.create(user);
@@ -384,10 +376,7 @@ export class UserService {
   }
 
   // パスワード変更
-  async changePassword(
-    userId: string,
-    newPasswordHash: string
-  ): Promise<Result<void>> {
+  async changePassword(userId: string, newPasswordHash: string): Promise<Result<void>> {
     try {
       // ユーザー取得
       const user = await this.userRepository.findById(userId);
@@ -416,7 +405,7 @@ export class UserService {
 
 ## アプリケーション層の実装
 
-*[07_server_implementation.md - アプリケーション層の実装](../07_server_implementation.md#アプリケーション層)の実装例*
+_[07_server_implementation.md - アプリケーション層の実装](../07_server_implementation.md#アプリケーション層)の実装例_
 
 アプリケーション層は、ドメイン層とインフラストラクチャ層の橋渡しを行い、ユースケースを実装する層です。ここでは、ユースケースとDTOの実装例を示します。
 
@@ -453,10 +442,10 @@ export class RegisterUserUseCase {
       logger.debug('ユーザー登録ユースケース実行', { email: dto.email });
 
       // 入力検証（DTOによって既に検証済みの前提）
-      
+
       // パスワードのハッシュ化
       const passwordHash = await this.passwordHasher.hash(dto.password);
-      
+
       // メールアドレス値オブジェクト作成
       let emailVo: Email;
       try {
@@ -464,20 +453,16 @@ export class RegisterUserUseCase {
       } catch (error) {
         return Result.fail((error as Error).message);
       }
-      
+
       // ドメインサービスを使用したユーザー登録
-      const result = await this.userService.registerUser(
-        emailVo,
-        dto.name,
-        passwordHash
-      );
-      
+      const result = await this.userService.registerUser(emailVo, dto.name, passwordHash);
+
       if (result.isFailure) {
         return Result.fail<UserResponseDto>(result.error);
       }
-      
+
       const user = result.getValue();
-      
+
       // レスポンスDTOへの変換
       const responseDto: UserResponseDto = {
         id: user.id,
@@ -485,9 +470,9 @@ export class RegisterUserUseCase {
         name: user.name,
         roles: user.roles,
         createdAt: user.createdAt.toISOString(),
-        updatedAt: user.updatedAt.toISOString()
+        updatedAt: user.updatedAt.toISOString(),
       };
-      
+
       return Result.ok(responseDto);
     } catch (error) {
       logger.error('ユーザー登録処理でエラーが発生しました', { error });
@@ -505,15 +490,17 @@ export class RegisterUserUseCase {
 import { z } from 'zod';
 
 // Zodスキーマ定義
-export const registerUserSchema = z.object({
-  email: z.string().email('有効なメールアドレスを入力してください'),
-  name: z.string().min(2, '名前は2文字以上で入力してください'),
-  password: z.string().min(8, 'パスワードは8文字以上で入力してください'),
-  confirmPassword: z.string()
-}).refine(data => data.password === data.confirmPassword, {
-  message: 'パスワードが一致しません',
-  path: ['confirmPassword']
-});
+export const registerUserSchema = z
+  .object({
+    email: z.string().email('有効なメールアドレスを入力してください'),
+    name: z.string().min(2, '名前は2文字以上で入力してください'),
+    password: z.string().min(8, 'パスワードは8文字以上で入力してください'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'パスワードが一致しません',
+    path: ['confirmPassword'],
+  });
 
 // 型定義
 export type RegisterUserDto = z.infer<typeof registerUserSchema>;
@@ -536,7 +523,7 @@ export interface UserResponseDto {
 
 ## インフラストラクチャ層の実装
 
-*[07_server_implementation.md - インフラストラクチャ層の実装](../07_server_implementation.md#インフラストラクチャ層)の実装例*
+_[07_server_implementation.md - インフラストラクチャ層の実装](../07_server_implementation.md#インフラストラクチャ層)の実装例_
 
 インフラストラクチャ層は、外部システムとの連携や永続化などの実装を担当する層です。ここでは、リポジトリ実装、データマッパー、外部サービス連携などの実装例を示します。
 
@@ -557,20 +544,18 @@ import { logger } from '../../config/logger';
 
 @injectable()
 export class UserRepository implements UserRepository {
-  constructor(
-    @inject(UserMapper) private mapper: UserMapper
-  ) {}
+  constructor(@inject(UserMapper) private mapper: UserMapper) {}
 
   async findById(id: string): Promise<User | null> {
     try {
       const result = await db.query.users.findFirst({
-        where: eq(users.id, id)
+        where: eq(users.id, id),
       });
-      
+
       if (!result) {
         return null;
       }
-      
+
       return this.mapper.toDomain(result);
     } catch (error) {
       logger.error('ユーザーIDによる検索でエラーが発生しました', { error, id });
@@ -581,16 +566,19 @@ export class UserRepository implements UserRepository {
   async findByEmail(email: Email): Promise<User | null> {
     try {
       const result = await db.query.users.findFirst({
-        where: eq(users.email, email.value)
+        where: eq(users.email, email.value),
       });
-      
+
       if (!result) {
         return null;
       }
-      
+
       return this.mapper.toDomain(result);
     } catch (error) {
-      logger.error('メールアドレスによるユーザー検索でエラーが発生しました', { error, email: email.value });
+      logger.error('メールアドレスによるユーザー検索でエラーが発生しました', {
+        error,
+        email: email.value,
+      });
       throw new Error(`ユーザー検索エラー: ${(error as Error).message}`);
     }
   }
@@ -598,7 +586,7 @@ export class UserRepository implements UserRepository {
   async create(user: User): Promise<void> {
     try {
       const data = this.mapper.toPersistence(user);
-      
+
       await db.insert(users).values(data);
     } catch (error) {
       logger.error('ユーザー作成でエラーが発生しました', { error, userId: user.id });
@@ -609,10 +597,8 @@ export class UserRepository implements UserRepository {
   async update(user: User): Promise<void> {
     try {
       const data = this.mapper.toPersistence(user);
-      
-      await db.update(users)
-        .set(data)
-        .where(eq(users.id, user.id));
+
+      await db.update(users).set(data).where(eq(users.id, user.id));
     } catch (error) {
       logger.error('ユーザー更新でエラーが発生しました', { error, userId: user.id });
       throw new Error(`ユーザー更新エラー: ${(error as Error).message}`);
@@ -669,7 +655,7 @@ export class UserMapper {
       passwordHash: domainModel.passwordHash,
       roles: domainModel.roles,
       provider: domainModel.provider,
-      providerId: domainModel.providerId
+      providerId: domainModel.providerId,
     };
   }
 }
@@ -677,7 +663,7 @@ export class UserMapper {
 
 ## API Routes実装
 
-*[07_server_implementation.md - API実装パターン](../07_server_implementation.md#api実装パターン)の実装例*
+_[07_server_implementation.md - API実装パターン](../07_server_implementation.md#api実装パターン)の実装例_
 
 Next.jsのApp Routerを使用したAPI実装例を示します。これらのAPIは、[07_server_implementation.md - REST API規約](../07_server_implementation.md#rest-api規約)に準拠しています。
 
@@ -701,25 +687,25 @@ export async function POST(req: NextRequest) {
   try {
     // リクエストボディのパース
     const body = await req.json();
-    
+
     // DTOの検証
     const validationResult = registerUserSchema.safeParse(body);
     if (!validationResult.success) {
       logger.warn('ユーザー登録リクエスト検証失敗', { errors: validationResult.error });
       return ApiResponse.badRequest(validationResult.error.format());
     }
-    
+
     const dto = validationResult.data;
-    
+
     // ユースケースの実行
     const registerUserUseCase = container.resolve(RegisterUserUseCase);
     const result = await registerUserUseCase.execute(dto);
-    
+
     // 結果の処理
     if (result.isFailure) {
       return ApiResponse.badRequest(result.error);
     }
-    
+
     // 成功レスポンス
     return ApiResponse.created(result.getValue());
   } catch (error) {
@@ -729,41 +715,38 @@ export async function POST(req: NextRequest) {
 }
 
 // GET /api/v1/users - ユーザー一覧取得（管理者専用）
-export const GET = withAuth(
-  [UserRole.ADMIN],
-  async (req: NextRequest) => {
-    try {
-      // クエリパラメータの取得
-      const { searchParams } = new URL(req.url);
-      const page = Number(searchParams.get('page') || '1');
-      const limit = Number(searchParams.get('limit') || '10');
-      const search = searchParams.get('search') || '';
-      const sort = searchParams.get('sort') || 'createdAt';
-      const order = searchParams.get('order') || 'desc';
-      
-      // ユースケースの実行
-      const getUsersUseCase = container.resolve(GetUsersUseCase);
-      const result = await getUsersUseCase.execute({
-        page,
-        limit,
-        search,
-        sort,
-        order
-      });
-      
-      // 結果の処理
-      if (result.isFailure) {
-        return ApiResponse.badRequest(result.error);
-      }
-      
-      // 成功レスポンス
-      return ApiResponse.ok(result.getValue());
-    } catch (error) {
-      logger.error('ユーザー一覧取得処理でエラーが発生しました', { error });
-      return ApiResponse.serverError('ユーザー一覧取得処理中にエラーが発生しました');
+export const GET = withAuth([UserRole.ADMIN], async (req: NextRequest) => {
+  try {
+    // クエリパラメータの取得
+    const { searchParams } = new URL(req.url);
+    const page = Number(searchParams.get('page') || '1');
+    const limit = Number(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+    const sort = searchParams.get('sort') || 'createdAt';
+    const order = searchParams.get('order') || 'desc';
+
+    // ユースケースの実行
+    const getUsersUseCase = container.resolve(GetUsersUseCase);
+    const result = await getUsersUseCase.execute({
+      page,
+      limit,
+      search,
+      sort,
+      order,
+    });
+
+    // 結果の処理
+    if (result.isFailure) {
+      return ApiResponse.badRequest(result.error);
     }
+
+    // 成功レスポンス
+    return ApiResponse.ok(result.getValue());
+  } catch (error) {
+    logger.error('ユーザー一覧取得処理でエラーが発生しました', { error });
+    return ApiResponse.serverError('ユーザー一覧取得処理中にエラーが発生しました');
   }
-);
+});
 ```
 
 ```typescript
@@ -784,108 +767,102 @@ import { logger } from '@/config/logger';
 // GET /api/v1/users/[id] - 特定ユーザー取得
 export const GET = withAuth(
   [], // 全認証済みユーザーがアクセス可能
-  withResourceAuth(
-    async (req: NextRequest, { params, user }) => {
-      try {
-        const { id } = params;
-        
-        // 自分自身または管理者のみアクセス可能
-        if (id !== user.id && !user.roles.includes(UserRole.ADMIN)) {
-          return ApiResponse.forbidden('このリソースにアクセスする権限がありません');
-        }
-        
-        // ユースケースの実行
-        const getUserByIdUseCase = container.resolve(GetUserByIdUseCase);
-        const result = await getUserByIdUseCase.execute({ id });
-        
-        // 結果の処理
-        if (result.isFailure) {
-          return ApiResponse.notFound(result.error);
-        }
-        
-        // 成功レスポンス
-        return ApiResponse.ok(result.getValue());
-      } catch (error) {
-        logger.error('ユーザー取得処理でエラーが発生しました', { error, userId: params.id });
-        return ApiResponse.serverError('ユーザー取得処理中にエラーが発生しました');
+  withResourceAuth(async (req: NextRequest, { params, user }) => {
+    try {
+      const { id } = params;
+
+      // 自分自身または管理者のみアクセス可能
+      if (id !== user.id && !user.roles.includes(UserRole.ADMIN)) {
+        return ApiResponse.forbidden('このリソースにアクセスする権限がありません');
       }
+
+      // ユースケースの実行
+      const getUserByIdUseCase = container.resolve(GetUserByIdUseCase);
+      const result = await getUserByIdUseCase.execute({ id });
+
+      // 結果の処理
+      if (result.isFailure) {
+        return ApiResponse.notFound(result.error);
+      }
+
+      // 成功レスポンス
+      return ApiResponse.ok(result.getValue());
+    } catch (error) {
+      logger.error('ユーザー取得処理でエラーが発生しました', { error, userId: params.id });
+      return ApiResponse.serverError('ユーザー取得処理中にエラーが発生しました');
     }
-  )
+  })
 );
 
 // PUT /api/v1/users/[id] - ユーザー更新
 export const PUT = withAuth(
   [], // 全認証済みユーザーがアクセス可能
-  withResourceAuth(
-    async (req: NextRequest, { params, user }) => {
-      try {
-        const { id } = params;
-        
-        // 自分自身または管理者のみアクセス可能
-        if (id !== user.id && !user.roles.includes(UserRole.ADMIN)) {
-          return ApiResponse.forbidden('このリソースにアクセスする権限がありません');
-        }
-        
-        // リクエストボディのパース
-        const body = await req.json();
-        
-        // DTOの検証
-        const validationResult = updateUserSchema.safeParse(body);
-        if (!validationResult.success) {
-          return ApiResponse.badRequest(validationResult.error.format());
-        }
-        
-        const dto = { id, ...validationResult.data };
-        
-        // ユースケースの実行
-        const updateUserUseCase = container.resolve(UpdateUserUseCase);
-        const result = await updateUserUseCase.execute(dto);
-        
-        // 結果の処理
-        if (result.isFailure) {
-          return ApiResponse.badRequest(result.error);
-        }
-        
-        // 成功レスポンス
-        return ApiResponse.ok(result.getValue());
-      } catch (error) {
-        logger.error('ユーザー更新処理でエラーが発生しました', { error, userId: params.id });
-        return ApiResponse.serverError('ユーザー更新処理中にエラーが発生しました');
+  withResourceAuth(async (req: NextRequest, { params, user }) => {
+    try {
+      const { id } = params;
+
+      // 自分自身または管理者のみアクセス可能
+      if (id !== user.id && !user.roles.includes(UserRole.ADMIN)) {
+        return ApiResponse.forbidden('このリソースにアクセスする権限がありません');
       }
+
+      // リクエストボディのパース
+      const body = await req.json();
+
+      // DTOの検証
+      const validationResult = updateUserSchema.safeParse(body);
+      if (!validationResult.success) {
+        return ApiResponse.badRequest(validationResult.error.format());
+      }
+
+      const dto = { id, ...validationResult.data };
+
+      // ユースケースの実行
+      const updateUserUseCase = container.resolve(UpdateUserUseCase);
+      const result = await updateUserUseCase.execute(dto);
+
+      // 結果の処理
+      if (result.isFailure) {
+        return ApiResponse.badRequest(result.error);
+      }
+
+      // 成功レスポンス
+      return ApiResponse.ok(result.getValue());
+    } catch (error) {
+      logger.error('ユーザー更新処理でエラーが発生しました', { error, userId: params.id });
+      return ApiResponse.serverError('ユーザー更新処理中にエラーが発生しました');
     }
-  )
+  })
 );
 
 // DELETE /api/v1/users/[id] - ユーザー削除
 export const DELETE = withAuth(
   [], // 全認証済みユーザーがアクセス可能
-  withResourceAuth(
-    async (req: NextRequest, { params, user }) => {
-      try {
-        const { id } = params;
-        
-        // 自分自身または管理者のみアクセス可能
-        if (id !== user.id && !user.roles.includes(UserRole.ADMIN)) {
-          return ApiResponse.forbidden('このリソースにアクセスする権限がありません');
-        }
-        
-        // ユースケースの実行
-        const deleteUserUseCase = container.resolve(DeleteUserUseCase);
-        const result = await deleteUserUseCase.execute({ id });
-        
-        // 結果の処理
-        if (result.isFailure) {
-          return ApiResponse.badRequest(result.error);
-        }
-        
-        // 成功レスポンス - 204 No Content
-        return ApiResponse.noContent();
-      } catch (error) {
-        logger.error('ユーザー削除処理でエラーが発生しました', { error, userId: params.id });
-        return ApiResponse.serverError('ユーザー削除処理中にエラーが発生しました');
+  withResourceAuth(async (req: NextRequest, { params, user }) => {
+    try {
+      const { id } = params;
+
+      // 自分自身または管理者のみアクセス可能
+      if (id !== user.id && !user.roles.includes(UserRole.ADMIN)) {
+        return ApiResponse.forbidden('このリソースにアクセスする権限がありません');
       }
+
+      // ユースケースの実行
+      const deleteUserUseCase = container.resolve(DeleteUserUseCase);
+      const result = await deleteUserUseCase.execute({ id });
+
+      // 結果の処理
+      if (result.isFailure) {
+        return ApiResponse.badRequest(result.error);
+      }
+
+      // 成功レスポンス - 204 No Content
+      return ApiResponse.noContent();
+    } catch (error) {
+      logger.error('ユーザー削除処理でエラーが発生しました', { error, userId: params.id });
+      return ApiResponse.serverError('ユーザー削除処理中にエラーが発生しました');
     }
-  )
+  })
 );
 ```
 
@@ -899,81 +876,102 @@ import { NextResponse } from 'next/server';
 export class ApiResponse {
   // 200 OK
   static ok<T>(data: T) {
-    return NextResponse.json({
-      success: true,
-      data
-    }, { status: 200 });
+    return NextResponse.json(
+      {
+        success: true,
+        data,
+      },
+      { status: 200 }
+    );
   }
-  
+
   // 201 Created
   static created<T>(data: T) {
-    return NextResponse.json({
-      success: true,
-      data
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        data,
+      },
+      { status: 201 }
+    );
   }
-  
+
   // 204 No Content
   static noContent() {
     return new NextResponse(null, { status: 204 });
   }
-  
+
   // 400 Bad Request
   static badRequest(message: string | object) {
-    return NextResponse.json({
-      success: false,
-      error: {
-        message: typeof message === 'string' ? message : 'リクエストが不正です',
-        details: typeof message !== 'string' ? message : undefined
-      }
-    }, { status: 400 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message: typeof message === 'string' ? message : 'リクエストが不正です',
+          details: typeof message !== 'string' ? message : undefined,
+        },
+      },
+      { status: 400 }
+    );
   }
-  
+
   // 401 Unauthorized
   static unauthorized(message = '認証が必要です') {
-    return NextResponse.json({
-      success: false,
-      error: {
-        message
-      }
-    }, { status: 401 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message,
+        },
+      },
+      { status: 401 }
+    );
   }
-  
+
   // 403 Forbidden
   static forbidden(message = 'アクセス権限がありません') {
-    return NextResponse.json({
-      success: false,
-      error: {
-        message
-      }
-    }, { status: 403 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message,
+        },
+      },
+      { status: 403 }
+    );
   }
-  
+
   // 404 Not Found
   static notFound(message = 'リソースが見つかりません') {
-    return NextResponse.json({
-      success: false,
-      error: {
-        message
-      }
-    }, { status: 404 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message,
+        },
+      },
+      { status: 404 }
+    );
   }
-  
+
   // 500 Internal Server Error
   static serverError(message = 'サーバーエラーが発生しました') {
-    return NextResponse.json({
-      success: false,
-      error: {
-        message
-      }
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message,
+        },
+      },
+      { status: 500 }
+    );
   }
 }
 ```
 
 ## CQRS実装
 
-*[07_server_implementation.md - CQRS パターン](../07_server_implementation.md#cqrs-パターン)の実装例*
+_[07_server_implementation.md - CQRS パターン](../07_server_implementation.md#cqrs-パターン)の実装例_
 
 Command Query Responsibility Segregation（CQRS）パターンの実装例を示します。コマンド（状態変更）とクエリ（状態参照）の責務を分離し、それぞれを最適化した設計が特徴です。
 
@@ -1017,27 +1015,24 @@ export interface CreateProjectPayload {
 
 export class CreateProjectCommand implements Command<CreateProjectPayload> {
   readonly type = 'project.create';
-  
+
   constructor(
     readonly payload: CreateProjectPayload,
     readonly metadata: CommandMetadata
   ) {}
-  
+
   // ファクトリメソッド
   static create(
     payload: CreateProjectPayload,
     userId: string,
     correlationId?: string
   ): CreateProjectCommand {
-    return new CreateProjectCommand(
-      payload,
-      {
-        timestamp: new Date(),
-        userId,
-        correlationId: correlationId || uuidv4(),
-        causationId: uuidv4()
-      }
-    );
+    return new CreateProjectCommand(payload, {
+      timestamp: new Date(),
+      userId,
+      correlationId: correlationId || uuidv4(),
+      causationId: uuidv4(),
+    });
   }
 }
 ```
@@ -1061,26 +1056,26 @@ export class CreateProjectCommandHandler implements CommandHandler<CreateProject
     @inject('UserRepository') private userRepository: UserRepository,
     @inject('DomainEventPublisher') private eventPublisher: DomainEventPublisher
   ) {}
-  
+
   async execute(command: CreateProjectCommand): Promise<string> {
     const { payload, metadata } = command;
-    
-    logger.debug('プロジェクト作成コマンド実行', { 
+
+    logger.debug('プロジェクト作成コマンド実行', {
       projectName: payload.name,
-      userId: metadata.userId 
+      userId: metadata.userId,
     });
-    
+
     // コマンドの検証
     if (!payload.name || !payload.ownerId) {
       throw new Error('プロジェクト名とオーナーIDは必須です');
     }
-    
+
     // ユーザーの存在確認
     const user = await this.userRepository.findById(payload.ownerId);
     if (!user) {
       throw new Error(`オーナーユーザー(${payload.ownerId})が見つかりません`);
     }
-    
+
     // プロジェクトエンティティの作成
     const project = Project.create(
       payload.name,
@@ -1090,15 +1085,15 @@ export class CreateProjectCommandHandler implements CommandHandler<CreateProject
       payload.programId,
       payload.tags
     );
-    
+
     // リポジトリに保存
     await this.projectRepository.create(project);
-    
+
     // ドメインイベントの発行
     const events = project.getEvents();
     await this.eventPublisher.publishAll(events);
     project.clearEvents();
-    
+
     return project.id;
   }
 }
@@ -1114,7 +1109,7 @@ import { Command } from './command.interface';
 export interface CommandBus {
   execute<T extends Command, R>(command: T): Promise<R>;
   registerHandler<T extends Command, R>(
-    commandType: string, 
+    commandType: string,
     handler: (command: T) => Promise<R>
   ): void;
 }
@@ -1131,40 +1126,40 @@ import { logger } from '../../config/logger';
 @injectable()
 export class CommandBus implements CommandBus {
   private handlers = new Map<string, (command: any) => Promise<any>>();
-  
+
   registerHandler<T extends Command, R>(
-    commandType: string, 
+    commandType: string,
     handler: (command: T) => Promise<R>
   ): void {
     if (this.handlers.has(commandType)) {
       throw new Error(`コマンドタイプ "${commandType}" のハンドラは既に登録されています`);
     }
-    
+
     this.handlers.set(commandType, handler);
     logger.debug(`コマンドハンドラ登録: ${commandType}`);
   }
-  
+
   async execute<T extends Command, R>(command: T): Promise<R> {
     const { type } = command;
-    
-    logger.debug(`コマンド実行: ${type}`, { 
-      commandType: type, 
-      correlationId: command.metadata.correlationId 
+
+    logger.debug(`コマンド実行: ${type}`, {
+      commandType: type,
+      correlationId: command.metadata.correlationId,
     });
-    
+
     const handler = this.handlers.get(type);
-    
+
     if (!handler) {
       throw new Error(`コマンドタイプ "${type}" のハンドラが見つかりません`);
     }
-    
+
     try {
       return await handler(command);
     } catch (error) {
-      logger.error(`コマンド実行エラー: ${type}`, { 
+      logger.error(`コマンド実行エラー: ${type}`, {
         error,
-        commandType: type, 
-        correlationId: command.metadata.correlationId 
+        commandType: type,
+        correlationId: command.metadata.correlationId,
       });
       throw error;
     }
@@ -1206,14 +1201,14 @@ export interface GetProjectsPayload {
 
 export class GetProjectsQuery implements Query<GetProjectsPayload> {
   readonly type = 'project.getProjects';
-  
+
   constructor(readonly payload: GetProjectsPayload) {}
-  
+
   static create(payload: GetProjectsPayload): GetProjectsQuery {
     return new GetProjectsQuery({
       page: payload.page || 1,
       limit: payload.limit || 10,
-      ...payload
+      ...payload,
     });
   }
 }
@@ -1250,47 +1245,42 @@ export interface ProjectsResult {
 
 @injectable()
 export class GetProjectsQueryHandler implements QueryHandler<GetProjectsQuery, ProjectsResult> {
-  constructor(
-    @inject('ProjectReadModel') private projectReadModel: ProjectReadModel
-  ) {}
-  
+  constructor(@inject('ProjectReadModel') private projectReadModel: ProjectReadModel) {}
+
   async execute(query: GetProjectsQuery): Promise<ProjectsResult> {
     const { payload } = query;
-    
-    logger.debug('プロジェクト検索クエリ実行', { 
-      page: payload.page, 
+
+    logger.debug('プロジェクト検索クエリ実行', {
+      page: payload.page,
       limit: payload.limit,
-      search: payload.search
+      search: payload.search,
     });
-    
+
     // 検索条件を構築
     const searchCriteria = {
       search: payload.search,
       ownerId: payload.ownerId,
       programId: payload.programId,
       tags: payload.tags,
-      isPublic: payload.isPublic
+      isPublic: payload.isPublic,
     };
-    
+
     // プロジェクト検索
-    const projects = await this.projectReadModel.findProjects(
-      searchCriteria,
-      {
-        page: payload.page,
-        limit: payload.limit,
-        sort: payload.sort || 'createdAt',
-        order: payload.order || 'desc'
-      }
-    );
-    
+    const projects = await this.projectReadModel.findProjects(searchCriteria, {
+      page: payload.page,
+      limit: payload.limit,
+      sort: payload.sort || 'createdAt',
+      order: payload.order || 'desc',
+    });
+
     // 総件数取得
     const total = await this.projectReadModel.countProjects(searchCriteria);
-    
+
     // 総ページ数計算
     const totalPages = Math.ceil(total / payload.limit);
-    
+
     return {
-      items: projects.map(project => ({
+      items: projects.map((project) => ({
         id: project.id,
         name: project.name,
         description: project.description,
@@ -1301,12 +1291,12 @@ export class GetProjectsQueryHandler implements QueryHandler<GetProjectsQuery, P
         isPublic: project.isPublic,
         tags: project.tags,
         createdAt: project.createdAt.toISOString(),
-        updatedAt: project.updatedAt.toISOString()
+        updatedAt: project.updatedAt.toISOString(),
       })),
       total,
       page: payload.page,
       limit: payload.limit,
-      totalPages
+      totalPages,
     };
   }
 }
@@ -1321,10 +1311,7 @@ import { Query } from './query.interface';
 
 export interface QueryBus {
   execute<T extends Query, R>(query: T): Promise<R>;
-  registerHandler<T extends Query, R>(
-    queryType: string, 
-    handler: (query: T) => Promise<R>
-  ): void;
+  registerHandler<T extends Query, R>(queryType: string, handler: (query: T) => Promise<R>): void;
 }
 ```
 
@@ -1339,30 +1326,27 @@ import { logger } from '../../config/logger';
 @injectable()
 export class QueryBus implements QueryBus {
   private handlers = new Map<string, (query: any) => Promise<any>>();
-  
-  registerHandler<T extends Query, R>(
-    queryType: string, 
-    handler: (query: T) => Promise<R>
-  ): void {
+
+  registerHandler<T extends Query, R>(queryType: string, handler: (query: T) => Promise<R>): void {
     if (this.handlers.has(queryType)) {
       throw new Error(`クエリタイプ "${queryType}" のハンドラは既に登録されています`);
     }
-    
+
     this.handlers.set(queryType, handler);
     logger.debug(`クエリハンドラ登録: ${queryType}`);
   }
-  
+
   async execute<T extends Query, R>(query: T): Promise<R> {
     const { type } = query;
-    
+
     logger.debug(`クエリ実行: ${type}`);
-    
+
     const handler = this.handlers.get(type);
-    
+
     if (!handler) {
       throw new Error(`クエリタイプ "${type}" のハンドラが見つかりません`);
     }
-    
+
     try {
       return await handler(query);
     } catch (error) {
@@ -1426,10 +1410,10 @@ import { eq, and, like, asc, desc, sql } from 'drizzle-orm';
 import { projects } from '../schema/projects';
 import { users } from '../schema/users';
 import { programs } from '../schema/programs';
-import { 
-  ProjectReadModel, 
-  ProjectSearchCriteria, 
-  PaginationOptions 
+import {
+  ProjectReadModel,
+  ProjectSearchCriteria,
+  PaginationOptions,
 } from './project-read-model.interface';
 import { logger } from '../../../config/logger';
 
@@ -1438,23 +1422,24 @@ export class ProjectReadModel implements ProjectReadModel {
   async findProjectById(id: string): Promise<ProjectReadModel | null> {
     try {
       // プロジェクト情報をユーザー名、プログラム名と一緒に取得
-      const result = await db.select({
-        project: projects,
-        ownerName: users.name,
-        programName: programs.name
-      })
-      .from(projects)
-      .leftJoin(users, eq(projects.ownerId, users.id))
-      .leftJoin(programs, eq(projects.programId, programs.id))
-      .where(eq(projects.id, id))
-      .limit(1);
-      
+      const result = await db
+        .select({
+          project: projects,
+          ownerName: users.name,
+          programName: programs.name,
+        })
+        .from(projects)
+        .leftJoin(users, eq(projects.ownerId, users.id))
+        .leftJoin(programs, eq(projects.programId, programs.id))
+        .where(eq(projects.id, id))
+        .limit(1);
+
       if (result.length === 0) {
         return null;
       }
-      
+
       const row = result[0];
-      
+
       return {
         id: row.project.id,
         name: row.project.name,
@@ -1466,7 +1451,7 @@ export class ProjectReadModel implements ProjectReadModel {
         isPublic: row.project.isPublic,
         tags: row.project.tags,
         createdAt: row.project.createdAt,
-        updatedAt: row.project.updatedAt
+        updatedAt: row.project.updatedAt,
       };
     } catch (error) {
       logger.error('プロジェクト検索エラー', { error, id });
@@ -1481,36 +1466,32 @@ export class ProjectReadModel implements ProjectReadModel {
     try {
       // 検索条件の構築
       const conditions = [];
-      
+
       if (criteria.ownerId) {
         conditions.push(eq(projects.ownerId, criteria.ownerId));
       }
-      
+
       if (criteria.programId) {
         conditions.push(eq(projects.programId, criteria.programId));
       }
-      
+
       if (criteria.isPublic !== undefined) {
         conditions.push(eq(projects.isPublic, criteria.isPublic));
       }
-      
+
       if (criteria.search) {
-        conditions.push(
-          like(projects.name, `%${criteria.search}%`)
-        );
+        conditions.push(like(projects.name, `%${criteria.search}%`));
       }
-      
+
       if (criteria.tags && criteria.tags.length > 0) {
         // PostgreSQLの配列演算子を使用してタグの包含検索
-        conditions.push(
-          sql`${projects.tags} && ${criteria.tags}`
-        );
+        conditions.push(sql`${projects.tags} && ${criteria.tags}`);
       }
-      
+
       // ソート順の決定
       const sortDirection = pagination.order === 'asc' ? asc : desc;
       let sortColumn;
-      
+
       switch (pagination.sort) {
         case 'name':
           sortColumn = sortDirection(projects.name);
@@ -1521,30 +1502,31 @@ export class ProjectReadModel implements ProjectReadModel {
         default:
           sortColumn = sortDirection(projects.createdAt);
       }
-      
+
       // オフセットの計算
       const offset = (pagination.page - 1) * pagination.limit;
-      
+
       // クエリの実行
-      const query = db.select({
-        project: projects,
-        ownerName: users.name,
-        programName: programs.name
-      })
-      .from(projects)
-      .leftJoin(users, eq(projects.ownerId, users.id))
-      .leftJoin(programs, eq(projects.programId, programs.id))
-      .orderBy(sortColumn)
-      .limit(pagination.limit)
-      .offset(offset);
-      
+      const query = db
+        .select({
+          project: projects,
+          ownerName: users.name,
+          programName: programs.name,
+        })
+        .from(projects)
+        .leftJoin(users, eq(projects.ownerId, users.id))
+        .leftJoin(programs, eq(projects.programId, programs.id))
+        .orderBy(sortColumn)
+        .limit(pagination.limit)
+        .offset(offset);
+
       if (conditions.length > 0) {
         query.where(and(...conditions));
       }
-      
+
       const result = await query;
-      
-      return result.map(row => ({
+
+      return result.map((row) => ({
         id: row.project.id,
         name: row.project.name,
         description: row.project.description,
@@ -1555,7 +1537,7 @@ export class ProjectReadModel implements ProjectReadModel {
         isPublic: row.project.isPublic,
         tags: row.project.tags,
         createdAt: row.project.createdAt,
-        updatedAt: row.project.updatedAt
+        updatedAt: row.project.updatedAt,
       }));
     } catch (error) {
       logger.error('プロジェクト一覧検索エラー', { error, criteria });
@@ -1567,51 +1549,48 @@ export class ProjectReadModel implements ProjectReadModel {
     try {
       // 検索条件の構築
       const conditions = [];
-      
+
       if (criteria.ownerId) {
         conditions.push(eq(projects.ownerId, criteria.ownerId));
       }
-      
+
       if (criteria.programId) {
         conditions.push(eq(projects.programId, criteria.programId));
       }
-      
+
       if (criteria.isPublic !== undefined) {
         conditions.push(eq(projects.isPublic, criteria.isPublic));
       }
-      
+
       if (criteria.search) {
-        conditions.push(
-          like(projects.name, `%${criteria.search}%`)
-        );
+        conditions.push(like(projects.name, `%${criteria.search}%`));
       }
-      
+
       if (criteria.tags && criteria.tags.length > 0) {
         // PostgreSQLの配列演算子を使用してタグの包含検索
-        conditions.push(
-          sql`${projects.tags} && ${criteria.tags}`
-        );
+        conditions.push(sql`${projects.tags} && ${criteria.tags}`);
       }
-      
+
       // カウントクエリの実行
-      const query = db.select({
-        count: sql`count(*)`.mapWith(Number)
-      })
-      .from(projects);
-      
+      const query = db
+        .select({
+          count: sql`count(*)`.mapWith(Number),
+        })
+        .from(projects);
+
       if (conditions.length > 0) {
         query.where(and(...conditions));
       }
-      
+
       const result = await query;
-      
+
       return result[0].count;
     } catch (error) {
       logger.error('プロジェクト件数取得エラー', { error, criteria });
       throw new Error(`プロジェクト件数取得エラー: ${(error as Error).message}`);
     }
   }
-} 
+}
 ```
 
 ## ドメインイベント実装
@@ -1677,7 +1656,7 @@ export class ProjectCreatedEvent implements DomainEvent {
     this.metadata = {
       eventId: crypto.randomUUID(),
       version: 1,
-      ...metadata
+      ...metadata,
     };
   }
 }
@@ -1717,7 +1696,10 @@ export class EventBus implements DomainEventPublisher {
   private static handlers: EventHandlerRegistration[] = [];
 
   // イベントハンドラの登録
-  static registerHandler(eventType: string, handlerClass: new (...args: any[]) => EventHandler<any>) {
+  static registerHandler(
+    eventType: string,
+    handlerClass: new (...args: any[]) => EventHandler<any>
+  ) {
     EventBus.handlers.push({ eventType, handlerClass });
     logger.debug(`イベントハンドラを登録しました: ${eventType} -> ${handlerClass.name}`);
   }
@@ -1727,12 +1709,12 @@ export class EventBus implements DomainEventPublisher {
     logger.info('ドメインイベント発行', {
       eventType: event.type,
       eventId: event.metadata.eventId,
-      correlationId: event.metadata.correlationId
+      correlationId: event.metadata.correlationId,
     });
 
     const handlers = EventBus.handlers
-      .filter(h => h.eventType === event.type)
-      .map(h => container.resolve(h.handlerClass));
+      .filter((h) => h.eventType === event.type)
+      .map((h) => container.resolve(h.handlerClass));
 
     if (handlers.length === 0) {
       logger.warn(`イベント ${event.type} に対するハンドラが登録されていません`);
@@ -1741,20 +1723,25 @@ export class EventBus implements DomainEventPublisher {
 
     try {
       // 全てのハンドラを並列実行
-      await Promise.all(handlers.map(handler => 
-        handler.handle(event).catch(error => {
-          logger.error(`イベントハンドラ実行中にエラーが発生しました: ${handler.constructor.name}`, {
-            error,
-            eventType: event.type,
-            eventId: event.metadata.eventId
-          });
-        })
-      ));
+      await Promise.all(
+        handlers.map((handler) =>
+          handler.handle(event).catch((error) => {
+            logger.error(
+              `イベントハンドラ実行中にエラーが発生しました: ${handler.constructor.name}`,
+              {
+                error,
+                eventType: event.type,
+                eventId: event.metadata.eventId,
+              }
+            );
+          })
+        )
+      );
     } catch (error) {
       logger.error('イベント処理中にエラーが発生しました', {
         error,
         eventType: event.type,
-        eventId: event.metadata.eventId
+        eventId: event.metadata.eventId,
       });
     }
   }
@@ -1781,15 +1768,13 @@ import { logger } from '../../../config/logger';
 
 @injectable()
 export class ProjectCreatedNotificationHandler implements EventHandler<ProjectCreatedEvent> {
-  constructor(
-    @inject('NotificationService') private notificationService: NotificationService
-  ) {}
+  constructor(@inject('NotificationService') private notificationService: NotificationService) {}
 
   async handle(event: ProjectCreatedEvent): Promise<void> {
     try {
       logger.debug('プロジェクト作成通知ハンドラ実行', {
         eventId: event.metadata.eventId,
-        projectId: event.payload.projectId
+        projectId: event.payload.projectId,
       });
 
       // プロジェクト作成通知の生成と送信
@@ -1800,19 +1785,19 @@ export class ProjectCreatedNotificationHandler implements EventHandler<ProjectCr
         content: '新しいプロジェクトの作成が完了しました。今すぐメンバーを招待しましょう。',
         link: `/projects/${event.payload.projectId}`,
         metadata: {
-          projectId: event.payload.projectId
-        }
+          projectId: event.payload.projectId,
+        },
       });
 
       logger.debug('プロジェクト作成通知ハンドラ完了', {
         eventId: event.metadata.eventId,
-        projectId: event.payload.projectId
+        projectId: event.payload.projectId,
       });
     } catch (error) {
       logger.error('プロジェクト作成通知ハンドラでエラーが発生しました', {
         error,
         eventId: event.metadata.eventId,
-        projectId: event.payload.projectId
+        projectId: event.payload.projectId,
       });
     }
   }
@@ -1833,10 +1818,10 @@ export function registerEventHandlers() {
   // プロジェクト関連イベント
   EventBus.registerHandler('PROJECT_CREATED', ProjectCreatedNotificationHandler);
   EventBus.registerHandler('PROJECT_UPDATED', ProjectUpdatedHandler);
-  
+
   // ユーザー関連イベント
   EventBus.registerHandler('USER_CREATED', UserCreatedHandler);
-  
+
   // 他のイベントハンドラを登録...
 }
 ```
@@ -1863,18 +1848,18 @@ export class EventStore {
         type: event.type,
         payload: JSON.stringify(event.payload),
         metadata: JSON.stringify(event.metadata),
-        occurredAt: event.occurredAt
+        occurredAt: event.occurredAt,
       });
-      
+
       logger.debug('イベントをストアに保存しました', {
         eventId: event.metadata.eventId,
-        eventType: event.type
+        eventType: event.type,
       });
     } catch (error) {
       logger.error('イベント保存中にエラーが発生しました', {
         error,
         eventId: event.metadata.eventId,
-        eventType: event.type
+        eventType: event.type,
       });
       throw error;
     }
@@ -1910,28 +1895,31 @@ export class EventStore {
         params.push(options.endDate);
       }
 
-      const whereClause = conditions.length > 0
-        ? `WHERE ${conditions.join(' AND ')}`
-        : '';
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
       const limit = options.limit || 100;
       const offset = options.offset || 0;
 
       // クエリ実行
-      const result = await db.execute(sql.raw(`
+      const result = await db.execute(
+        sql.raw(
+          `
         SELECT *
         FROM domain_events
         ${whereClause}
         ORDER BY occurred_at ASC
         LIMIT ${limit} OFFSET ${offset}
-      `, ...params));
+      `,
+          ...params
+        )
+      );
 
       // 結果の変換
-      return result.rows.map(row => ({
+      return result.rows.map((row) => ({
         type: row.type,
         payload: JSON.parse(row.payload),
         metadata: JSON.parse(row.metadata),
-        occurredAt: row.occurred_at
+        occurredAt: row.occurred_at,
       }));
     } catch (error) {
       logger.error('イベント取得中にエラーが発生しました', { error, options });
@@ -1953,26 +1941,28 @@ export class EventStore {
       const offset = options.offset || 0;
 
       // JSONフィールド内の特定プロパティを検索するクエリ
-      const result = await db.execute(sql.raw(`
+      const result = await db.execute(
+        sql.raw(`
         SELECT *
         FROM domain_events
         WHERE payload::jsonb @> '{"${entityType}Id": "${entityId}"}'
         ORDER BY occurred_at ASC
         LIMIT ${limit} OFFSET ${offset}
-      `));
+      `)
+      );
 
       // 結果の変換
-      return result.rows.map(row => ({
+      return result.rows.map((row) => ({
         type: row.type,
         payload: JSON.parse(row.payload),
         metadata: JSON.parse(row.metadata),
-        occurredAt: row.occurred_at
+        occurredAt: row.occurred_at,
       }));
     } catch (error) {
       logger.error('エンティティIDによるイベント取得中にエラーが発生しました', {
         error,
         entityType,
-        entityId
+        entityId,
       });
       throw error;
     }
@@ -2006,7 +1996,7 @@ export const {
   handlers: { GET, POST },
   auth,
   signIn,
-  signOut
+  signOut,
 } = NextAuth({
   adapter: DrizzleAdapter(db),
   session: {
@@ -2019,7 +2009,7 @@ export const {
       name: 'Credentials',
       credentials: {
         email: { label: 'メールアドレス', type: 'email' },
-        password: { label: 'パスワード', type: 'password' }
+        password: { label: 'パスワード', type: 'password' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -2042,7 +2032,7 @@ export const {
           console.error('認証エラー:', error);
           return null;
         }
-      }
+      },
     }),
     // Googleプロバイダー
     Google({
@@ -2055,7 +2045,7 @@ export const {
       clientId: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
       allowDangerousEmailAccountLinking: true,
-    })
+    }),
   ],
   callbacks: {
     // JWTコールバック
@@ -2070,7 +2060,7 @@ export const {
 
       // トークンの更新（最新ユーザー情報の反映）
       const userRecord = await db.query.users.findFirst({
-        where: eq(users.email, token.email!)
+        where: eq(users.email, token.email!),
       });
 
       if (userRecord) {
@@ -2086,26 +2076,23 @@ export const {
         session.user.roles = token.roles as UserRole[];
       }
       return session;
-    }
+    },
   },
   events: {
     async signIn({ user }) {
       // ログイン時の処理（最終ログイン日時の更新など）
       if (user.id) {
-        await db
-          .update(users)
-          .set({ lastLoginAt: new Date() })
-          .where(eq(users.id, user.id));
+        await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
       }
-    }
+    },
   },
   pages: {
     signIn: '/auth/login',
     signOut: '/auth/logout',
     error: '/auth/error',
     verifyRequest: '/auth/verify',
-    newUser: '/auth/welcome'
-  }
+    newUser: '/auth/welcome',
+  },
 });
 ```
 
@@ -2121,11 +2108,11 @@ import { ApiResponse } from '../utils/api-response';
 
 // 認証ミドルウェアを生成する関数
 export function withAuth(requiredRoles?: UserRole[]) {
-  return function(handler: (req: NextRequest, params: any) => Promise<NextResponse>) {
-    return async function(req: NextRequest, params: any): Promise<NextResponse> {
+  return function (handler: (req: NextRequest, params: any) => Promise<NextResponse>) {
+    return async function (req: NextRequest, params: any): Promise<NextResponse> {
       // Auth.jsのセッション取得
       const session = await auth();
-      
+
       // 未認証チェック
       if (!session || !session.user) {
         return ApiResponse.unauthorized();
@@ -2134,8 +2121,8 @@ export function withAuth(requiredRoles?: UserRole[]) {
       // 必要な権限が指定されている場合、権限チェック
       if (requiredRoles && requiredRoles.length > 0) {
         const userRoles = session.user.roles || [UserRole.USER];
-        const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
-        
+        const hasRequiredRole = requiredRoles.some((role) => userRoles.includes(role));
+
         if (!hasRequiredRole) {
           return ApiResponse.forbidden();
         }
@@ -2167,21 +2154,21 @@ type ResourceAuthFunction = (authUser: AuthUser) => Promise<boolean>;
 
 // リソースベースの認可ミドルウェアを生成する関数
 export function withResourceAuth(authFunction: ResourceAuthFunction) {
-  return async function(req: NextRequest): Promise<boolean> {
+  return async function (req: NextRequest): Promise<boolean> {
     // Auth.jsのセッション取得
     const session = await auth();
-    
+
     if (!session || !session.user) {
       return false;
     }
 
     const userRoles = session.user.roles || [UserRole.USER];
-    
+
     // 認証済みユーザー情報の作成
     const authUser: AuthUser = {
       id: session.user.id,
       roles: userRoles,
-      hasRole: (role: UserRole) => userRoles.includes(role)
+      hasRole: (role: UserRole) => userRoles.includes(role),
     };
 
     // 認可チェック関数の実行
@@ -2203,41 +2190,41 @@ export const passwordHelpers = {
     const saltRounds = 12;
     return hash(password, saltRounds);
   },
-  
+
   // パスワードの検証
   async comparePassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
     return compare(plainPassword, hashedPassword);
   },
-  
+
   // パスワード強度の検証
-  validatePasswordStrength(password: string): { isValid: boolean, message?: string } {
+  validatePasswordStrength(password: string): { isValid: boolean; message?: string } {
     // 最低8文字
     if (password.length < 8) {
       return { isValid: false, message: 'パスワードは8文字以上である必要があります' };
     }
-    
+
     // 大文字を含む
     if (!/[A-Z]/.test(password)) {
       return { isValid: false, message: 'パスワードには大文字を含める必要があります' };
     }
-    
+
     // 小文字を含む
     if (!/[a-z]/.test(password)) {
       return { isValid: false, message: 'パスワードには小文字を含める必要があります' };
     }
-    
+
     // 数字を含む
     if (!/\d/.test(password)) {
       return { isValid: false, message: 'パスワードには数字を含める必要があります' };
     }
-    
+
     // 特殊文字を含む
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
       return { isValid: false, message: 'パスワードには特殊文字を含める必要があります' };
     }
-    
+
     return { isValid: true };
-  }
+  },
 };
 ```
 
@@ -2251,77 +2238,77 @@ import { UserRole } from '@/domain/shared/enums/user-role.enum';
 
 // トークンペイロードの型定義
 interface TokenPayload {
-  sub: string;  // ユーザーID
+  sub: string; // ユーザーID
   email: string;
   roles: UserRole[];
   tenantId?: string;
-  jti?: string;  // JWT ID
-  iat?: number;  // 発行時刻
-  exp?: number;  // 有効期限
+  jti?: string; // JWT ID
+  iat?: number; // 発行時刻
+  exp?: number; // 有効期限
 }
 
 export const jwtHelpers = {
   // アクセストークンの生成
   generateAccessToken(payload: Omit<TokenPayload, 'jti' | 'iat' | 'exp'>): string {
     const jwtSecret = process.env.JWT_SECRET;
-    
+
     if (!jwtSecret) {
       throw new Error('JWT_SECRET環境変数が設定されていません');
     }
-    
+
     // 15分の有効期限を持つアクセストークン
     return jwt.sign(
       {
         ...payload,
-        jti: crypto.randomUUID()
+        jti: crypto.randomUUID(),
       },
       jwtSecret,
       { expiresIn: '15m' }
     );
   },
-  
+
   // リフレッシュトークンの生成
   generateRefreshToken(userId: string): string {
     const jwtSecret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
-    
+
     if (!jwtSecret) {
       throw new Error('JWT_REFRESH_SECRET環境変数が設定されていません');
     }
-    
+
     // 7日間の有効期限を持つリフレッシュトークン
     return jwt.sign(
       {
         sub: userId,
-        jti: crypto.randomUUID()
+        jti: crypto.randomUUID(),
       },
       jwtSecret,
       { expiresIn: '7d' }
     );
   },
-  
+
   // トークンの検証
   verifyToken(token: string, isRefreshToken: boolean = false): TokenPayload {
     const jwtSecret = isRefreshToken
-      ? (process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET)
+      ? process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET
       : process.env.JWT_SECRET;
-    
+
     if (!jwtSecret) {
       throw new Error('JWT_SECRET環境変数が設定されていません');
     }
-    
+
     return jwt.verify(token, jwtSecret) as TokenPayload;
   },
-  
+
   // トークンからペイロードを取得（検証なし）
   decodeToken(token: string): TokenPayload | null {
     return jwt.decode(token) as TokenPayload | null;
-  }
+  },
 };
 ```
 
 ## WebSocket実装
 
-*[07_server_implementation.md - リアルタイムコミュニケーション](../07_server_implementation.md#リアルタイムコミュニケーション)の実装例*
+_[07_server_implementation.md - リアルタイムコミュニケーション](../07_server_implementation.md#リアルタイムコミュニケーション)の実装例_
 
 この実装は、[01_requirements_definition.md - 非機能要件 - リアルタイム通信要件](../01_requirements_definition.md#非機能要件)で定義されているリアルタイム通信要件を満たすための実装例です。特に「メッセージングシステム」と「イベント駆動アーキテクチャ」を実現するための実装に焦点を当てています。
 
@@ -2344,12 +2331,12 @@ import { UserSocketStore } from './user-socket-store';
 export class WebSocketManager {
   private io: WebSocketServer | null = null;
   private readonly userSocketStore: UserSocketStore;
-  
+
   constructor() {
     this.userSocketStore = new UserSocketStore();
     logger.info('WebSocketManagerが初期化されました');
   }
-  
+
   /**
    * WebSocketサーバーを初期化し、HTTPサーバーにアタッチする
    */
@@ -2358,79 +2345,79 @@ export class WebSocketManager {
       logger.warn('WebSocketマネージャーは既に初期化されています');
       return;
     }
-    
+
     this.io = new WebSocketServer(httpServer, {
       cors: {
         origin: process.env.CORS_ORIGIN || '*',
         methods: ['GET', 'POST'],
-        credentials: true
+        credentials: true,
       },
-      path: '/api/ws'
+      path: '/api/ws',
     });
-    
+
     // 認証ミドルウェア
     this.io.use(async (socket, next) => {
       try {
         const token = socket.handshake.auth.token as string;
-        
+
         if (!token) {
           return next(new Error('認証トークンがありません'));
         }
-        
+
         // JWTトークンを検証
         const decoded = await verifyAccessToken(token);
-        
+
         if (!decoded) {
           return next(new Error('無効なトークンです'));
         }
-        
+
         // ソケットにユーザー情報を設定
         socket.data.userId = decoded.sub;
         socket.data.userRole = decoded.role;
-        
+
         return next();
       } catch (error) {
         logger.error('WebSocket認証エラー', { error });
         return next(new Error('認証に失敗しました'));
       }
     });
-    
+
     // 接続イベントを処理
     this.io.on('connection', (socket: Socket) => this.handleConnection(socket));
-    
+
     logger.info('WebSocketサーバーが初期化されました');
   }
-  
+
   /**
    * ソケット接続を処理する
    */
   private handleConnection(socket: Socket): void {
     const userId = socket.data.userId as string;
-    
+
     logger.info('新しいWebSocket接続が確立されました', { userId, socketId: socket.id });
-    
+
     // ユーザーIDとソケットを関連付け
     this.userSocketStore.addUserSocket(userId, socket);
-    
+
     // プロジェクトルームに参加
     socket.on('join:project', (projectId: string) => {
       logger.debug('ユーザーがプロジェクトルームに参加しました', { userId, projectId });
       socket.join(`project:${projectId}`);
     });
-    
+
     // チャットルームに参加
     socket.on('join:chat', (chatId: string) => {
       logger.debug('ユーザーがチャットルームに参加しました', { userId, chatId });
       socket.join(`chat:${chatId}`);
     });
-    
+
     // 切断イベントを処理
     socket.on('disconnect', () => {
       logger.info('WebSocket接続が切断されました', { userId, socketId: socket.id });
       this.userSocketStore.removeUserSocket(userId, socket.id);
     });
   }
-  
+
   /**
    * 特定のユーザーにイベントを送信
    */
@@ -2439,21 +2426,21 @@ export class WebSocketManager {
       logger.error('WebSocketマネージャーが初期化されていません');
       return;
     }
-    
+
     const sockets = this.userSocketStore.getUserSockets(userId);
-    
+
     if (sockets.length === 0) {
       logger.debug('ユーザーは接続していません', { userId, event });
       return;
     }
-    
+
     logger.debug('ユーザーにイベントを送信します', { userId, event, socketCount: sockets.length });
-    
+
     for (const socket of sockets) {
       socket.emit(event, data);
     }
   }
-  
+
   /**
    * プロジェクトルームにイベントを送信
    */
@@ -2462,11 +2449,11 @@ export class WebSocketManager {
       logger.error('WebSocketマネージャーが初期化されていません');
       return;
     }
-    
+
     logger.debug('プロジェクトルームにイベントを送信します', { projectId, event });
     this.io.to(`project:${projectId}`).emit(event, data);
   }
-  
+
   /**
    * チャットルームにイベントを送信
    */
@@ -2475,11 +2462,11 @@ export class WebSocketManager {
       logger.error('WebSocketマネージャーが初期化されていません');
       return;
     }
-    
+
     logger.debug('チャットルームにイベントを送信します', { chatId, event });
     this.io.to(`chat:${chatId}`).emit(event, data);
   }
-  
+
   /**
    * すべての接続クライアントにイベントを送信（管理者専用）
    */
@@ -2488,7 +2475,7 @@ export class WebSocketManager {
       logger.error('WebSocketマネージャーが初期化されていません');
       return;
     }
-    
+
     logger.debug('すべてのクライアントにイベントを送信します', { event });
     this.io.emit(event, data);
   }
@@ -2508,7 +2495,7 @@ import { logger } from '../../config/logger';
  */
 export class UserSocketStore {
   private readonly userSockets: Map<string, Map<string, Socket>> = new Map();
-  
+
   /**
    * ユーザーとソケットを関連付ける
    */
@@ -2516,74 +2503,74 @@ export class UserSocketStore {
     if (!this.userSockets.has(userId)) {
       this.userSockets.set(userId, new Map());
     }
-    
+
     this.userSockets.get(userId)!.set(socket.id, socket);
     logger.debug('ユーザーソケットを追加しました', { userId, socketId: socket.id });
   }
-  
+
   /**
    * ユーザーのソケットを削除する
    */
   removeUserSocket(userId: string, socketId: string): void {
     const userSocketMap = this.userSockets.get(userId);
-    
+
     if (!userSocketMap) {
       return;
     }
-    
+
     userSocketMap.delete(socketId);
     logger.debug('ユーザーソケットを削除しました', { userId, socketId });
-    
+
     // ユーザーのソケットがすべて削除された場合はマップからユーザーを削除
     if (userSocketMap.size === 0) {
       this.userSockets.delete(userId);
       logger.debug('ユーザーのすべてのソケットが削除されました', { userId });
     }
   }
-  
+
   /**
    * ユーザーの全ソケットを取得する
    */
   getUserSockets(userId: string): Socket[] {
     const userSocketMap = this.userSockets.get(userId);
-    
+
     if (!userSocketMap) {
       return [];
     }
-    
+
     return Array.from(userSocketMap.values());
   }
-  
+
   /**
    * ユーザーのソケット数を取得する
    */
   getUserSocketCount(userId: string): number {
     const userSocketMap = this.userSockets.get(userId);
-    
+
     if (!userSocketMap) {
       return 0;
     }
-    
+
     return userSocketMap.size;
   }
-  
+
   /**
    * すべての接続されているユーザーIDを取得する
    */
   getAllConnectedUserIds(): string[] {
     return Array.from(this.userSockets.keys());
   }
-  
+
   /**
    * 接続されているすべてのソケットを取得する
    */
   getAllSockets(): Socket[] {
     const allSockets: Socket[] = [];
-    
+
     for (const socketMap of this.userSockets.values()) {
       allSockets.push(...socketMap.values());
     }
-    
+
     return allSockets;
   }
 }
@@ -2602,38 +2589,38 @@ export enum WebSocketEvent {
   PROJECT_CREATED = 'project:created',
   PROJECT_UPDATED = 'project:updated',
   PROJECT_DELETED = 'project:deleted',
-  
+
   // タスク関連
   TASK_CREATED = 'task:created',
   TASK_UPDATED = 'task:updated',
   TASK_DELETED = 'task:deleted',
   TASK_STATUS_CHANGED = 'task:statusChanged',
   TASK_ASSIGNED = 'task:assigned',
-  
+
   // チャット関連
   CHAT_MESSAGE_RECEIVED = 'chat:messageReceived',
   CHAT_MESSAGE_UPDATED = 'chat:messageUpdated',
   CHAT_MESSAGE_DELETED = 'chat:messageDeleted',
   CHAT_TYPING = 'chat:typing',
-  
+
   // AI関連
   AI_RESPONSE_STARTED = 'ai:responseStarted',
   AI_RESPONSE_CHUNK = 'ai:responseChunk',
   AI_RESPONSE_COMPLETED = 'ai:responseCompleted',
   AI_RESPONSE_ERROR = 'ai:responseError',
-  
+
   // ユーザー関連
   USER_STATUS_CHANGED = 'user:statusChanged',
   USER_ACTIVITY = 'user:activity',
-  
+
   // 通知関連
   NOTIFICATION_CREATED = 'notification:created',
   NOTIFICATION_READ = 'notification:read',
-  
+
   // システム関連
   SYSTEM_ANNOUNCEMENT = 'system:announcement',
   SYSTEM_MAINTENANCE = 'system:maintenance',
-  SYSTEM_ERROR = 'system:error'
+  SYSTEM_ERROR = 'system:error',
 }
 ```
 
@@ -2666,7 +2653,7 @@ export class ValidationError extends ApplicationError {
 
 ## 多言語対応
 
-*[07_server_implementation.md - 多言語対応](../07_server_implementation.md#多言語対応)の実装例*
+_[07_server_implementation.md - 多言語対応](../07_server_implementation.md#多言語対応)の実装例_
 
 この実装は、[01_requirements_definition.md - 非機能要件 - 多言語要件](../01_requirements_definition.md#非機能要件)で定義されている多言語要件を満たすための実装例です。特に「日本語と英語の完全サポート」と「動的言語切り替えと翻訳サービス」に焦点を当てています。
 
@@ -2722,14 +2709,14 @@ import { LanguageResource } from '../localization/language-resource';
 
 // 言語切り替えミドルウェアを生成する関数
 export function withLanguage(languageResource: LanguageResource) {
-  return function(handler: (req: NextRequest, params: any) => Promise<NextResponse>) {
-    return async function(req: NextRequest, params: any): Promise<NextResponse> {
+  return function (handler: (req: NextRequest, params: any) => Promise<NextResponse>) {
+    return async function (req: NextRequest, params: any): Promise<NextResponse> {
       // リクエストヘッダーから言語を取得
       const language = req.headers['accept-language']?.split(',')[0] || 'en';
-      
+
       // 言語リソースを使用してメッセージを取得
       req.languageResource = languageResource;
-      
+
       // オリジナルのハンドラを実行
       return handler(req, params);
     };
@@ -2739,7 +2726,7 @@ export function withLanguage(languageResource: LanguageResource) {
 
 ## マルチクラウド対応
 
-*[07_server_implementation.md - クラウドサービス対応](../07_server_implementation.md#クラウドサービス対応)の実装例*
+_[07_server_implementation.md - クラウドサービス対応](../07_server_implementation.md#クラウドサービス対応)の実装例_
 
 この実装は、[01_requirements_definition.md - 非機能要件 - クラウドサービス要件](../01_requirements_definition.md#非機能要件)で定義されているクラウドサービス要件を満たすための実装例です。特に「複数のクラウドAIプロバイダーのサポート」と「障害発生時の代替サービスへの切り替え」に焦点を当てています。
 
@@ -2757,18 +2744,18 @@ export interface CloudProvider {
    * プロバイダー名
    */
   readonly name: string;
-  
+
   /**
    * プロバイダーの利用可能状態
    */
   readonly isAvailable: boolean;
-  
+
   /**
    * プロバイダーの健全性をチェック
    * @returns プロバイダーが正常に動作しているかどうか
    */
   checkHealth(): Promise<boolean>;
-  
+
   /**
    * ファイルをストレージにアップロード
    * @param file アップロードするファイル
@@ -2776,20 +2763,20 @@ export interface CloudProvider {
    * @returns ファイルのURL
    */
   uploadFile(file: Buffer, path: string): Promise<string>;
-  
+
   /**
    * ストレージからファイルをダウンロード
    * @param path ファイルのパス
    * @returns ファイルのバイナリデータ
    */
   downloadFile(path: string): Promise<Buffer>;
-  
+
   /**
    * ファイルを削除
    * @param path 削除するファイルのパス
    */
   deleteFile(path: string): Promise<void>;
-  
+
   /**
    * フォルダ内のすべてのファイル一覧を取得
    * @param folderPath フォルダのパス
@@ -2805,7 +2792,13 @@ export interface CloudProvider {
 // src/infrastructure/cloud/aws-provider.ts
 
 import { injectable } from 'tsyringe';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+} from '@aws-sdk/client-s3';
 import { CloudProvider } from './cloud-provider.interface';
 import { logger } from '../../config/logger';
 import { withRetry } from '../../shared/utils/retry';
@@ -2819,28 +2812,28 @@ export class AWSProvider implements CloudProvider {
   private _isAvailable = false;
   private readonly s3Client: S3Client;
   private readonly bucketName: string;
-  
+
   constructor() {
     this.bucketName = process.env.AWS_S3_BUCKET_NAME || '';
-    
+
     this.s3Client = new S3Client({
       region: process.env.AWS_REGION || 'ap-northeast-1',
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || ''
-      }
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+      },
     });
-    
+
     // 初期化時に健全性チェック
-    this.checkHealth().catch(error => {
+    this.checkHealth().catch((error) => {
       logger.error('AWS プロバイダーの初期化中にエラーが発生しました', { error });
     });
   }
-  
+
   get isAvailable(): boolean {
     return this._isAvailable;
   }
-  
+
   /**
    * AWSサービスの健全性をチェック
    */
@@ -2850,10 +2843,10 @@ export class AWSProvider implements CloudProvider {
       await this.s3Client.send(
         new ListObjectsV2Command({
           Bucket: this.bucketName,
-          MaxKeys: 1
+          MaxKeys: 1,
         })
       );
-      
+
       this._isAvailable = true;
       logger.info('AWS プロバイダーの健全性チェックに成功しました');
       return true;
@@ -2863,7 +2856,7 @@ export class AWSProvider implements CloudProvider {
       return false;
     }
   }
-  
+
   /**
    * ファイルをS3にアップロード
    */
@@ -2875,13 +2868,13 @@ export class AWSProvider implements CloudProvider {
             Bucket: this.bucketName,
             Key: path,
             Body: file,
-            ContentType: this.getContentType(path)
+            ContentType: this.getContentType(path),
           })
         );
-        
+
         const fileUrl = `https://${this.bucketName}.s3.amazonaws.com/${path}`;
         logger.debug('ファイルをS3にアップロードしました', { path, fileUrl });
-        
+
         return fileUrl;
       });
     } catch (error) {
@@ -2889,7 +2882,7 @@ export class AWSProvider implements CloudProvider {
       throw error;
     }
   }
-  
+
   /**
    * S3からファイルをダウンロード
    */
@@ -2899,20 +2892,20 @@ export class AWSProvider implements CloudProvider {
         const response = await this.s3Client.send(
           new GetObjectCommand({
             Bucket: this.bucketName,
-            Key: path
+            Key: path,
           })
         );
-        
+
         // レスポンスボディをBufferに変換
         const responseArrayBuffer = await response.Body?.transformToByteArray();
-        
+
         if (!responseArrayBuffer) {
           throw new Error('ファイルの内容を取得できませんでした');
         }
-        
+
         const fileBuffer = Buffer.from(responseArrayBuffer);
         logger.debug('ファイルをS3からダウンロードしました', { path, fileSize: fileBuffer.length });
-        
+
         return fileBuffer;
       });
     } catch (error) {
@@ -2920,7 +2913,7 @@ export class AWSProvider implements CloudProvider {
       throw error;
     }
   }
-  
+
   /**
    * S3からファイルを削除
    */
@@ -2930,10 +2923,10 @@ export class AWSProvider implements CloudProvider {
         await this.s3Client.send(
           new DeleteObjectCommand({
             Bucket: this.bucketName,
-            Key: path
+            Key: path,
           })
         );
-        
+
         logger.debug('ファイルをS3から削除しました', { path });
       });
     } catch (error) {
@@ -2941,7 +2934,7 @@ export class AWSProvider implements CloudProvider {
       throw error;
     }
   }
-  
+
   /**
    * S3フォルダ内のすべてのファイル一覧を取得
    */
@@ -2949,20 +2942,20 @@ export class AWSProvider implements CloudProvider {
     try {
       return await withRetry(async () => {
         const normalizedFolderPath = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
-        
+
         const response = await this.s3Client.send(
           new ListObjectsV2Command({
             Bucket: this.bucketName,
-            Prefix: normalizedFolderPath
+            Prefix: normalizedFolderPath,
           })
         );
-        
-        const files = response.Contents?.map(item => item.Key || '') || [];
+
+        const files = response.Contents?.map((item) => item.Key || '') || [];
         logger.debug('S3からファイル一覧を取得しました', {
           folderPath,
-          fileCount: files.length
+          fileCount: files.length,
         });
-        
+
         return files;
       });
     } catch (error) {
@@ -2970,34 +2963,34 @@ export class AWSProvider implements CloudProvider {
       throw error;
     }
   }
-  
+
   /**
    * ファイル拡張子に基づいてContent-Typeを取得
    */
   private getContentType(filename: string): string {
     const extension = filename.split('.').pop()?.toLowerCase() || '';
-    
+
     const contentTypes: Record<string, string> = {
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'png': 'image/png',
-      'gif': 'image/gif',
-      'pdf': 'application/pdf',
-      'txt': 'text/plain',
-      'html': 'text/html',
-      'css': 'text/css',
-      'js': 'application/javascript',
-      'json': 'application/json',
-      'xml': 'application/xml',
-      'zip': 'application/zip',
-      'doc': 'application/msword',
-      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'xls': 'application/vnd.ms-excel',
-      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'ppt': 'application/vnd.ms-powerpoint',
-      'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      pdf: 'application/pdf',
+      txt: 'text/plain',
+      html: 'text/html',
+      css: 'text/css',
+      js: 'application/javascript',
+      json: 'application/json',
+      xml: 'application/xml',
+      zip: 'application/zip',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ppt: 'application/vnd.ms-powerpoint',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     };
-    
+
     return contentTypes[extension] || 'application/octet-stream';
   }
 }
@@ -3023,28 +3016,28 @@ export class GCPProvider implements CloudProvider {
   private _isAvailable = false;
   private readonly storage: Storage;
   private readonly bucketName: string;
-  
+
   constructor() {
     this.bucketName = process.env.GCP_STORAGE_BUCKET_NAME || '';
-    
+
     this.storage = new Storage({
       projectId: process.env.GCP_PROJECT_ID,
       keyFilename: process.env.GCP_KEY_FILE_PATH || undefined,
       credentials: process.env.GCP_CREDENTIALS
         ? JSON.parse(process.env.GCP_CREDENTIALS)
-        : undefined
+        : undefined,
     });
-    
+
     // 初期化時に健全性チェック
-    this.checkHealth().catch(error => {
+    this.checkHealth().catch((error) => {
       logger.error('GCP プロバイダーの初期化中にエラーが発生しました', { error });
     });
   }
-  
+
   get isAvailable(): boolean {
     return this._isAvailable;
   }
-  
+
   /**
    * GCPサービスの健全性をチェック
    */
@@ -3052,13 +3045,13 @@ export class GCPProvider implements CloudProvider {
     try {
       // バケットの存在を確認
       const [exists] = await this.storage.bucket(this.bucketName).exists();
-      
+
       if (!exists) {
         logger.error('GCP Storageバケットが存在しません', { bucketName: this.bucketName });
         this._isAvailable = false;
         return false;
       }
-      
+
       this._isAvailable = true;
       logger.info('GCP プロバイダーの健全性チェックに成功しました');
       return true;
@@ -3068,7 +3061,7 @@ export class GCPProvider implements CloudProvider {
       return false;
     }
   }
-  
+
   /**
    * ファイルをGoogle Cloud Storageにアップロード
    */
@@ -3077,15 +3070,15 @@ export class GCPProvider implements CloudProvider {
       return await withRetry(async () => {
         const bucket = this.storage.bucket(this.bucketName);
         const blob = bucket.file(path);
-        
+
         await blob.save(file, {
           contentType: this.getContentType(path),
-          public: true
+          public: true,
         });
-        
+
         const fileUrl = `https://storage.googleapis.com/${this.bucketName}/${path}`;
         logger.debug('ファイルをGCP Storageにアップロードしました', { path, fileUrl });
-        
+
         return fileUrl;
       });
     } catch (error) {
@@ -3093,7 +3086,7 @@ export class GCPProvider implements CloudProvider {
       throw error;
     }
   }
-  
+
   /**
    * Google Cloud Storageからファイルをダウンロード
    */
@@ -3102,22 +3095,25 @@ export class GCPProvider implements CloudProvider {
       return await withRetry(async () => {
         const bucket = this.storage.bucket(this.bucketName);
         const blob = bucket.file(path);
-        
+
         const [fileContent] = await blob.download();
-        
+
         logger.debug('ファイルをGCP Storageからダウンロードしました', {
           path,
-          fileSize: fileContent.length
+          fileSize: fileContent.length,
         });
-        
+
         return fileContent;
       });
     } catch (error) {
-      logger.error('GCP Storageからのファイルダウンロード中にエラーが発生しました', { error, path });
+      logger.error('GCP Storageからのファイルダウンロード中にエラーが発生しました', {
+        error,
+        path,
+      });
       throw error;
     }
   }
-  
+
   /**
    * Google Cloud Storageからファイルを削除
    */
@@ -3126,9 +3122,9 @@ export class GCPProvider implements CloudProvider {
       await withRetry(async () => {
         const bucket = this.storage.bucket(this.bucketName);
         const blob = bucket.file(path);
-        
+
         await blob.delete();
-        
+
         logger.debug('ファイルをGCP Storageから削除しました', { path });
       });
     } catch (error) {
@@ -3136,7 +3132,7 @@ export class GCPProvider implements CloudProvider {
       throw error;
     }
   }
-  
+
   /**
    * Google Cloud Storageフォルダ内のすべてのファイル一覧を取得
    */
@@ -3144,54 +3140,57 @@ export class GCPProvider implements CloudProvider {
     try {
       return await withRetry(async () => {
         const normalizedFolderPath = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
-        
+
         const bucket = this.storage.bucket(this.bucketName);
         const [files] = await bucket.getFiles({
-          prefix: normalizedFolderPath
+          prefix: normalizedFolderPath,
         });
-        
-        const filePaths = files.map(file => file.name);
-        
+
+        const filePaths = files.map((file) => file.name);
+
         logger.debug('GCP Storageからファイル一覧を取得しました', {
           folderPath,
-          fileCount: filePaths.length
+          fileCount: filePaths.length,
         });
-        
+
         return filePaths;
       });
     } catch (error) {
-      logger.error('GCP Storageからのファイル一覧取得中にエラーが発生しました', { error, folderPath });
+      logger.error('GCP Storageからのファイル一覧取得中にエラーが発生しました', {
+        error,
+        folderPath,
+      });
       throw error;
     }
   }
-  
+
   /**
    * ファイル拡張子に基づいてContent-Typeを取得
    */
   private getContentType(filename: string): string {
     const extension = filename.split('.').pop()?.toLowerCase() || '';
-    
+
     const contentTypes: Record<string, string> = {
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'png': 'image/png',
-      'gif': 'image/gif',
-      'pdf': 'application/pdf',
-      'txt': 'text/plain',
-      'html': 'text/html',
-      'css': 'text/css',
-      'js': 'application/javascript',
-      'json': 'application/json',
-      'xml': 'application/xml',
-      'zip': 'application/zip',
-      'doc': 'application/msword',
-      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'xls': 'application/vnd.ms-excel',
-      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'ppt': 'application/vnd.ms-powerpoint',
-      'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      pdf: 'application/pdf',
+      txt: 'text/plain',
+      html: 'text/html',
+      css: 'text/css',
+      js: 'application/javascript',
+      json: 'application/json',
+      xml: 'application/xml',
+      zip: 'application/zip',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ppt: 'application/vnd.ms-powerpoint',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     };
-    
+
     return contentTypes[extension] || 'application/octet-stream';
   }
 }
@@ -3213,7 +3212,7 @@ import { logger } from '../../config/logger';
  */
 export enum CloudProviderType {
   AWS = 'aws',
-  GCP = 'gcp'
+  GCP = 'gcp',
 }
 
 /**
@@ -3222,79 +3221,79 @@ export enum CloudProviderType {
 @injectable()
 export class CloudProviderFactory {
   private readonly providers: Map<CloudProviderType, CloudProvider> = new Map();
-  
+
   constructor() {
     // 利用可能なプロバイダーを初期化
     this.initializeProviders();
   }
-  
+
   /**
    * 指定したタイプのクラウドプロバイダーを取得
    */
   getProvider(type: CloudProviderType): CloudProvider {
     const provider = this.providers.get(type);
-    
+
     if (!provider) {
       logger.error('指定されたクラウドプロバイダーが見つかりません', { type });
       throw new Error(`クラウドプロバイダー '${type}' は利用できません`);
     }
-    
+
     return provider;
   }
-  
+
   /**
    * 利用可能なプロバイダーを取得
    */
   getAvailableProviders(): CloudProvider[] {
-    return Array.from(this.providers.values()).filter(provider => provider.isAvailable);
+    return Array.from(this.providers.values()).filter((provider) => provider.isAvailable);
   }
-  
+
   /**
    * 利用可能なプロバイダーのタイプを取得
    */
   getAvailableProviderTypes(): CloudProviderType[] {
     const availableTypes: CloudProviderType[] = [];
-    
+
     for (const [type, provider] of this.providers.entries()) {
       if (provider.isAvailable) {
         availableTypes.push(type);
       }
     }
-    
+
     return availableTypes;
   }
-  
+
   /**
    * デフォルトのプロバイダーを取得
    * 優先順位: AWS > GCP
    */
   getDefaultProvider(): CloudProvider {
     const availableProviders = this.getAvailableProviders();
-    
+
     if (availableProviders.length === 0) {
       logger.error('利用可能なクラウドプロバイダーがありません');
       throw new Error('利用可能なクラウドプロバイダーがありません');
     }
-    
+
     // AWS が利用可能であれば優先的に使用
     const awsProvider = this.providers.get(CloudProviderType.AWS);
     if (awsProvider && awsProvider.isAvailable) {
       return awsProvider;
     }
-    
+
     // それ以外は最初に利用可能なプロバイダーを返す
     return availableProviders[0];
   }
-  
+
   /**
    * プロバイダーを初期化
    */
   private initializeProviders(): void {
     this.providers.set(CloudProviderType.AWS, new AWSProvider());
     this.providers.set(CloudProviderType.GCP, new GCPProvider());
-    
+
     logger.info('クラウドプロバイダーを初期化しました', {
-      providerCount: this.providers.size
+      providerCount: this.providers.size,
     });
   }
 }
@@ -3316,72 +3315,78 @@ import { logger } from '../../config/logger';
 @injectable()
 export class ResilientStorageService {
   constructor(private readonly cloudProviderFactory: CloudProviderFactory) {}
-  
+
   /**
    * ファイルをアップロード（フェイルオーバー対応）
    */
   async uploadFile(file: Buffer, path: string): Promise<string> {
     const primaryProvider = this.getPrimaryProvider();
-    
+
     try {
       // プライマリプロバイダーでアップロード
       return await primaryProvider.uploadFile(file, path);
     } catch (error) {
-      logger.error('プライマリプロバイダーでのファイルアップロードに失敗しました。バックアッププロバイダーを試行します', {
-        error,
-        primaryProvider: primaryProvider.name,
-        path
-      });
-      
+      logger.error(
+        'プライマリプロバイダーでのファイルアップロードに失敗しました。バックアッププロバイダーを試行します',
+        {
+          error,
+          primaryProvider: primaryProvider.name,
+          path,
+        }
+      );
+
       // バックアッププロバイダーを取得
       const backupProvider = this.getBackupProvider(primaryProvider);
-      
+
       if (!backupProvider) {
         logger.error('利用可能なバックアッププロバイダーがありません');
         throw error;
       }
-      
+
       // バックアッププロバイダーでアップロード
       return await backupProvider.uploadFile(file, path);
     }
   }
-  
+
   /**
    * ファイルをダウンロード（フェイルオーバー対応）
    */
   async downloadFile(path: string): Promise<Buffer> {
     const primaryProvider = this.getPrimaryProvider();
-    
+
     try {
       // プライマリプロバイダーからダウンロード
       return await primaryProvider.downloadFile(path);
     } catch (error) {
-      logger.error('プライマリプロバイダーからのファイルダウンロードに失敗しました。バックアッププロバイダーを試行します', {
-        error,
-        primaryProvider: primaryProvider.name,
-        path
-      });
-      
+      logger.error(
+        'プライマリプロバイダーからのファイルダウンロードに失敗しました。バックアッププロバイダーを試行します',
+        {
+          error,
+          primaryProvider: primaryProvider.name,
+          path,
+        }
+      );
+
       // バックアッププロバイダーを取得
       const backupProvider = this.getBackupProvider(primaryProvider);
-      
+
       if (!backupProvider) {
         logger.error('利用可能なバックアッププロバイダーがありません');
         throw error;
       }
-      
+
       // バックアッププロバイダーからダウンロード
       return await backupProvider.downloadFile(path);
     }
   }
-  
+
   /**
    * ファイルを削除（すべてのプロバイダーから）
    */
   async deleteFile(path: string): Promise<void> {
     const providers = this.cloudProviderFactory.getAvailableProviders();
     const errors: Error[] = [];
-    
+
     // すべてのプロバイダーから削除を試行
     for (const provider of providers) {
       try {
@@ -3390,61 +3395,67 @@ export class ResilientStorageService {
       } catch (error) {
         logger.error(`プロバイダー ${provider.name} からのファイル削除に失敗しました`, {
           error,
-          path
+          path,
         });
         errors.push(error as Error);
       }
     }
-    
+
     // すべてのプロバイダーで失敗した場合はエラーをスロー
     if (errors.length === providers.length && providers.length > 0) {
       throw new Error('すべてのプロバイダーでファイル削除に失敗しました');
     }
   }
-  
+
   /**
    * プライマリプロバイダーを取得
    */
   private getPrimaryProvider(): CloudProvider {
     // 環境変数で指定されたプライマリプロバイダーを使用
     const preferredProviderType = process.env.PRIMARY_CLOUD_PROVIDER as CloudProviderType;
-    
+
     if (preferredProviderType) {
       try {
         const provider = this.cloudProviderFactory.getProvider(preferredProviderType);
-        
+
         if (provider.isAvailable) {
           return provider;
         }
-        
-        logger.warn('指定されたプライマリクラウドプロバイダーは利用できません。デフォルトのプロバイダーを使用します', {
-          preferredProviderType
-        });
+
+        logger.warn(
+          '指定されたプライマリクラウドプロバイダーは利用できません。デフォルトのプロバイダーを使用します',
+          {
+            preferredProviderType,
+          }
+        );
       } catch (error) {
-        logger.warn('指定されたプライマリクラウドプロバイダーの取得に失敗しました。デフォルトのプロバイダーを使用します', {
-          error,
-          preferredProviderType
-        });
+        logger.warn(
+          '指定されたプライマリクラウドプロバイダーの取得に失敗しました。デフォルトのプロバイダーを使用します',
+          {
+            error,
+            preferredProviderType,
+          }
+        );
       }
     }
-    
+
     // デフォルトのプロバイダーを返す
     return this.cloudProviderFactory.getDefaultProvider();
   }
-  
+
   /**
    * バックアッププロバイダーを取得
    */
   private getBackupProvider(primaryProvider: CloudProvider): CloudProvider | null {
     const availableProviders = this.cloudProviderFactory.getAvailableProviders();
-    
+
     // プライマリ以外の利用可能なプロバイダーを探す
     for (const provider of availableProviders) {
       if (provider.name !== primaryProvider.name) {
         return provider;
       }
     }
-    
+
     return null;
   }
 }
@@ -3457,26 +3468,32 @@ export class ResilientStorageService {
 実装例は以下の主要な領域をカバーしています：
 
 1. **ドメイン駆動設計（DDD）に基づいた実装**
+
    - エンティティ、値オブジェクト、リポジトリ、ドメインサービスの実装
    - ドメインロジックのカプセル化と不変条件の維持
 
 2. **クリーンアーキテクチャによるレイヤー分離**
+
    - ドメイン層、アプリケーション層、インフラストラクチャ層の明確な分離
    - 依存性の方向を内側に向けるための抽象化とDI
 
 3. **CQRS（コマンド・クエリ責務分離）パターン**
+
    - コマンドとクエリの明確な分離によるスケーラビリティと保守性の向上
    - 読み取りモデルと書き込みモデルの分離
 
 4. **堅牢なエラーハンドリング**
+
    - 構造化されたエラー階層と統一された例外処理
    - リトライロジックとフォールバックメカニズム
 
 5. **リアルタイム通信（WebSocket）**
+
    - 双方向通信のための効率的なWebSocketの実装
    - イベント駆動型アーキテクチャによる非同期通知
 
 6. **多言語対応**
+
    - 日本語と英語の完全サポート
    - 動的言語切り替えと翻訳サービス
 

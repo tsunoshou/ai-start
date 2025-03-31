@@ -2,9 +2,9 @@
  * AIモデルのサポートレベルを示す列挙型
  */
 export enum AIModelTier {
-  BASIC = 'basic',     // 基本的な機能を提供
+  BASIC = 'basic', // 基本的な機能を提供
   STANDARD = 'standard', // 標準的な機能を提供
-  PREMIUM = 'premium',  // 高度な機能を提供
+  PREMIUM = 'premium', // 高度な機能を提供
 }
 
 /**
@@ -72,7 +72,7 @@ export interface AIConversationResponse {
 
 /**
  * AIサービスのインターフェース
- * 
+ *
  * 複数のAIプロバイダーを抽象化し、統一されたインターフェースを提供します。
  */
 export interface AIService {
@@ -80,7 +80,7 @@ export interface AIService {
    * 利用可能なすべてのAIモデルを取得します
    */
   getAvailableModels(): Promise<AIModel[]>;
-  
+
   /**
    * 特定のAIモデルの詳細情報を取得します
    * @param modelId モデルID
@@ -93,7 +93,7 @@ export interface AIService {
    * @param options 対話オプション
    */
   chat(messages: AIMessage[], options: AIConversationOptions): Promise<AIConversationResponse>;
-  
+
   /**
    * AI対話をストリーミングモードで実行します
    * @param messages メッセージの配列
@@ -101,15 +101,15 @@ export interface AIService {
    * @param onChunk チャンク受信時のコールバック
    */
   chatStream(
-    messages: AIMessage[], 
-    options: AIConversationOptions, 
+    messages: AIMessage[],
+    options: AIConversationOptions,
     onChunk: (chunk: string) => void
   ): Promise<AIConversationResponse>;
-  
+
   /**
    * 対話文脈に基づいて最適なモデルを自動選択します
    * @param messages メッセージの配列
    * @param tier 必要なモデル階層
    */
   selectOptimalModel(messages: AIMessage[], tier?: AIModelTier): Promise<string>;
-} 
+}

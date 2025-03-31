@@ -7,12 +7,14 @@
 このドキュメントは「01_requirements_definition.md」で定義された技術要件・機能要件を実現するためのアーキテクチャ設計を詳細に記述しています。関連ドキュメントの目的と役割の違いは以下のとおりです：
 
 - **01_requirements_definition.md**：「何を」実現するのか（What）
+
   - ビジネス・機能要件の定義
   - 非機能要件の定義
   - 技術スタックの概要
   - プロジェクト管理方法の概要
 
 - **02_architecture_design.md**：「どのように」実現するのか（How）
+
   - アーキテクチャスタイルの選定と理由
   - ディレクトリ構造と各レイヤーの責務
   - 技術スタックの詳細な実装方法
@@ -22,6 +24,7 @@
   - エラー処理戦略の詳細
 
 - **03_prototype_development.md**：プロトタイプでの検証事項（Verify）
+
   - プロトタイプの目的と検証内容
   - 検証する技術項目と評価方法
   - プロトタイプの実装範囲と制限
@@ -43,11 +46,13 @@
 ### DDD風ヘキサゴナルアーキテクチャの採用理由
 
 1. **関心事の明確な分離**
+
    - ビジネスロジックとインフラストラクチャの分離
    - ドメインモデルの純粋性の維持
    - 依存関係の方向を内側（ドメイン）に向ける
 
 2. **テスト容易性の向上**
+
    - ドメインロジックを独立してテスト可能
    - インフラストラクチャをモック/スタブ化しやすい
    - ユースケースの振る舞いを詳細に検証可能
@@ -62,16 +67,19 @@
 モノリシックアプリケーションとして開始しつつも、将来的なマイクロサービスへの移行を視野に入れた設計を採用します。以下にその戦略を示します：
 
 1. **ドメイン境界の明確化**
+
    - ユーザー管理、プログラム管理、プロジェクト管理などの主要ドメインを明確に分離
    - 各ドメイン間の依存関係を最小限に抑制し、APIを介した連携を優先
    - 共有ドメインと特化ドメインを区別し、分割容易性を確保
 
 2. **データ所有権の明確化**
+
    - 各ドメインが所有するデータとその責任範囲を明示
    - 共有データへのアクセスパターンを標準化
    - 最終的に分割する場合のデータ移行戦略を考慮したスキーマ設計
 
 3. **段階的移行のロードマップ**
+
    - フェーズ1（現在）：モノリシックアプリケーションとしての実装
    - フェーズ2：内部モジュール化と境界の強化
    - フェーズ3：共有ライブラリとしての依存関係の抽出
@@ -112,32 +120,32 @@
    - 言語リソースを階層的に組織化（共通リソース、機能固有リソース）
    - JSON形式による言語リソース管理
    - フォールバック機構によるリソース欠損時の対応
-   
 2. **i18n管理モジュール**
    - 集中管理型の言語リソース読み込みメカニズム
    - Reactコンテキストを使用した言語状態の提供
    - フォーマット関数とプレースホルダー処理のユーティリティ
    - 言語検出と自動切り替え機能
-   
 3. **言語リソースの最適化**
    - 言語別のコード分割とレイジーローディング
    - リソースバンドルのキャッシュ戦略
    - エッジキャッシュを活用した配信最適化
    - リソース更新時のキャッシュ無効化メカニズム
-   
 4. **インターフェースの国際化対応**
+
    - Reactカスタムフックによる翻訳関数の提供（useTranslation）
    - 言語切り替えコンポーネントの共通実装
    - RTL対応のレイアウト切り替え機構
    - 言語固有のスタイル調整機能
 
 5. **バックエンドの国際化対応**
+
    - API応答の多言語対応
    - エラーメッセージの多言語化
    - 日付、数値、通貨のフォーマット処理
    - 言語依存ロジックの抽象化
 
 6. **RTL（右から左への記述）言語サポート**
+
    - RTL対応レイアウトの自動切り替え
      - `dir="rtl"` 属性の動的適用
      - TailwindCSSの `rtl:` バリアント活用
@@ -178,21 +186,19 @@
    - 事例のベクトル表現とセマンティック検索
    - メタデータによる分類と索引付け
    - 時系列データの効率的な保存と検索
-   
 2. **分析エンジン**
    - パターンマッチングアルゴリズム
    - 機械学習ベースの分類モデル
    - 類似度計算とクラスタリング機能
    - 時系列分析と予測モデル
    - ルールベースの評価システム
-   
 3. **コンテキスト適応機構**
    - ユーザープロジェクトの特性抽出
    - 業界・セクター固有の評価ルール適用
    - 状況に応じた分析パラメータ調整
    - 段階的な詳細度制御
-   
 4. **レポーティングシステム**
+
    - リスク視覚化コンポーネント
    - 対話型の分析結果探索インターフェース
    - エビデンスベースの改善提案生成
@@ -301,21 +307,25 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 ### フロントエンド
 
 **フレームワーク: Next.js (React 18+)**
+
 - App Routerアーキテクチャによるファイルベースルーティング
 - サーバーコンポーネントとクライアントコンポーネントの適切な使い分け
 - 静的生成（Static Generation）と動的レンダリングの選択的適用
 
 **UI構築: Tailwind CSS + shadcn/ui**
+
 - ユーティリティファーストCSSフレームワークによる効率的なUI実装
 - コンポーネントライブラリとしてshadcn/uiを活用（カスタマイズ性重視）
 - アイコンライブラリとしてlucide-reactを統一使用
 
 **状態管理: React Context API + TanStack Query**
+
 - グローバル状態はReact Context APIで管理（必要最小限に抑制）
 - サーバーデータはTanStack Query（旧React Query）で管理
 - キャッシュ戦略を統一し、不要な再取得を防止
 
 **フォント管理:**
+
 - 英語コンテンツ: Hanken Grotesk
 - 日本語コンテンツ: Noto Sans JP
 - Next.jsの組み込みフォント最適化を活用
@@ -323,31 +333,37 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 ### バックエンド
 
 **サーバーランタイム: Node.js v22 LTS (Jod)**
+
 - TypeScriptによる型安全な実装
 - モジュール分割と責務の明確化によるメンテナンス性向上
 
 **依存性注入 (DI): tsyringe**
+
 - 宣言的なDIによるコンポーネント結合度の低減
 - `@injectable`デコレータを活用したクラス自動登録
 - インターフェースと実装の明確な分離
 - テスト容易性の向上とモック置換の簡素化
 
 **API実装: Next.js API Routes + Edge Runtime**
+
 - RESTfulなエンドポイント設計
 - Route Handlersによる効率的なAPI実装
 - 認証・認可はミドルウェアで一元管理
 
 **データベース: PostgreSQL (via Supabase)**
+
 - リレーショナルデータモデルの活用
 - pgvector拡張によるベクトル検索機能
 - Row Level Security (RLS)による行レベルのアクセス制御
 
 **ORM: Drizzle ORM**
+
 - 型安全なクエリビルダー
 - マイグレーション管理（Drizzle Kit）
 - 低オーバーヘッドで高パフォーマンス
 
 **認証: Auth.js**
+
 - OAuth2+OIDCベースの認証（Auth.js）
 - 主要プロバイダー: Google, GitHub, Microsoft
 - セッション管理: セキュアなJWT（HttpOnly Cookie）
@@ -355,23 +371,27 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 ### AI統合
 
 **マルチモデルアーキテクチャ**
+
 - マルチプロバイダー対応の抽象化レイヤー
 - モデル切替機能によるAIプロバイダー間の透過的な切り替え
 - コンテキスト依存のAIモデル選択ロジック
 
 **対応AIプロバイダー**
+
 - **OpenAI**: GPT-4o、GPT-3.5、GPT-o3-mini（小規模で効率的）
 - **Anthropic**: Claude-3.7-sonnet（文脈理解に優れたモデル）
 - **Google**: Gemini-2.5-pro（マルチモーダル対応）
 - **その他オープンソースモデル**: Ollama経由でのローカルモデル実行（プライバシー重視）
 
 **AIオーケストレーション**
+
 - モデル選択戦略（コスト、性能、速度の最適化）
 - フォールバックメカニズム（モデル障害時の代替手段）
 - リクエスト分配と負荷分散
 - 使用量モニタリングとコスト最適化
 
 **ベクトルデータベース: PostgreSQL + pgvector**
+
 - 埋め込みベクトルの効率的な保存と検索
 - 類似度検索によるコンテキスト検索の最適化
 - 複数埋め込みモデル対応（OpenAI、Cohere、Sentence Transformers等）
@@ -379,21 +399,25 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 ### 開発環境
 
 **コードエディタ: Cursor**
+
 - AIアシスト機能を活用した効率的な開発
 - TypeScript型チェックと統合された開発体験
 - コードコンテキスト理解に基づく補完機能
 
 **バージョン管理: GitHub**
+
 - プルリクエストベースの協業
 - コードレビュー・イシュー管理の一元化
 - GitHub Actionsによる自動化
 
 **CI/CD: GitHub Actions + Vercel**
+
 - コード品質チェック自動化（ESLint, TypeScript型チェック）
 - テスト自動実行（Jest, Cypress）
 - Vercelへの自動デプロイ連携
 
 **依存関係管理**
+
 - package.json：Node.js依存パッケージの明示的な管理
 - npm（または yarn、pnpm）：パッケージ依存関係の一貫した解決
 - 依存バージョン指定方針：
@@ -405,24 +429,28 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 ### 国際化（i18n）技術
 
 **ライブラリ: next-intl**
+
 - Next.js向けの最適化された国際化ライブラリ
 - App Routerとの統合による効率的なルーティング
 - メッセージの型安全な取り扱い
 - フォールバックロケール機能とリソース集約
 
 **言語リソース管理:**
+
 - JSON形式による階層的リソース構造
 - 言語別のコード分割とオンデマンドローディング
 - 型安全な翻訳キーアクセス（TypeScript型の自動生成）
 - 翻訳管理ツールとの統合（内製または外部サービス）
 
 **フォーマット機能:**
+
 - ICU MessageFormat対応のプレースホルダー処理
 - 日付、数値、通貨などのロケールに応じたフォーマッタ
 - 単位や複数形の言語固有ルールの適用
 - 方向性（LTR/RTL）の自動切り替え
 
 **パフォーマンス最適化:**
+
 - 言語リソースの動的インポートとコード分割
 - サーバーコンポーネントでの翻訳処理最適化
 - クライアントサイドのキャッシュ戦略
@@ -431,12 +459,14 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 ### 歴史的事例分析技術
 
 **データ管理:**
+
 - **ベクトルストア:** pgvector（PostgreSQL拡張）
 - **データ構造化:** Zod/TypeScript型による一貫した事例構造
 - **分類システム:** 階層的タグ付けとメタデータ
 - **データソース:** バッチインポート機能とAPI連携
 
 **分析エンジン:**
+
 - **類似性検索:** コサイン類似度による事例マッチング
 - **分類モデル:** アンサンブル決定木（ランダムフォレスト）
 - **パターン抽出:** 教師あり学習モデルとルールベースハイブリッド
@@ -444,12 +474,14 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 - **NLP処理:** 埋め込みベクトルによるセマンティック解析
 
 **視覚化コンポーネント:**
+
 - **グラフAPI:** Recharts/D3.js
 - **リスクヒートマップ:** カスタムビジュアライゼーション
 - **インタラクティブダッシュボード:** React Gridレイアウト
 - **レポートエクスポート:** PDF/CSVエクスポート機能
 
 **AI統合:**
+
 - **コンテキスト生成:** 歴史的事例データからのAIプロンプト強化
 - **説明生成:** 選択されたAIモデルによる対話式の分析結果説明
 - **改善提案:** ルールベースとAI生成の組み合わせ
@@ -462,6 +494,7 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 ビジネスロジックの中心となる層です。外部依存を持たず、純粋なドメインロジックのみを含みます。
 
 **主な構成要素**
+
 - `domain/models/`: 値オブジェクトとエンティティ
   - `value-objects/`: 識別子を持たない値オブジェクト
   - `entities/`: 識別子を持つエンティティ
@@ -470,6 +503,7 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 - `domain/repositories/`: リポジトリインターフェース（ポート）
 
 **役割と責務**
+
 - ビジネスルールとロジックを定義
 - 他の層からの独立性を保ち、外部依存を持たない
 - リポジトリインターフェースを通じて永続化の抽象化を提供
@@ -479,10 +513,12 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 ユースケースを実装し、ドメイン層とインフラストラクチャ層を橋渡しします。
 
 **主な構成要素**
+
 - `application/usecases/`: ユースケース実装（機能別にサブディレクトリ化）
 - `application/dtos/`: データ転送オブジェクト
 
 **役割と責務**
+
 - ユーザーの意図（ユースケース）を実装
 - ドメインオブジェクトを操作してビジネスロジックを実行
 - トランザクション制御やセキュリティチェックを担当
@@ -493,6 +529,7 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 外部サービスとの連携やデータの永続化を担当します。
 
 **主な構成要素**
+
 - `infrastructure/database/`: データベース関連
   - `schema/`: DB定義（Drizzle Schema）
   - `repositories/`: リポジトリ実装（ドメイン層のインターフェースを実装）
@@ -501,6 +538,7 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 - `infrastructure/ai/`: AI統合実装
 
 **役割と責務**
+
 - ドメイン層で定義されたリポジトリインターフェースの実装を提供
 - 外部サービス（DB、AI、認証等）との統合
 - データの永続化と取得
@@ -511,6 +549,7 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 ユーザーインターフェースとAPIエンドポイントを提供します。
 
 **主な構成要素**
+
 - `presentation/api/`: API定義（機能別にサブディレクトリ化）
 - `presentation/ui/`: Web UI
   - `components/`: UIコンポーネント（共通・機能別に整理）
@@ -519,6 +558,7 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
   - `types/`: UI固有の型定義
 
 **役割と責務**
+
 - ユーザーインターフェースの提供（UI、API）
 - ユーザー入力の処理と検証
 - アプリケーション層のユースケース呼び出し
@@ -529,18 +569,21 @@ AiStartでは型安全性を最優先し、各レイヤーに適切な型定義�
 Next.jsのApp Routerは、プレゼンテーション層の実際の実装として機能します。
 
 **主な構成要素**
+
 - `app/`: Next.jsのルーティング・ページ実装
   - グループ化されたルート（例: `(dashboard)/`）
   - API Routes（`app/api/`）
   - レイアウトとページコンポーネント
 
 **役割と責務**
+
 - ルーティング構造の定義
 - ページレイアウトの構成
 - サーバーコンポーネントとクライアントコンポーネントの組み合わせ
 - プレゼンテーション層のUIとAPIの実装
 
 **app/とpresentation/uiの関係**
+
 - `app/`：Next.jsのファイルベースルーティングを使用したページとレイアウト
   - ページやレイアウト内で`presentation/ui/components`からコンポーネントをimport
   - ルーティング、ミドルウェア、レイアウト定義を担当
@@ -568,17 +611,18 @@ Presentation → Application → Domain ← Infrastructure
 ### マッパーとリポジトリの違い
 
 **リポジトリ（Repository）**
+
 - **ドメイン層のリポジトリ**（`domain/repositories/`）
   - インターフェースのみを定義（実装なし）
   - ドメインオブジェクトの保存・取得・検索操作を定義
   - データソースの詳細を抽象化
-  
 - **インフラ層のリポジトリ**（`infrastructure/database/repositories/`）
   - ドメイン層で定義されたインターフェースの具体的な実装
   - PostgreSQLやその他のデータソースとの実際の接続・操作
   - マッパーを利用してデータ変換を行う
 
 **マッパー（Mapper）**
+
 - **インフラ層のマッパー**（`infrastructure/mappers/`）
   - 異なるデータ表現間の変換ロジックを提供
   - 変換の種類:
@@ -616,10 +660,12 @@ Presentation → Application → Domain ← Infrastructure
 ### インフラ構成
 
 **開発環境**
+
 - ローカル開発: Next.js dev + Supabase CLI
 - テスト環境: Vercelプレビュー + Supabase開発プロジェクト
 
 **本番環境**
+
 - フロントエンド/API: Vercel（本番）
 - データベース: Supabase PostgreSQL（本番）
 - ストレージ: Vercel Blob Storage（主要）+ Supabase Storage（補助）
@@ -627,6 +673,7 @@ Presentation → Application → Domain ← Infrastructure
 - CDN: Vercelエッジネットワーク
 
 **CI/CD**
+
 - GitHub連携: プッシュやPRごとの自動ビルド・デプロイ
 - 自動テスト: GitHub Actions
 - データベースマイグレーション: Drizzle Kit + GitHub Actions
@@ -643,16 +690,16 @@ Presentation → Application → Domain ← Infrastructure
    |                        |                             |
    |-- ページ要求 --------->|                             |
    |                        |-- 言語設定取得 ----------->| ユーザー設定DB
-   |                        |<- 言語設定返却 ------------| 
+   |                        |<- 言語設定返却 ------------|
    |                        |                             |
    |                        |-- 言語リソース取得 -------->| 言語リソースバンドル
-   |                        |<- 言語リソース返却 ---------| 
+   |                        |<- 言語リソース返却 ---------|
    |                        |                             |
    |<- レンダリング済HTML --| (サーバーコンポーネント)    |
    |                        |                             |
    |-- 追加リソース要求 --->|                             |
    |                        |-- 言語リソース取得 -------->| 言語リソースバンドル
-   |<- 追加リソース返却 ----|<- 言語リソース返却 ---------| 
+   |<- 追加リソース返却 ----|<- 言語リソース返却 ---------|
    |                        |                             |
 ```
 
@@ -665,15 +712,15 @@ Presentation → Application → Domain ← Infrastructure
       |                      |                        |
       |-- プラン送信 ------->|                        |
       |                      |-- 類似事例検索 ------->| 事例データベース
-      |                      |<- 類似事例返却 --------| 
+      |                      |<- 類似事例返却 --------|
       |                      |                        |
       |                      |-- パターン抽出 ------->| 分析モデルDB
-      |                      |<- パターン返却 --------| 
+      |                      |<- パターン返却 --------|
       |                      |                        |
       |                      |-- リスク評価計算       |
       |                      |-- 成功確率予測         |
       |                      |-- 改善提案生成 ------->| GPTサービス
-      |                      |<- 生成提案返却 --------| 
+      |                      |<- 生成提案返却 --------|
       |                      |                        |
       |<- 分析レポート返却 --|                        |
       |                      |-- 分析結果保存 -------->| 分析履歴DB
@@ -685,11 +732,13 @@ Presentation → Application → Domain ← Infrastructure
 ### 認証認可方式
 
 **認証方式**
+
 - OAuth2+OIDCベースの認証（Auth.js）
 - 主要プロバイダー: Google, GitHub, Microsoft
 - セッション管理: セキュアなJWT（HttpOnly Cookie）
 
 **認可方式**
+
 - ロールベースアクセス制御（RBAC）
   - 管理者（Admin）
   - 一般ユーザー（User）
@@ -700,15 +749,18 @@ Presentation → Application → Domain ← Infrastructure
 ### データ保護
 
 **保存データ**
+
 - 機密情報の暗号化（AES-256）
 - 個人情報の最小限の収集と匿名化
 - データベースレベルでのRow Level Security適用
 
 **通信データ**
+
 - TLS 1.3による全通信の暗号化
 - 安全なAPIトークン管理（有効期限、更新戦略）
 
 **バックアップとリカバリ**
+
 - 定期的な自動バックアップ（日次/週次/月次）
 - ポイントインタイムリカバリ（PITR）
 - データ復旧手順の文書化と定期テスト
@@ -716,12 +768,14 @@ Presentation → Application → Domain ← Infrastructure
 ### 脆弱性対策
 
 **実装レベル**
+
 - 入力検証とサニタイゼーション（Zod）
 - CSRF対策（SameSite Cookie）
 - XSS対策（Reactのエスケープ機能、CSP）
 - HTTPS強制（Strict-Transport-Security）
 
 **運用レベル**
+
 - 依存パッケージの脆弱性スキャン（npm audit）
 - 定期的なセキュリティレビュー
 - レスポンスヘッダー最適化（Helmet.js等）
@@ -804,17 +858,17 @@ AiStartの主要機能と実装アーキテクチャの対応関係を明確に�
 
 ### 主要機能の実装マッピング
 
-| 機能要件 | ドメイン層 | アプリケーション層 | インフラストラクチャ層 | プレゼンテーション層 |
-|---------|----------|-----------------|-------------------|-----------------|
-| **ユーザー認証・管理** | User, Role (entities) | UserUsecase, AuthUsecase | AuthRepository, UserRepository, AuthService | AuthUI, ProfileUI |
-| **プログラム管理** | Program, Category (entities) | ProgramUsecase | ProgramRepository, CategoryRepository | ProgramListUI, ProgramDetailUI |
-| **ステップ管理** | Step, StepCondition (entities) | StepUsecase, StepFlowUsecase | StepRepository, StepConditionRepository | StepEditorUI, StepFlowUI |
-| **コンテンツ管理** | Content, Prompt, Video (entities) | ContentUsecase, MediaUsecase | ContentRepository, StorageService | ContentEditorUI, MediaUploadUI |
-| **プロジェクト管理** | Project, ProjectStatus (entities) | ProjectUsecase | ProjectRepository | ProjectDashboardUI, ProjectEditorUI |
-| **AI支援機能** | Conversation, AIContext (entities) | AIConversationUsecase | AIService, VectorRepository | ChatUI, AIAssistantUI |
-| **サブスクリプション管理** | Subscription, Plan (entities) | SubscriptionUsecase, BillingUsecase | SubscriptionRepository, PaymentService | SubscriptionUI, BillingUI |
-| **成果物管理** | Output, OutputVersion (entities) | OutputUsecase, ExportUsecase | OutputRepository, ExportService | OutputEditorUI, OutputViewerUI |
-| **添付ファイル管理** | Attachment, AttachmentMetadata (entities) | AttachmentUsecase | AttachmentRepository, StorageService | AttachmentUploadUI, FileManagerUI |
+| 機能要件                   | ドメイン層                                | アプリケーション層                  | インフラストラクチャ層                      | プレゼンテーション層                |
+| -------------------------- | ----------------------------------------- | ----------------------------------- | ------------------------------------------- | ----------------------------------- |
+| **ユーザー認証・管理**     | User, Role (entities)                     | UserUsecase, AuthUsecase            | AuthRepository, UserRepository, AuthService | AuthUI, ProfileUI                   |
+| **プログラム管理**         | Program, Category (entities)              | ProgramUsecase                      | ProgramRepository, CategoryRepository       | ProgramListUI, ProgramDetailUI      |
+| **ステップ管理**           | Step, StepCondition (entities)            | StepUsecase, StepFlowUsecase        | StepRepository, StepConditionRepository     | StepEditorUI, StepFlowUI            |
+| **コンテンツ管理**         | Content, Prompt, Video (entities)         | ContentUsecase, MediaUsecase        | ContentRepository, StorageService           | ContentEditorUI, MediaUploadUI      |
+| **プロジェクト管理**       | Project, ProjectStatus (entities)         | ProjectUsecase                      | ProjectRepository                           | ProjectDashboardUI, ProjectEditorUI |
+| **AI支援機能**             | Conversation, AIContext (entities)        | AIConversationUsecase               | AIService, VectorRepository                 | ChatUI, AIAssistantUI               |
+| **サブスクリプション管理** | Subscription, Plan (entities)             | SubscriptionUsecase, BillingUsecase | SubscriptionRepository, PaymentService      | SubscriptionUI, BillingUI           |
+| **成果物管理**             | Output, OutputVersion (entities)          | OutputUsecase, ExportUsecase        | OutputRepository, ExportService             | OutputEditorUI, OutputViewerUI      |
+| **添付ファイル管理**       | Attachment, AttachmentMetadata (entities) | AttachmentUsecase                   | AttachmentRepository, StorageService        | AttachmentUploadUI, FileManagerUI   |
 
 ### 機能実装フロー図
 
@@ -833,22 +887,27 @@ AiStartの主要機能と実装アーキテクチャの対応関係を明確に�
 ### レイヤー間のデータフロー
 
 1. **ユーザーインタラクション**:
+
    - ユーザーがUIを操作（例：プログラム一覧表示ボタンをクリック）
    - Next.js App Routerによるルーティング処理
 
 2. **APIリクエスト**:
+
    - プレゼンテーション層のUIコンポーネントがAPIを呼び出し
    - API Routeがリクエストを受け、バリデーション処理
 
 3. **ユースケース実行**:
+
    - アプリケーション層のユースケースがビジネスロジックを調整
    - 必要に応じて複数のドメインサービスやリポジトリを組み合わせる
 
 4. **ドメインロジック処理**:
+
    - ドメイン層のエンティティやサービスがビジネスロジックを実行
    - ドメインルールを適用し、結果を返却
 
 5. **データアクセス**:
+
    - インフラストラクチャ層のリポジトリがデータ取得・保存を担当
    - マッパーを使用してDBレコードとドメインモデル間の変換
 
@@ -877,9 +936,9 @@ AiStartでは、ユーザーの目的に応じて最適な対話を提供する�
 ```typescript
 // 会話種別を表す列挙型
 enum ConversationType {
-  INITIAL = 'initial',        // 開始時
-  CONTINUOUS = 'continuous',  // 継続時
-  CHECKPOINT = 'checkpoint',  // チェック時
+  INITIAL = 'initial', // 開始時
+  CONTINUOUS = 'continuous', // 継続時
+  CHECKPOINT = 'checkpoint', // チェック時
   OUTPUT_CREATION = 'output_creation', // 成果物作成時
 }
 ```
@@ -897,30 +956,35 @@ enum ConversationType {
 AIサービス層のメッセージフローは、会話種別を考慮して次のように拡張されています：
 
 1. **ユーザー入力フェーズ**
+
    - ユーザーがUIからメッセージを入力
    - 会話種別の選択または自動判定
    - フロントエンドがメッセージと会話種別をAPI Routeに送信
 
 2. **コンテキスト構築フェーズ**
+
    - 会話種別に応じた戦略を選択
    - 戦略に基づいてプロジェクト情報、ステップ情報、過去の成果物からコンテキストを構築
    - 会話種別に応じたトークン配分で最適化
 
 3. **プロンプト選択フェーズ**
+
    - ステップタイプと会話種別の両方に基づいて適切なプロンプトテンプレートを選択
    - 選択されたテンプレートをコンテキスト情報で変数置換
 
 4. **メッセージ履歴管理フェーズ**
+
    - 過去の対話履歴を取得
    - トークン制限を考慮して履歴をフィルタリング
    - 新しいユーザーメッセージを追加
 
 5. **APIリクエスト構築フェーズ**
+
    - システムプロンプト、対話履歴、ユーザーメッセージを結合
    - トークン使用量を推定し必要に応じて最適化
    - OpenAI APIリクエストの構築
 
-5. **レスポンス処理フェーズ**
+6. **レスポンス処理フェーズ**
    - ストリーミングレスポンスの受信と処理
    - UIへの段階的な表示
    - 完了したレスポンスの履歴への保存
@@ -948,24 +1012,31 @@ AIを活用したサービスでは、外部API依存による不確実性に対
 環境変数は以下のように論理的に分類されます：
 
 1. **アプリケーション基本設定**
+
    - 基本URL、環境名、デバッグモードなど
 
 2. **データベース接続設定**
+
    - PostgreSQL接続情報、プール設定など
 
 3. **認証関連設定**
+
    - Auth.js設定、シークレットキー、JWTトークン設定
 
 4. **OAuth設定**
+
    - 各プロバイダー（Google, GitHub, MS）のクライアントIDとシークレット
 
 5. **Supabase設定**
+
    - URL、API Key、サービスロールキーなど
 
 6. **ストレージ設定**
+
    - Vercel Blob、Supabase Storageの設定
 
 7. **AIサービス設定**
+
    - OpenAI API Key、モデル設定、トークン制限など
 
 8. **メール送信設定**
@@ -978,26 +1049,28 @@ AIを活用したサービスでは、外部API依存による不確実性に対
 ### 環境変数の使用パターン
 
 1. **直接インポート**
+
 ```typescript
-   import { env } from '@/config/env';
-   
-   function uploadFile() {
-     // 型安全に環境変数を使用
-     const storageUrl = env.STORAGE_URL;
+import { env } from '@/config/env';
+
+function uploadFile() {
+  // 型安全に環境変数を使用
+  const storageUrl = env.STORAGE_URL;
   // ...
-   }
-   ```
+}
+```
 
 2. **サービス設定での使用**
+
 ```typescript
-   import { env } from '@/config/env';
-   
-   export const databaseConfig = {
-     url: env.DATABASE_URL,
-     maxConnections: env.DATABASE_POOL_MAX,
-     ssl: env.NODE_ENV === 'production',
-   };
-   ```
+import { env } from '@/config/env';
+
+export const databaseConfig = {
+  url: env.DATABASE_URL,
+  maxConnections: env.DATABASE_POOL_MAX,
+  ssl: env.NODE_ENV === 'production',
+};
+```
 
 ### 環境ごとの設定管理
 
@@ -1012,14 +1085,17 @@ AIを活用したサービスでは、外部API依存による不確実性に対
 ### リトライ戦略の原則
 
 1. **エラー分類と選択的リトライ**
+
    - 一時的なエラー（ネットワーク障害、サーバー過負荷）：リトライ対象
    - 永続的なエラー（認証エラー、無効なパラメータ）：即時失敗
 
 2. **指数バックオフと揺らぎ**
+
    - リトライ間隔を徐々に増加（例：500ms → 1000ms → 2000ms）
    - 揺らぎを追加（±10%）してサンダーハードプロブレムを回避
 
 3. **最大リトライ回数の制限**
+
    - リソースの種類に応じた適切な最大リトライ回数
    - 重要度の高い操作は回数を増加
 
@@ -1052,25 +1128,27 @@ AIを活用したサービスでは、外部API依存による不確実性に対
 ```typescript
 // ログエントリの基本構造
 interface LogEntry {
-  timestamp: string;      // ISO8601形式のタイムスタンプ
-  level: LogLevel;        // ログレベル（ERROR, WARN, INFO, DEBUG, TRACE）
-  message: string;        // 人間可読なメッセージ
+  timestamp: string; // ISO8601形式のタイムスタンプ
+  level: LogLevel; // ログレベル（ERROR, WARN, INFO, DEBUG, TRACE）
+  message: string; // 人間可読なメッセージ
   context?: Record<string, any>; // 追加コンテキスト情報
-  userId?: string;        // 関連するユーザーID（該当する場合）
-  requestId?: string;     // リクエスト識別子（分散トレーシング用）
-  component: string;      // ログを出力したコンポーネント
-  stackTrace?: string;    // エラーの場合のスタックトレース
+  userId?: string; // 関連するユーザーID（該当する場合）
+  requestId?: string; // リクエスト識別子（分散トレーシング用）
+  component: string; // ログを出力したコンポーネント
+  stackTrace?: string; // エラーの場合のスタックトレース
 }
 ```
 
 ### モニタリング対象
 
 1. **アプリケーションメトリクス**
+
    - リクエスト数、レスポンス時間、エラー率
    - ルートごとのパフォーマンス統計
    - メモリ使用量、CPU使用率、イベントループ遅延
 
 2. **ユーザー体験メトリクス**
+
    - First Contentful Paint (FCP)
    - Largest Contentful Paint (LCP)
    - First Input Delay (FID)
@@ -1096,11 +1174,13 @@ interface LogEntry {
 ### クライアントサイド最適化
 
 1. **コンポーネント分割と遅延ロード**
+
    - ルートベースのコード分割
    - 重いコンポーネントの遅延ロード（React.lazy/Suspense）
    - 下位ルート優先のコンポーネント構造
 
 2. **レンダリング最適化**
+
    - 効率的なステート管理（不要な再レンダリングの回避）
    - メモ化（React.memo, useMemo, useCallback）
    - ビルトインコンポーネントの最適化（shadcn/ui）
@@ -1113,12 +1193,14 @@ interface LogEntry {
 ### サーバーサイド最適化
 
 1. **レンダリング戦略**
+
    - Static Site Generation (SSG): 変更頻度の低いページ
    - Incremental Static Regeneration (ISR): 準静的コンテンツ
    - Server-Side Rendering (SSR): 動的だが頻繁に変わらないデータ
    - Client-Side Rendering (CSR): 高度にパーソナライズされたコンテンツ
 
 2. **キャッシュ戦略**
+
    - React Server Components (RSC) キャッシュ
    - データキャッシュ（Vercel KV）
    - API応答キャッシュ（SWR, React Query）
@@ -1133,10 +1215,12 @@ interface LogEntry {
 ### AIレスポンス最適化
 
 1. **ストリーミングレスポンス**
+
    - Server-Sent Events (SSE) を使用したAIレスポンスのストリーミング
    - プログレッシブUI更新
 
 2. **プロンプト最適化**
+
    - コンテキスト圧縮技術
    - 重要情報の優先順位付け
    - プロンプトテンプレートの継続的改善
@@ -1169,6 +1253,7 @@ Page                                     Size     First Load JS
 ### パフォーマンスメトリクス
 
 1. **フロントエンド**
+
    - Core Web Vitals: LCP < 2.5s, FID < 100ms, CLS < 0.1
    - Time to Interactive (TTI) < 3.8s
    - Total Blocking Time (TBT) < 200ms
@@ -1185,6 +1270,7 @@ Page                                     Size     First Load JS
 ### CI/CDパイプライン
 
 1. **コード品質チェック**
+
    - ESLint: コーディング標準の遵守
    - TypeScript: 型チェック
    - Prettier: コードフォーマット
@@ -1192,6 +1278,7 @@ Page                                     Size     First Load JS
    - カバレッジレポート: テストカバレッジ分析
 
 2. **ビルドプロセス**
+
    - 依存関係のインストール
    - アプリケーションビルド
    - 静的アセットの最適化
@@ -1206,6 +1293,7 @@ Page                                     Size     First Load JS
 Drizzle Kitを使用して、データベースのバージョン管理とマイグレーションを安全に実行します。
 
 1. **マイグレーションフロー**
+
    - スキーマ定義更新（Drizzle Schema）
    - マイグレーションファイル生成 (`drizzle-kit generate`)
    - マイグレーションの実行 (`drizzle-orm migrate`)
@@ -1219,6 +1307,7 @@ Drizzle Kitを使用して、データベースのバージョン管理とマイ
 ### 環境分離とフィーチャーフラグ
 
 1. **環境管理**
+
    - 開発（Development）: ローカル開発用
    - テスト（Testing）: 自動テスト実行用
    - プレビュー（Preview）: PR検証用
@@ -1237,11 +1326,13 @@ Drizzle Kitを使用して、データベースのバージョン管理とマイ
 ### アーキテクチャの主要メリット
 
 1. **高い保守性と拡張性**
+
    - 関心の分離による変更影響範囲の最小化
    - ドメイン中心設計による業務変化への適応
    - 明確なレイヤー構造による理解しやすさ
 
 2. **テスト容易性の向上**
+
    - 純粋なドメインロジックの単体テスト
    - モックを使用したインフラ依存のテスト
    - エンドツーエンドテストによる総合検証
@@ -1254,11 +1345,13 @@ Drizzle Kitを使用して、データベースのバージョン管理とマイ
 ### 次のステップ
 
 1. **プロトタイプ開発**
+
    - 本アーキテクチャに基づく初期プロトタイプの開発
    - 主要フローの検証と改善
    - パフォーマンス特性の評価
 
 2. **開発ガイドライン整備**
+
    - コーディング規約の詳細化
    - 実装パターンの標準化
    - ナレッジベースの構築

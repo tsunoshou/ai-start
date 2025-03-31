@@ -46,7 +46,7 @@ export type Email = string & { readonly __brand: unique symbol };
 export type Password = string;
 
 /** 進捗率型（0-100の数値） */
-export type PercentageProgress = number; 
+export type PercentageProgress = number;
 
 /** ID型（文字列ベース、型安全性のためのブランド型） */
 export type ID = string & { readonly __brand: unique symbol };
@@ -95,15 +95,15 @@ export type SortParams<T> = {
   direction: SortDirection;
 };
 
-export type FilterOperator = 
-  | 'eq'    // =
-  | 'neq'   // !=
-  | 'gt'    // >
-  | 'gte'   // >=
-  | 'lt'    // <
-  | 'lte'   // <=
-  | 'in'    // IN ()
-  | 'nin'   // NOT IN ()
+export type FilterOperator =
+  | 'eq' // =
+  | 'neq' // !=
+  | 'gt' // >
+  | 'gte' // >=
+  | 'lt' // <
+  | 'lte' // <=
+  | 'in' // IN ()
+  | 'nin' // NOT IN ()
   | 'like'; // LIKE
 
 export type FilterParams<T> = {
@@ -149,12 +149,13 @@ export type UserProfile = {
  * ユーザードメインモデル
  * ビジネスロジックで扱うユーザーの完全な表現
  */
-export type User = UserAuthInfo & UserProfile & {
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-  roles: UserRole[];
-  settings: UserSettings;
-};
+export type User = UserAuthInfo &
+  UserProfile & {
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+    roles: UserRole[];
+    settings: UserSettings;
+  };
 
 /**
  * ユーザーロール
@@ -187,7 +188,7 @@ import { ID, Timestamp } from '../../common/basic';
  * AIプロンプトカテゴリ
  * プロンプトの分類を表現
  */
-export type PromptCategory = 
+export type PromptCategory =
   | 'GENERAL'
   | 'CREATIVE_WRITING'
   | 'BUSINESS'
@@ -198,11 +199,7 @@ export type PromptCategory =
  * AIモデルタイプ
  * 対応しているAIモデルの種類
  */
-export type AIModelType = 
-  | 'GPT_3_5'
-  | 'GPT_4'
-  | 'CLAUDE_3_SONNET'
-  | 'CLAUDE_3_OPUS';
+export type AIModelType = 'GPT_3_5' | 'GPT_4' | 'CLAUDE_3_SONNET' | 'CLAUDE_3_OPUS';
 
 /**
  * プロンプト変数
@@ -320,11 +317,7 @@ export type UpdateUserProfileRequest = {
 ```typescript
 // types/api/dtos/ai-prompt.ts
 
-import { 
-  AIModelType, 
-  PromptCategory, 
-  PromptVariable 
-} from '../../domain/models/ai-prompt';
+import { AIModelType, PromptCategory, PromptVariable } from '../../domain/models/ai-prompt';
 import { ID } from '../../common/basic';
 
 /**
@@ -505,15 +498,15 @@ export type PromptRatingEntity = {
 // types/data/schema/schema.ts
 
 import { InferModel } from 'drizzle-orm';
-import { 
-  pgTable, 
-  text, 
-  timestamp, 
-  boolean, 
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
   varchar,
   json,
   numeric,
-  uuid
+  uuid,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -543,7 +536,9 @@ export const users = pgTable('users', {
  * ユーザーロールテーブルスキーマ
  */
 export const userRoles = pgTable('user_roles', {
-  userId: uuid('user_id').notNull().references(() => users.id),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id),
   role: varchar('role', { length: 50 }).notNull(),
   assignedAt: timestamp('assigned_at').notNull().defaultNow(),
 });
@@ -560,7 +555,9 @@ export const aiPrompts = pgTable('ai_prompts', {
   compatibleModels: json('compatible_models').notNull(),
   variables: json('variables').notNull(),
   isPublic: boolean('is_public').notNull().default(false),
-  creatorId: uuid('creator_id').notNull().references(() => users.id),
+  creatorId: uuid('creator_id')
+    .notNull()
+    .references(() => users.id),
   usageCount: numeric('usage_count').notNull().default('0'),
   averageRating: numeric('average_rating', { precision: 3, scale: 2 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -643,11 +640,7 @@ export type GlobalState = {
 ```typescript
 // types/state/component-state.ts
 
-import { 
-  FilterParams, 
-  PaginationParams, 
-  SortParams 
-} from '../common/objects';
+import { FilterParams, PaginationParams, SortParams } from '../common/objects';
 import { AIPrompt } from '../domain/models/ai-prompt';
 import { AIModelType, PromptCategory } from '../domain/models/ai-prompt';
 
@@ -719,22 +712,27 @@ export type RequiredOmit<T, K extends keyof T> = Required<Omit<T, K>> & Pick<T, 
 /**
  * 少なくとも1つのプロパティを持つ型を作成
  */
-export type AtLeastOne<T, U = {[K in keyof T]: Pick<T, K>}> = Partial<T> & U[keyof U];
+export type AtLeastOne<T, U = { [K in keyof T]: Pick<T, K> }> = Partial<T> & U[keyof U];
 
 /**
  * ディープ部分型（ネストされたオブジェクトにも対応）
  */
-export type DeepPartial<T> = T extends object ? {
-  [P in keyof T]?: DeepPartial<T[P]>;
-} : T;
+export type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;
 
 /**
  * 読み取り専用の深いネストを持つ型
  */
-export type DeepReadonly<T> = T extends (infer R)[] ? ReadonlyArray<DeepReadonly<R>> :
-  T extends object ? {
-    readonly [P in keyof T]: DeepReadonly<T[P]>;
-  } : T;
+export type DeepReadonly<T> = T extends (infer R)[]
+  ? ReadonlyArray<DeepReadonly<R>>
+  : T extends object
+    ? {
+        readonly [P in keyof T]: DeepReadonly<T[P]>;
+      }
+    : T;
 
 /**
  * 非nullableな型（nullとundefinedを除外）
@@ -745,11 +743,13 @@ export type NonNullable<T> = T extends null | undefined ? never : T;
  * レコード型のキーと値の型を入れ替える
  */
 export type Invert<T extends Record<string, string>> = {
-  [K in T[keyof T]]: keyof T extends infer U 
-    ? U extends keyof T 
-      ? T[U] extends K ? U : never 
-      : never 
-    : never
+  [K in T[keyof T]]: keyof T extends infer U
+    ? U extends keyof T
+      ? T[U] extends K
+        ? U
+        : never
+      : never
+    : never;
 };
 
 /**
@@ -760,10 +760,13 @@ export type EnumToUnion<T extends Record<string, string | number>> = T[keyof T];
 /**
  * オプショナルな関数パラメータ型
  */
-export type OptionalParameters<T extends (...args: any) => any> = 
-  T extends (...args: infer P) => any 
-    ? Partial<P> extends P ? P : never 
-    : never;
+export type OptionalParameters<T extends (...args: any) => any> = T extends (
+  ...args: infer P
+) => any
+  ? Partial<P> extends P
+    ? P
+    : never
+  : never;
 ```
 
 ## 相互参照
@@ -771,6 +774,7 @@ export type OptionalParameters<T extends (...args: any) => any> =
 このドキュメントで示したコード例は、[「05_type_definitions.md」](../05_type_definitions.md)で説明されている型定義の設計原則と実装パターンの具体的な実装例です。型定義の概念的な理解や設計原則についての詳細は「05_type_definitions.md」を参照してください。
 
 その他の関連ドキュメント:
+
 - 実装ルールと命名規則の詳細については[「04_implementation_rules.md」](../04_implementation_rules.md)を参照してください。
 - これらの型を使用するユーティリティ関数の実装例については[「06_utility_functions_examples.md」](code_examples/06_utility_functions_examples.md)を参照してください。
 - アーキテクチャ設計の詳細については[「02_architecture_design.md」](../02_architecture_design.md)を参照してください。

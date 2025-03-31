@@ -28,7 +28,7 @@ AiStartプロジェクトでは型安全性を最優先し、各レイヤーに�
     ├── エンティティ（EntityBase継承）
     └── 値オブジェクト
 
-【アプリケーション層】  
+【アプリケーション層】
 ├── データ転送オブジェクト型（名詞+DTO）
 ├── APIリクエスト型（動詞+名詞+Request）
 └── APIレスポンス型（名詞+Response）
@@ -67,20 +67,20 @@ AiStartプロジェクトでは型安全性を最優先し、各レイヤーに�
 
 ### 型の命名規則
 
-| 型分類 | 命名規則 | 例 |
-|-------|---------|-----|
-| ID型 | エンティティ名+Id | UserId, ProjectId |
-| エンティティ | PascalCase | User, Project |
-| 値オブジェクト | PascalCase | EmailAddress, Money |
-| Enum型 | PascalCase | StepType, UserRole |
-| Props | コンポーネント名+Props | ButtonProps, UserCardProps |
-| データ転送型 | 名詞+DTO | UserDTO, ProjectDTO |
-| 状態型 | 名詞+State | AuthState, FormState |
-| イベントハンドラ | on+動詞+名詞 | onUserClick, onFormSubmit |
-| Context型 | 名詞+Context | AuthContext, ThemeContext |
-| APIリクエスト型 | 動詞+名詞+Request | CreateUserRequest |
-| APIレスポンス型 | 名詞+Response | UserResponse, ProjectResponse |
-| エラー型 | 名詞+Error | ValidationError, APIError |
+| 型分類           | 命名規則               | 例                            |
+| ---------------- | ---------------------- | ----------------------------- |
+| ID型             | エンティティ名+Id      | UserId, ProjectId             |
+| エンティティ     | PascalCase             | User, Project                 |
+| 値オブジェクト   | PascalCase             | EmailAddress, Money           |
+| Enum型           | PascalCase             | StepType, UserRole            |
+| Props            | コンポーネント名+Props | ButtonProps, UserCardProps    |
+| データ転送型     | 名詞+DTO               | UserDTO, ProjectDTO           |
+| 状態型           | 名詞+State             | AuthState, FormState          |
+| イベントハンドラ | on+動詞+名詞           | onUserClick, onFormSubmit     |
+| Context型        | 名詞+Context           | AuthContext, ThemeContext     |
+| APIリクエスト型  | 動詞+名詞+Request      | CreateUserRequest             |
+| APIレスポンス型  | 名詞+Response          | UserResponse, ProjectResponse |
+| エラー型         | 名詞+Error             | ValidationError, APIError     |
 
 ### 型の共有方法
 
@@ -99,6 +99,7 @@ AiStartプロジェクトでは型安全性を最優先し、各レイヤーに�
 共通基本型は、プロジェクト全体で再利用される基本的な型定義です。日付関連の型、ドメイン固有の値オブジェクト、およびエンティティの基本構造を定義します。
 
 **主要な共通基本型:**
+
 - Timestamp - 日時を表す型
 - DateOnly - 日付のみを表す型（YYYY-MM-DD形式）
 - Email - メールアドレスを表すブランド型
@@ -113,6 +114,7 @@ AiStartプロジェクトでは型安全性を最優先し、各レイヤーに�
 ID型はブランド型（branded type）を使用して、型レベルでの区別を可能にし、誤ったIDの使用を防ぎます。
 
 **主要なID型:**
+
 - UserId - ユーザーの一意識別子
 - ProjectId - プロジェクトの一意識別子
 - ProgramId - プログラムの一意識別子
@@ -129,6 +131,7 @@ ID型の生成と変換には専用のユーティリティ関数を使用しま
 型ユーティリティは、既存の型から新しい型を生成するためのヘルパー型です。これらは型の変換、合成、および特定のプロパティの修飾に使用されます。
 
 **主要な型ユーティリティ:**
+
 - PickPartial - 一部のプロパティをPartialにする型
 - RequiredNonNull - nullを許容しないRequired型
 - OptionalKeys - 特定のキーをオプションにする型
@@ -142,6 +145,7 @@ ID型の生成と変換には専用のユーティリティ関数を使用しま
 エラー型は、アプリケーション全体で一貫したエラーハンドリングを実現するための型定義です。
 
 **主要なエラー関連型:**
+
 - AIErrorCode - AI関連エラーの列挙型
 - AuthErrorCode - 認証関連エラーの列挙型
 - DataErrorCode - データ関連エラーの列挙型
@@ -181,6 +185,7 @@ domain/
 エンティティは識別子（ID）を持ち、ライフサイクルを通じて同一性が保たれるオブジェクトです。
 
 **主要なエンティティ:**
+
 - User - ユーザー情報
 - Program - プログラム（コース）情報
 - Project - ユーザーのプロジェクト情報
@@ -198,6 +203,7 @@ domain/
 値オブジェクトは、識別子を持たず、属性の値によって同一性が定義されるオブジェクトです。
 
 **主要な値オブジェクト:**
+
 - EmailAddress - メールアドレスを表現する値オブジェクト
 - UserRole - ユーザーロールの列挙型
 - ProjectStatus - プロジェクト状態の列挙型
@@ -217,6 +223,7 @@ domain/
 データベーススキーマ型は、PostgreSQLのテーブル構造を反映した型定義です。Drizzle ORMを使用してスキーマ定義と型生成を行います。
 
 データベーススキーマの型定義では、以下の原則に従います：
+
 1. テーブル名は複数形で、スネークケースを使用（例: users, project_outputs）
 2. カラム名はスネークケースを使用（例: first_name, created_at）
 3. 主キーにはUUIDを使用
@@ -232,6 +239,7 @@ domain/
 Drizzle ORMを使用したスキーマ定義では、テーブル定義、関連付け、インデックス設定などを行います。
 
 **主要なスキーマ定義:**
+
 - usersテーブル - ユーザー情報
 - programsテーブル - プログラム情報
 - stepsテーブル - ステップ情報
@@ -247,6 +255,7 @@ Drizzle ORMを使用したスキーマ定義では、テーブル定義、関連
 リレーション型は、テーブル間の関連付けを表現するための型定義です。
 
 **主要なリレーション:**
+
 - UserToProjects - ユーザーとプロジェクトの1対多関係
 - ProgramToSteps - プログラムとステップの1対多関係
 - ProjectToOutputs - プロジェクトと成果物の1対多関係
@@ -267,6 +276,7 @@ API型定義では、クライアントとサーバー間で交換されるデ�
 リクエスト型は、APIエンドポイントへのリクエストデータの構造を定義します。
 
 **主要なリクエスト型:**
+
 - CreateUserRequest - ユーザー作成リクエスト
 - UpdateUserRequest - ユーザー更新リクエスト
 - CreateProjectRequest - プロジェクト作成リクエスト
@@ -282,6 +292,7 @@ API型定義では、クライアントとサーバー間で交換されるデ�
 レスポンス型は、APIエンドポイントからのレスポンスデータの構造を定義します。
 
 **主要なレスポンス型:**
+
 - UserResponse - ユーザー情報レスポンス
 - ProjectResponse - プロジェクト情報レスポンス
 - ProgramResponse - プログラム情報レスポンス
@@ -301,6 +312,7 @@ DTO（Data Transfer Object）型は、異なるレイヤー間でデータを転
 DTOの命名規則は「名詞+DTO」のパターンを使用します。
 
 **DTOの設計原則:**
+
 1. 必要な属性のみを含める（最小限の情報）
 2. ビジネスロジックを含めない
 3. シリアライズ/デシリアライズが容易な単純なデータ構造を使用
@@ -311,6 +323,7 @@ DTOの命名規則は「名詞+DTO」のパターンを使用します。
 ### 主要DTO型
 
 **代表的なDTO型:**
+
 - UserDTO - ユーザー情報DTO
 - ProjectDTO - プロジェクト情報DTO
 - ProgramDTO - プログラム情報DTO
@@ -327,6 +340,7 @@ DTOの命名規則は「名詞+DTO」のパターンを使用します。
 UIコンポーネント型は、Reactコンポーネントの型定義に使用されます。命名規則としては、Propsは「コンポーネント名+Props」、状態は「名詞+State」、コンテキストは「名詞+Context」のパターンを使用します。
 
 **UIコンポーネント型の設計原則:**
+
 1. コンポーネントの責務に応じた型定義
 2. 再利用可能なコンポーネントは汎用的な型を使用
 3. 必要に応じてジェネリクスを活用
@@ -339,6 +353,7 @@ UIコンポーネント型は、Reactコンポーネントの型定義に使用�
 Propsは、Reactコンポーネントに渡されるプロパティの型定義です。
 
 **主要なProps型:**
+
 - LayoutProps - レイアウトコンポーネントのProps
 - ButtonProps - ボタンコンポーネントのProps
 - UserCardProps - ユーザーカードコンポーネントのProps
@@ -353,6 +368,7 @@ Propsは、Reactコンポーネントに渡されるプロパティの型定義�
 状態型とコンテキスト型は、コンポーネント間で共有される状態を定義します。
 
 **主要な状態・コンテキスト型:**
+
 - AuthState - 認証状態
 - AuthContext - 認証コンテキスト
 - ProjectState - プロジェクト状態
@@ -368,6 +384,7 @@ Propsは、Reactコンポーネントに渡されるプロパティの型定義�
 キャッシュ関連型は、クライアントサイドのデータキャッシュに関連する型定義です。
 
 **主要なキャッシュ関連型:**
+
 - CacheKey - キャッシュキーの型
 - CacheEntry<T> - キャッシュエントリの型
 - CacheOptions - キャッシュオプションの型
@@ -383,6 +400,7 @@ AI固有型は、複数のAIプロバイダー（OpenAI、Anthropic、Google、�
 ### AIプロバイダーと基本型
 
 **主要なAIプロバイダーと基本型:**
+
 - AIProviderType - AIプロバイダーの列挙型
 - AIModelType - AIモデルの種類の列挙型
 - AIServiceError - AIサービスのエラー型
@@ -396,7 +414,7 @@ export enum AIProviderType {
   ANTHROPIC = 'ANTHROPIC',
   GOOGLE = 'GOOGLE',
   LOCAL = 'LOCAL',
-  CUSTOM = 'CUSTOM'
+  CUSTOM = 'CUSTOM',
 }
 
 // AIモデル種類列挙型
@@ -406,7 +424,7 @@ export enum AIModelType {
   EMBEDDING = 'EMBEDDING',
   IMAGE = 'IMAGE',
   AUDIO = 'AUDIO',
-  MULTIMODAL = 'MULTIMODAL'
+  MULTIMODAL = 'MULTIMODAL',
 }
 
 // AIサービスエラー型
@@ -437,6 +455,7 @@ export interface AIResponseBase {
 ### AIモデル機能と設定型
 
 **主要なAIモデル機能と設定型:**
+
 - AIModelCapability - AIモデルの機能を表す型
 - AIModelInfo - AIモデル情報
 - AIModelConfig - AIモデル設定
@@ -506,6 +525,7 @@ export interface AIStreamingOptions {
 ### AIサービスインターフェース型
 
 **主要なAIサービスインターフェース型:**
+
 - AIServiceInterface - AIサービスのインターフェース
 - AIServiceRegistry - AIサービスのレジストリ
 - AIServiceFactory - AIサービスのファクトリ
@@ -553,8 +573,18 @@ export interface AITokenizer {
 
 // AIメトリクスコレクターインターフェース
 export interface AIMetricsCollector {
-  recordCompletion(provider: AIProviderType, model: string, usage: TokenUsage, latency: number): void;
-  recordEmbedding(provider: AIProviderType, model: string, inputSize: number, latency: number): void;
+  recordCompletion(
+    provider: AIProviderType,
+    model: string,
+    usage: TokenUsage,
+    latency: number
+  ): void;
+  recordEmbedding(
+    provider: AIProviderType,
+    model: string,
+    inputSize: number,
+    latency: number
+  ): void;
   recordError(provider: AIProviderType, model: string, error: AIServiceError): void;
   getUsageSummary(timeRange?: { start: Date; end: Date }): AIUsageSummary;
   getCostSummary(timeRange?: { start: Date; end: Date }): AICostSummary;
@@ -564,6 +594,7 @@ export interface AIMetricsCollector {
 ### プロバイダー固有の設定型
 
 **主要なプロバイダー固有の設定型:**
+
 - OpenAIServiceConfig - OpenAIサービス設定
 - AnthropicServiceConfig - Anthropicサービス設定
 - GoogleServiceConfig - Googleサービス設定
@@ -615,6 +646,7 @@ export interface LocalServiceConfig {
 ### メッセージと会話型
 
 **主要なメッセージと会話型:**
+
 - AIMessage - AIメッセージ
 - ConversationContext - 会話コンテキスト
 - AIMessageRole - メッセージの役割
@@ -628,7 +660,7 @@ export enum AIMessageRole {
   USER = 'user',
   ASSISTANT = 'assistant',
   FUNCTION = 'function',
-  TOOL = 'tool'
+  TOOL = 'tool',
 }
 
 // AIメッセージ型
@@ -696,18 +728,24 @@ export interface AIUsageSummary {
   totalCompletionTokens: number;
   totalTokens: number;
   requestCount: number;
-  byProvider: Record<AIProviderType, {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    requestCount: number;
-  }>;
-  byModel: Record<string, {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    requestCount: number;
-  }>;
+  byProvider: Record<
+    AIProviderType,
+    {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      requestCount: number;
+    }
+  >;
+  byModel: Record<
+    string,
+    {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      requestCount: number;
+    }
+  >;
 }
 
 // AIコストサマリー型
@@ -715,16 +753,22 @@ export interface AICostSummary {
   totalCost: number;
   promptCost: number;
   completionCost: number;
-  byProvider: Record<AIProviderType, {
-    totalCost: number;
-    promptCost: number;
-    completionCost: number;
-  }>;
-  byModel: Record<string, {
-    totalCost: number;
-    promptCost: number;
-    completionCost: number;
-  }>;
+  byProvider: Record<
+    AIProviderType,
+    {
+      totalCost: number;
+      promptCost: number;
+      completionCost: number;
+    }
+  >;
+  byModel: Record<
+    string,
+    {
+      totalCost: number;
+      promptCost: number;
+      completionCost: number;
+    }
+  >;
   currency: string;
 }
 ```
@@ -736,6 +780,7 @@ export interface AICostSummary {
 外部サービス連携型は、外部APIやサービスとの連携に関連する型定義です。
 
 **主要な外部サービス連携型:**
+
 - OpenAIConfig - OpenAI API設定
 - OpenAIRequest - OpenAI APIリクエスト
 - OpenAIResponse - OpenAI APIレスポンス
@@ -755,6 +800,7 @@ export interface AICostSummary {
 ### 言語リソース型
 
 **主要な言語リソース型:**
+
 - LocaleCode - サポートされる言語コードの列挙型（例: 'ja', 'en'）
 - TranslationKey - 翻訳キーを表すブランド型
 - TranslationParams - プレースホルダーパラメータを表す型
@@ -787,6 +833,7 @@ export interface TranslationOptions {
 ### 翻訳サービス型
 
 **主要な翻訳サービス型:**
+
 - TranslationService - 翻訳サービスのインターフェース
 - TranslatorFactory - 翻訳関数を生成するファクトリ
 - TranslateFn - 翻訳を行う関数の型
@@ -803,7 +850,11 @@ export interface TranslationService {
 }
 
 // 翻訳関数型
-export type TranslateFn = (key: TranslationKey, params?: TranslationParams, options?: TranslationOptions) => string;
+export type TranslateFn = (
+  key: TranslationKey,
+  params?: TranslationParams,
+  options?: TranslationOptions
+) => string;
 
 // 言語状態型
 export interface LocaleState {
@@ -825,51 +876,54 @@ export interface LocaleContextType extends LocaleState {
 多言語AIプロンプト型は、AIプロンプトテンプレートの国際化対応を実現するための型定義です。
 
 **主要な多言語AIプロンプト型:**
+
 - LocalizedPromptTemplate - 多言語化されたプロンプトテンプレート
 - LocalizedPromptKey - 多言語プロンプトの識別キー
 - LocalizedPromptParams - 多言語プロンプトのパラメータ
 - PromptLocalizationService - プロンプト多言語化サービス
 - LanguageModelSettings - 言語ごとのAIモデル設定
 
-   ```typescript
-// 多言語化されたプロンプトテンプレート型
-export interface LocalizedPromptTemplate {
-  key: LocalizedPromptKey;
-  templates: Record<LocaleCode, string>;
-  defaultLocale: LocaleCode;
-  metadata: {
-    description: string;
-    category: string;
-    version: string;
-    lastUpdated: Date;
-  };
-  parameterDescriptions?: Record<string, string>;
-}
+  ```typescript
+  // 多言語化されたプロンプトテンプレート型
+  export interface LocalizedPromptTemplate {
+    key: LocalizedPromptKey;
+    templates: Record<LocaleCode, string>;
+    defaultLocale: LocaleCode;
+    metadata: {
+      description: string;
+      category: string;
+      version: string;
+      lastUpdated: Date;
+    };
+    parameterDescriptions?: Record<string, string>;
+  }
+  ```
 
 // 多言語プロンプトの識別キー型
-export type LocalizedPromptKey = string & { readonly __brand: unique symbol };
+export type LocalizedPromptKey = string & { readonly \_\_brand: unique symbol };
 
 // 多言語プロンプトのパラメータ型
 export type LocalizedPromptParams = Record<string, string | number | boolean | Date | Array<any>>;
 
 // プロンプト多言語化サービスインターフェース
 export interface PromptLocalizationService {
-  getLocalizedPrompt(key: LocalizedPromptKey, locale?: LocaleCode): string;
-  renderLocalizedPrompt(key: LocalizedPromptKey, params: LocalizedPromptParams, locale?: LocaleCode): string;
-  registerPromptTemplate(template: LocalizedPromptTemplate): void;
-  getAvailablePromptKeys(): LocalizedPromptKey[];
+getLocalizedPrompt(key: LocalizedPromptKey, locale?: LocaleCode): string;
+renderLocalizedPrompt(key: LocalizedPromptKey, params: LocalizedPromptParams, locale?: LocaleCode): string;
+registerPromptTemplate(template: LocalizedPromptTemplate): void;
+getAvailablePromptKeys(): LocalizedPromptKey[];
 }
 
 // 言語ごとのAIモデル設定型
 export interface LanguageModelSettings {
-  locale: LocaleCode;
-  preferredModel: string;
-  temperatureAdjustment?: number;
-  maxTokensAdjustment?: number;
-  systemPromptSuffix?: string;
-  culturalContextNotes?: string;
+locale: LocaleCode;
+preferredModel: string;
+temperatureAdjustment?: number;
+maxTokensAdjustment?: number;
+systemPromptSuffix?: string;
+culturalContextNotes?: string;
 }
-```
+
+````
 
 > **参照**: 具体的な実装例については「code_examples/05_type_definitions_examples.md」の「多言語AIプロンプト型」セクションを参照してください。
 
@@ -931,7 +985,7 @@ export interface CaseStudyDuration {
 // 事例要因型
 export interface CaseStudyFactor {
      name: string;
-  importance: number; // 1-10 
+  importance: number; // 1-10
   description: string;
   isPrimary: boolean;
 }
@@ -954,11 +1008,12 @@ export interface CaseStudy {
   createdAt: Date;
   updatedAt: Date;
 }
-```
+````
 
 ### 分析エンジン型
 
 **主要な分析エンジン型:**
+
 - RiskAssessment - リスク評価結果を表す型
 - RiskFactor - リスク要因を表す型
 - RiskLevel - リスク水準を表す列挙型
@@ -966,67 +1021,69 @@ export interface CaseStudy {
 - SimilarityScore - 類似度スコアを表す型
 - ImprovementSuggestion - 改善提案を表す型
 
-   ```typescript
-// リスク水準列挙型
-export enum RiskLevel {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  CRITICAL = 'CRITICAL'
-}
+  ```typescript
+  // リスク水準列挙型
+  export enum RiskLevel {
+    LOW = 'LOW',
+    MEDIUM = 'MEDIUM',
+    HIGH = 'HIGH',
+    CRITICAL = 'CRITICAL',
+  }
+  ```
 
 // リスク要因型
 export interface RiskFactor {
-  name: string;
-  description: string;
-  level: RiskLevel;
-  impact: number; // 1-10
-  probability: number; // 0.0-1.0
-  score: number; // impact * probability
-  evidenceCaseIds: CaseStudyId[]; // 根拠となる事例IDs
+name: string;
+description: string;
+level: RiskLevel;
+impact: number; // 1-10
+probability: number; // 0.0-1.0
+score: number; // impact \* probability
+evidenceCaseIds: CaseStudyId[]; // 根拠となる事例IDs
 }
 
 // 成功確率型
 export interface SuccessProbability {
-  overall: number; // 0.0-1.0
-  byCategory: Record<string, number>;
-  confidenceScore: number; // 0.0-1.0
-  evidenceCaseIds: CaseStudyId[]; // 根拠となる事例IDs
+overall: number; // 0.0-1.0
+byCategory: Record<string, number>;
+confidenceScore: number; // 0.0-1.0
+evidenceCaseIds: CaseStudyId[]; // 根拠となる事例IDs
 }
 
 // 類似度スコア型
 export interface SimilarityScore {
-  caseId: CaseStudyId;
-  score: number; // 0.0-1.0
-  matchedFactors: string[];
-  relevantPoints: string[];
+caseId: CaseStudyId;
+score: number; // 0.0-1.0
+matchedFactors: string[];
+relevantPoints: string[];
 }
 
 // 改善提案型
 export interface ImprovementSuggestion {
-  id: string;
-  title: string;
-  description: string;
-  targetRiskFactors: string[];
-  expectedImpact: number; // 1-10
-  implementationDifficulty: number; // 1-10
-  priorityScore: number; // expectedImpact / implementationDifficulty
-  sourceCaseIds: CaseStudyId[]; // 提案の根拠となる事例IDs
-  aiGenerated: boolean;
+id: string;
+title: string;
+description: string;
+targetRiskFactors: string[];
+expectedImpact: number; // 1-10
+implementationDifficulty: number; // 1-10
+priorityScore: number; // expectedImpact / implementationDifficulty
+sourceCaseIds: CaseStudyId[]; // 提案の根拠となる事例IDs
+aiGenerated: boolean;
 }
 
 // リスク評価結果型
 export interface RiskAssessment {
-  projectId: string;
-  overallRiskScore: number; // 0-100
-  riskFactors: RiskFactor[];
-  successProbability: SuccessProbability;
-  similarCases: SimilarityScore[];
-  improvementSuggestions: ImprovementSuggestion[];
-  analysisDate: Date;
-  version: string;
+projectId: string;
+overallRiskScore: number; // 0-100
+riskFactors: RiskFactor[];
+successProbability: SuccessProbability;
+similarCases: SimilarityScore[];
+improvementSuggestions: ImprovementSuggestion[];
+analysisDate: Date;
+version: string;
 }
-```
+
+````
 
 ### 分析API型
 
@@ -1077,13 +1134,14 @@ export interface SimilarCasesResponse {
   status: 'success' | 'partial' | 'error';
   message?: string;
 }
-```
+````
 
 ### 時系列分析関連型
 
 時系列分析に関連する型定義は、時間経過に伴うパターンやトレンドを分析し、将来予測を行うための構造を提供します。
 
 **主要な時系列分析関連型:**
+
 - TimeSeriesData - 時系列データの基本構造
 - TimeSeriesPoint - 時系列上の単一データポイント
 - TimeSeriesDataset - 複数の時系列データセット
@@ -1201,10 +1259,20 @@ export interface TimeSeriesForecast {
 
 // 時系列分析サービスインターフェース
 export interface TimeSeriesAnalysisService {
-  analyzeTimeSeries(dataset: TimeSeriesDataset, options: TimeSeriesAnalysisOptions): Promise<TimeSeriesAnalysisResult>;
-  forecast(series: TimeSeriesData, horizon: number, options?: Partial<TimeSeriesAnalysisOptions>): Promise<TimeSeriesForecast>;
+  analyzeTimeSeries(
+    dataset: TimeSeriesDataset,
+    options: TimeSeriesAnalysisOptions
+  ): Promise<TimeSeriesAnalysisResult>;
+  forecast(
+    series: TimeSeriesData,
+    horizon: number,
+    options?: Partial<TimeSeriesAnalysisOptions>
+  ): Promise<TimeSeriesForecast>;
   detectPatterns(series: TimeSeriesData, patternTypes?: string[]): Promise<TimeSeriesPattern[]>;
-  compareTimeSeries(series1: TimeSeriesData, series2: TimeSeriesData): Promise<{
+  compareTimeSeries(
+    series1: TimeSeriesData,
+    series2: TimeSeriesData
+  ): Promise<{
     correlation: number;
     similarities: TimeSeriesPattern[];
     differences: TimeSeriesPattern[];
@@ -1325,4 +1393,4 @@ UIコンポーネント型
 └── ...（既存の外部サービス連携型）
 ```
 
-> **参照**: 各型の詳細な実装例については「code_examples/05_type_definitions_examples.md」を参照してください。 
+> **参照**: 各型の詳細な実装例については「code_examples/05_type_definitions_examples.md」を参照してください。

@@ -3,7 +3,7 @@ import { OpenAIService } from './OpenAIService';
 
 /**
  * AIサービスファクトリークラス
- * 
+ *
  * 適切なAIサービス実装を提供するファクトリー
  */
 export class AIServiceFactory {
@@ -38,7 +38,7 @@ export class AIServiceFactory {
     const openaiKey = process.env.OPENAI_API_KEY;
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
-    
+
     // 利用可能なAPIキーを持つプロバイダーで最初に見つかったものを使用
     if (openaiKey) {
       return this.createService(AIProvider.OPENAI, openaiKey);
@@ -49,9 +49,11 @@ export class AIServiceFactory {
       // Googleサービスの実装（未実装）
       throw new Error('Google service is not implemented yet');
     }
-    
+
     // デフォルトはダミーのOpenAIサービス（警告を表示）
-    console.warn('No AI provider API key found in environment variables. Using dummy OpenAI service.');
+    console.warn(
+      'No AI provider API key found in environment variables. Using dummy OpenAI service.'
+    );
     return new OpenAIService('dummy-key');
   }
-} 
+}
