@@ -3,17 +3,12 @@ module.exports = {
   singleQuote: true,
   printWidth: 100,
   tabWidth: 2,
+  useTabs: false,
   trailingComma: 'es5',
   bracketSpacing: true,
   arrowParens: 'always',
   endOfLine: 'lf',
-  plugins: [],
-  overrides: [
-    {
-      files: '*.md',
-      options: {
-        tabWidth: 2,
-      },
-    },
-  ],
-} 
+  jsxSingleQuote: false,
+  jsxBracketSameLine: false,
+  plugins: [require('prettier-plugin-tailwindcss')],
+}; 

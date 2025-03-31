@@ -8,15 +8,15 @@ module.exports = {
   rules: {
     // 基本的なルール
     'no-unused-vars': 'off',
-    '@typescript-eslint/no-unused-vars': ['warn', { 
+    '@typescript-eslint/no-unused-vars': ['error', { 
       argsIgnorePattern: '^_',
-      varsIgnorePattern: '^_',
+      varsIgnorePattern: '^_' 
     }],
-    'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
+    'no-console': ['warn', { allow: ['warn', 'error'] }],
     
-    // インポート順序
+    // インポート順序のルール
     'import/order': [
-      'warn',
+      'error',
       {
         groups: [
           'builtin',
@@ -24,96 +24,55 @@ module.exports = {
           'internal',
           'parent',
           'sibling',
-          'index',
-          'object',
-          'type'
+          'index'
         ],
         'newlines-between': 'always',
-        alphabetize: {
-          order: 'asc',
-          caseInsensitive: true
-        },
-        pathGroups: [
-          {
-            pattern: '{react,react-dom/**,react-router-dom}',
-            group: 'builtin',
-            position: 'before'
-          },
-          {
-            pattern: '@/app/**',
-            group: 'internal',
-            position: 'before'
-          },
-          {
-            pattern: '@/domain/**',
-            group: 'internal',
-            position: 'before'
-          },
-          {
-            pattern: '@/application/**',
-            group: 'internal',
-            position: 'before'
-          },
-          {
-            pattern: '@/infrastructure/**',
-            group: 'internal',
-            position: 'after'
-          },
-          {
-            pattern: '@/presentation/**',
-            group: 'internal',
-            position: 'after'
-          },
-          {
-            pattern: '@/shared/**',
-            group: 'internal',
-            position: 'after'
-          }
-        ]
+        alphabetize: { order: 'asc' }
       }
     ],
     
-    // TypeScript固有のルール
-    '@typescript-eslint/explicit-function-return-type': ['warn', { 
-      allowExpressions: true,
-      allowTypedFunctionExpressions: true,
-      allowHigherOrderFunctions: true
+    // React関連のルール
+    'react/jsx-sort-props': ['warn', {
+      callbacksLast: true,
+      shorthandFirst: true,
+      ignoreCase: true,
+      reservedFirst: true
     }],
-    '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/explicit-module-boundary-types': 'warn',
-    '@typescript-eslint/ban-ts-comment': 'warn',
-    '@typescript-eslint/ban-types': 'warn',
-    '@typescript-eslint/no-empty-interface': 'warn',
     
-    // Next.js特有のルール
-    '@next/next/no-html-link-for-pages': 'off',
-    
-    // ドメイン層の依存関係チェック（カスタムルール）
-    // 注: カスタムプラグインはこのプロジェクトに含まれていません
-    // 'domain-dependency/no-infra-import': 'error',
-    // 'domain-dependency/no-presentation-import': 'error',
+    // 命名規則のルール
+    '@typescript-eslint/naming-convention': [
+      'error',
+      // インターフェース名はIプレフィックスなし
+      {
+        selector: 'interface',
+        format: ['PascalCase'],
+        custom: {
+          regex: '^I[A-Z]',
+          match: false
+        }
+      },
+      // 型名はPascalCase
+      {
+        selector: 'typeLike',
+        format: ['PascalCase']
+      },
+      // 定数は大文字スネークケース
+      {
+        selector: 'variable',
+        modifiers: ['const', 'global'],
+        format: ['UPPER_CASE'],
+        regex: '^[A-Z][A-Z0-9_]*$'
+      },
+      // enumメンバーはPascalCase
+      {
+        selector: 'enumMember',
+        format: ['PascalCase']
+      }
+    ]
   },
   settings: {
     'import/resolver': {
-      typescript: {
-        alwaysTryTypes: true,
-        project: './tsconfig.json',
-      },
-      node: {
-        extensions: ['.js', '.jsx', '.ts', '.tsx']
-      }
-    },
-    'import/parsers': {
-      '@typescript-eslint/parser': ['.ts', '.tsx']
+      typescript: {}
     }
-  },
-  ignorePatterns: [
-    'node_modules/*',
-    '.next/*',
-    'out/*',
-    'public/*',
-    'next.config.js',
-    '*.config.js',
-    '*.setup.js'
-  ]
-} 
+  }
+}; 
