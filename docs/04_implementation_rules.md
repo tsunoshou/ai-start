@@ -7,11 +7,13 @@
 このドキュメントは、AiStartプロジェクトにおける具体的な実装ルール、コーディング規約、命名規則を定義しています。関連ドキュメントとの役割の違いは以下のとおりです：
 
 - **01_requirements_definition.md**：「何を」実現するのか（What）
+
   - ビジネス・機能要件の定義
   - 非機能要件の定義
   - 技術スタックの概要
 
 - **02_architecture_design.md**：「どのように」実現するのか（How）
+
   - アーキテクチャスタイルの選定と理由
   - ディレクトリ構造と各レイヤーの責務
   - モジュール分割と依存関係の設計
@@ -19,6 +21,7 @@
   - エラー処理戦略の詳細
 
 - **03_prototype_development.md**：プロトタイプでの検証事項（Verify）
+
   - プロトタイプの目的と検証内容
   - 検証する技術項目と評価方法
   - プロトタイプの実装範囲と制限
@@ -47,6 +50,7 @@
 ### リンター設定
 
 ESLintを使用して以下のルールを強制します：
+
 - 未使用変数の警告（アンダースコアプレフィックス付き変数は除外）
 - 明示的な関数戻り値型の強制
 - 命名規則の強制（各種型、関数、変数、コンポーネントなど）
@@ -66,8 +70,15 @@ ESLintを使用して以下のルールを強制します：
 ### 自動フォーマット
 
 Prettierを使用して以下のフォーマットを自動適用します：
+
 - セミコロン、引用符、インデント、行の長さなどのスタイル統一
 - 改行、空白、括弧などの一貫したフォーマット
+
+Prettierの適用範囲から除外するファイルや特定のパターンは、`.prettierignore`で定義しています：
+
+- ビルド成果物（`.next/`, `build/`, `dist/`など）
+- `node_modules/`のような依存関係ディレクトリ
+- ドキュメントフォルダ内のマークダウンファイル（`docs/**/*.md`）：マークダウンのフォーマットを維持するため
 
 詳細な設定例は[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
 
@@ -84,11 +95,13 @@ Prettierを使用して以下のフォーマットを自動適用します：
 ```
 
 例：
+
 - `common.button.submit` - 共通の送信ボタンラベル
 - `project.details.title` - プロジェクト詳細ページのタイトル
 - `auth.login.error.invalidCredentials` - ログイン時の無効な認証情報エラー
 
 翻訳キーには以下のルールを適用します：
+
 - キャメルケースで記述
 - 階層の数は最大4レベルまで
 - 通常4階層目はエラーメッセージやバリエーションを表す
@@ -130,12 +143,8 @@ import { useTranslation } from 'next-intl';
 
 export function SubmitButton() {
   const t = useTranslation('common');
-  
-  return (
-    <button type="submit">
-      {t('button.submit')}
-    </button>
-  );
+
+  return <button type="submit">{t('button.submit')}</button>;
 }
 ```
 
@@ -158,7 +167,7 @@ RTL言語（アラビア語、ヘブライ語等）のサポートを実装す�
 // layout.tsx
 export default function RootLayout({
   children,
-  params: { locale }
+  params: { locale },
 }: {
   children: React.ReactNode;
   params: { locale: string };
@@ -166,7 +175,7 @@ export default function RootLayout({
   // RTL言語のリスト
   const rtlLocales = ['ar', 'he', 'fa', 'ur'];
   const isRtl = rtlLocales.includes(locale);
-  
+
   return (
     <html lang={locale} dir={isRtl ? 'rtl' : 'ltr'}>
       <body>{children}</body>
@@ -198,7 +207,7 @@ export default function RootLayout({
   --end: right;
 }
 
-[dir="rtl"] {
+[dir='rtl'] {
   --start: right;
   --end: left;
 }
@@ -227,10 +236,10 @@ export default function RootLayout({
 function DirectionalIcon({ icon, ...props }) {
   const { isRtl } = useRtlContext();
   return (
-    <Icon 
-      icon={icon} 
-      className={isRtl && requiresFlipping(icon) ? 'transform rotate-180' : ''} 
-      {...props} 
+    <Icon
+      icon={icon}
+      className={isRtl && requiresFlipping(icon) ? 'rotate-180 transform' : ''}
+      {...props}
     />
   );
 }
@@ -244,7 +253,12 @@ function DirectionalIcon({ icon, ...props }) {
 // 混合言語テキストを表示する際のユーティリティ
 function BidiText({ text, baseDirection = 'auto' }) {
   const bidiMarker = baseDirection === 'rtl' ? '\u200F' : '\u200E';
-  return <span>{bidiMarker}{text}</span>;
+  return (
+    <span>
+      {bidiMarker}
+      {text}
+    </span>
+  );
 }
 ```
 
@@ -255,26 +269,31 @@ function BidiText({ text, baseDirection = 'auto' }) {
 - RTL切り替え時のレイアウト崩れをチェックするスナップショットテストを実装する
 
 #### 型安全な翻訳
+
 // ... 既存のコード ...
 
 #### リソース更新ワークフロー
+
 // ... 既存のコード ...
 
 ### 歴史的事例データベース実装ルール
 
 1. **事例データモデル構造**
+
    - 基本メタデータ: ID、タイトル、業種、規模、期間、結果
    - 詳細属性: 主要要因、状況説明、経緯、結果詳細
    - ベクトル表現: 埋め込みベクトルとして保存するエンティティ特徴
    - 関連性タグ: 複数のカテゴリタグとメタタグ
 
 2. **事例データ CRUD 操作**
+
    - 作成/更新操作: トランザクション管理と整合性検証
    - ベクトル生成: テキスト埋め込み計算と保存手順
    - 検索操作: 類似度検索とフィルタリングの組み合わせ
    - バッチ操作: 大量データ処理の分割実行
 
 3. **分析エンジン実装**
+
    - モジュール分割: 特徴抽出、類似度計算、評価計算、提案生成
    - パイプライン構造: 順次処理とエラーハンドリング
    - キャッシュ戦略: 計算コスト最適化と結果再利用
@@ -309,39 +328,39 @@ function BidiText({ text, baseDirection = 'auto' }) {
 
 ### ファイル命名規則
 
-| ファイルタイプ | 命名規則 | 例 |
-|--------------|---------|-----|
-| Reactコンポーネント | PascalCase.tsx | Button.tsx, UserCard.tsx |
-| ページコンポーネント | page.tsx | page.tsx (app/projects/page.tsx) |
-| レイアウトコンポーネント | layout.tsx | layout.tsx (app/layout.tsx) |
-| APIルート | route.ts | route.ts (app/api/users/route.ts) |
-| ユーティリティ | camelCase.ts | formatDate.ts, stringUtils.ts |
-| 型定義 | camelCase.ts | index.ts, api.ts (types/フォルダ内) |
-| エンティティ | PascalCase.ts | User.ts, Program.ts |
-| 値オブジェクト | camelCase.ts | ids.ts, email.ts |
-| リポジトリインターフェース | PascalCaseRepository.ts | UserRepository.ts |
-| リポジトリ実装 | {Infrastructure}PascalCaseRepository.ts | SupabaseUserRepository.ts, PostgresProjectRepository.ts |
-| ユースケース | PascalCaseUsecase.ts | CreateProjectUsecase.ts |
-| DTOクラス | PascalCaseDTO.ts | UserDTO.ts, ProjectDTO.ts |
-| マッパー | PascalCaseMapper.ts | UserMapper.ts, ProjectMapper.ts |
-| テストファイル | {対象ファイル名}.test.ts | User.test.ts, formatDate.test.ts |
-| 定数ファイル | camelCase.ts | appConstants.ts, errorCodes.ts |
-| カスタムフック | use{名詞}.ts | useAuth.ts, useFormValidation.ts |
-| 言語リソースファイル | {言語コード}.json | en.json, ja.json |
-| 翻訳ユーティリティ | i18n{機能}.ts | i18nConfig.ts, i18nUtils.ts |
-| 事例データモデル | {モデル}Entity.ts, {モデル}DTO.ts | CaseStudyEntity.ts, AnalysisResultDTO.ts |
-| 分析アルゴリズム | {機能}Algorithm.ts | SimilarityAlgorithm.ts, RiskEvaluationAlgorithm.ts |
+| ファイルタイプ             | 命名規則                                | 例                                                      |
+| -------------------------- | --------------------------------------- | ------------------------------------------------------- |
+| Reactコンポーネント        | PascalCase.tsx                          | Button.tsx, UserCard.tsx                                |
+| ページコンポーネント       | page.tsx                                | page.tsx (app/projects/page.tsx)                        |
+| レイアウトコンポーネント   | layout.tsx                              | layout.tsx (app/layout.tsx)                             |
+| APIルート                  | route.ts                                | route.ts (app/api/users/route.ts)                       |
+| ユーティリティ             | camelCase.ts                            | formatDate.ts, stringUtils.ts                           |
+| 型定義                     | camelCase.ts                            | index.ts, api.ts (types/フォルダ内)                     |
+| エンティティ               | PascalCase.ts                           | User.ts, Program.ts                                     |
+| 値オブジェクト             | camelCase.ts                            | ids.ts, email.ts                                        |
+| リポジトリインターフェース | PascalCaseRepository.ts                 | UserRepository.ts                                       |
+| リポジトリ実装             | {Infrastructure}PascalCaseRepository.ts | SupabaseUserRepository.ts, PostgresProjectRepository.ts |
+| ユースケース               | PascalCaseUsecase.ts                    | CreateProjectUsecase.ts                                 |
+| DTOクラス                  | PascalCaseDTO.ts                        | UserDTO.ts, ProjectDTO.ts                               |
+| マッパー                   | PascalCaseMapper.ts                     | UserMapper.ts, ProjectMapper.ts                         |
+| テストファイル             | {対象ファイル名}.test.ts                | User.test.ts, formatDate.test.ts                        |
+| 定数ファイル               | camelCase.ts                            | appConstants.ts, errorCodes.ts                          |
+| カスタムフック             | use{名詞}.ts                            | useAuth.ts, useFormValidation.ts                        |
+| 言語リソースファイル       | {言語コード}.json                       | en.json, ja.json                                        |
+| 翻訳ユーティリティ         | i18n{機能}.ts                           | i18nConfig.ts, i18nUtils.ts                             |
+| 事例データモデル           | {モデル}Entity.ts, {モデル}DTO.ts       | CaseStudyEntity.ts, AnalysisResultDTO.ts                |
+| 分析アルゴリズム           | {機能}Algorithm.ts                      | SimilarityAlgorithm.ts, RiskEvaluationAlgorithm.ts      |
 
 ### ディレクトリ命名規則
 
-| ディレクトリタイプ | 命名規則 | 例 |
-|-----------------|---------|-----|
-| 機能モジュール | kebab-case | program-management/, user-profiles/ |
-| Reactコンポーネント | kebab-case | common/, program/, project/ |
-| テストディレクトリ | camelCase | unit/, integration/, e2e/ |
-| app内ルートグループ | (kebab-case) | (auth)/, (dashboard)/ |
-| 言語リソース | i18n/ | i18n/locales/, i18n/config/ |
-| 歴史的事例関連 | case-studies/, historical-data/ | case-studies/algorithms/, historical-data/models/ |
+| ディレクトリタイプ  | 命名規則                        | 例                                                |
+| ------------------- | ------------------------------- | ------------------------------------------------- |
+| 機能モジュール      | kebab-case                      | program-management/, user-profiles/               |
+| Reactコンポーネント | kebab-case                      | common/, program/, project/                       |
+| テストディレクトリ  | camelCase                       | unit/, integration/, e2e/                         |
+| app内ルートグループ | (kebab-case)                    | (auth)/, (dashboard)/                             |
+| 言語リソース        | i18n/                           | i18n/locales/, i18n/config/                       |
+| 歴史的事例関連      | case-studies/, historical-data/ | case-studies/algorithms/, historical-data/models/ |
 
 ディレクトリの深さは機能ごとに3〜4階層以内に抑え、過度に深いネストは避けます。
 
@@ -350,17 +369,20 @@ function BidiText({ text, baseDirection = 'auto' }) {
 プロジェクトのモジュール分割には以下の原則を適用します：
 
 1. **レイヤーアーキテクチャに基づく水平分割**
+
    - **ドメイン層**: システムの核となるビジネスロジックとルール
    - **アプリケーション層**: ユースケースの実装とオーケストレーション
    - **インフラストラクチャ層**: 外部サービスとの連携
    - **プレゼンテーション層**: ユーザーインターフェース実装
 
 2. **関心事の分離**
+
    - 各レイヤー内では機能ごとに適切なディレクトリ分割を行う
    - ドメインモデルのカテゴリごとに適切なサブディレクトリを構成
    - 共通ユーティリティと特定機能のロジックを分離
 
 3. **インターフェース（出入口）の明確化**
+
    - 各モジュールは明示的なインターフェースを通じてのみ外部と通信
    - `index.ts` ファイルで公開APIを定義
    - 内部実装の詳細は隠蔽
@@ -376,10 +398,12 @@ function BidiText({ text, baseDirection = 'auto' }) {
 プロジェクトでは型安全性を確保するため、以下の方針でブランド型（特にID型）を使用します：
 
 1. **プリミティブ型の拡張**
+
    - 文字列や数値を基にした独自の型を定義
    - readonly属性を持つ一意のシンボルプロパティで型を区別
 
 2. **型変換の安全性確保**
+
    - 生の文字列からID型への変換は検証を伴う専用関数を使用
    - 新規IDの生成には型付けされた生成関数を使用
 
@@ -394,6 +418,7 @@ function BidiText({ text, baseDirection = 'auto' }) {
 データベースからのデータをドメインエンティティに変換する際、文字列からID型への安全な変換が必要です。マッパー関数はデータアクセス層とドメイン層の境界で型変換を担当します。
 
 主な責務：
+
 - データベースレコードからドメインモデルへの安全な変換
 - ドメインモデルからDTOへの変換
 
@@ -402,10 +427,12 @@ function BidiText({ text, baseDirection = 'auto' }) {
 ### 型変換のベストプラクティス
 
 - **`as unknown as T`の使用は特定の条件下でのみ行う**
+
   - 主にドメイン層とインフラ層の境界でのみ使用
   - 内部ロジックではブランド型を維持して型安全性を確保
 
 - **型変換の集中化**
+
   - ID変換ロジックは`createId`と`generateId`関数に集中させる
   - マッパーレイヤーで型変換を行い、他の箇所では型キャストを避ける
 
@@ -444,6 +471,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 リポジトリは**データアクセス層**の責務を担い、ドメインオブジェクトの永続化と取得に特化します。以下の原則に厳密に従ってください：
 
 1. **リポジトリの基本責務（許可される操作）**:
+
    - **基本的なCRUD操作のみ**: Create, Read, Update, Delete操作
      - 例: `create(user)`, `findById(userId)`, `update(user)`, `delete(userId)`
    - **単純なFinderメソッド**: 主キーや一意の属性による検索
@@ -456,6 +484,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
      - 例: `withTransaction(callback)`, `beginTransaction()`, `commitTransaction()`
 
 2. **リポジトリで禁止される操作**:
+
    - **ビジネスロジックの実装**: ドメインルールや業務ロジックの判断/実行
      - 禁止例: `approveUserRegistration()`, `calculateProjectScore()`
      - 代替: DomainServiceやApplicationServiceに委譲
@@ -476,6 +505,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
      - 代替: クライアント（UseCaseやController）側で指定
 
 3. **代替パターン（複雑な操作の委譲先）**:
+
    - **QueryObject/ReadModel**: 複雑なクエリや集計、結合を要する読み取り操作
      - 例: `UserProjectsStatisticsQuery`, `ActiveUsersSummaryReadModel`
    - **ApplicationService**: 複数リポジトリを跨ぐ操作や業務ロジック
@@ -504,6 +534,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 リポジトリのメソッド名は責務を明確に反映し、以下の命名規則に従います：
 
 1. **CRUD操作の標準メソッド**:
+
    - `create(entity: Entity): Promise<Entity>` - エンティティの作成
    - `findById(id: ID): Promise<Entity | null>` - IDによる単一エンティティ取得
    - `findByIds(ids: ID[]): Promise<Entity[]>` - 複数IDによるエンティティ取得
@@ -511,12 +542,14 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
    - `delete(id: ID): Promise<void>` - エンティティの削除
 
 2. **許容される拡張Finder**:
+
    - `findBy{AttributeName}(value: any): Promise<Entity | null>` - 単一属性による検索
    - `findAllBy{AttributeName}(value: any): Promise<Entity[]>` - 単一属性による複数検索
    - `findByFilter(filter: SimpleFilter): Promise<Entity[]>` - シンプルなフィルター条件による検索
    - `exists(id: ID): Promise<boolean>` - エンティティの存在確認
 
 3. **許容される関連エンティティ取得**:
+
    - `findRelated{EntityName}(id: ID): Promise<RelatedEntity[]>` - 関連エンティティ取得（直接の関連のみ）
 
 4. **許容されるページネーション/ソート**:
@@ -547,11 +580,13 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 **基本設計原則**
 
 1. **完全な抽象化と交換可能性**
+
    - 特定のAIプロバイダーに依存しない抽象インターフェースを定義する
    - すべてのプロバイダー実装は共通インターフェースを実装すること
    - アプリケーションコードは具象実装ではなく常に抽象インターフェースに依存すること
 
 2. **ファクトリーとDI（依存性注入）パターンの活用**
+
    - `AIServiceFactory`を使用してプロバイダー実装のインスタンスを生成する
    - 依存性注入を通じてサービスインスタンスを提供する
    - 環境変数やコンフィグに基づいて適切なプロバイダーを選択する仕組みを組み込む
@@ -593,11 +628,13 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 **命名規則**
 
 1. **インターフェース**
+
    - `AIServiceInterface` - AIサービスの基本インターフェース
    - `AIModelConfig` - モデル設定型
    - `AICompletionOptions` - 補完オプション型
 
 2. **具象クラス**
+
    - `OpenAIService` - OpenAI実装
    - `AnthropicService` - Anthropic実装
    - `GoogleAIService` - Google実装
@@ -611,11 +648,13 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 **エラー処理**
 
 1. **統一されたエラー型**
+
    - すべてのAIサービスエラーは`AIServiceError`型に変換すること
    - プロバイダー固有のエラーコードは共通エラーコードにマッピングすること
    - エラーはログに詳細に記録し、監視システムで追跡できるようにすること
 
 2. **リトライとフォールバック戦略**
+
    - 一時的なエラーには指数バックオフによるリトライを実装すること
    - 致命的なエラーでは代替プロバイダーへのフォールバックを試みること
    - すべてのフォールバック試行は監視・ログ記録すること
@@ -628,6 +667,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 **ストリーミング実装**
 
 1. **ストリーミングレスポンス規格**
+
    - Server-Sent Events（SSE）またはWebSocketを使用すること
    - 共通形式でチャンク化された応答を返すこと
    - 状態更新と完了イベントを適切に伝達すること
@@ -640,6 +680,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 **モデル能力管理**
 
 1. **モデル能力レジストリ**
+
    - 各AIモデルの能力を中央レジストリで管理すること
    - コンテキスト長制限とコスト情報を含めること
    - 新しいモデルを簡単に追加できる拡張構造にすること
@@ -652,6 +693,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 **モニタリングと分析**
 
 1. **使用状況とパフォーマンス追跡**
+
    - すべてのAIリクエストの使用量、レイテンシー、コストを追跡すること
    - プロバイダー間の比較分析を自動化すること
    - 定期的なパフォーマンスレポートを生成すること
@@ -672,11 +714,13 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 関数の命名には以下のルールを適用します：
 
 1. **一般的な関数**
+
    - camelCase形式を使用（小文字で始まる）
    - 動詞または動詞句で開始する
    - 例: `getData()`, `calculateTotal()`, `convertToModel()`
 
 2. **Reactコンポーネント関数**
+
    - PascalCase形式を使用（大文字で始まる）
    - 以下の条件を満たす場合のみPascalCaseを許可：
      - Next.js特有のページファイル/コンポーネント (`page.tsx`, `layout.tsx`など)
@@ -685,6 +729,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
    - 例: `Button()`, `UserProfile()`, `DashboardLayout()`
 
 3. **Reactフック**
+
    - camelCase形式を使用
    - `use`接頭辞を必ず使用
    - 例: `useState()`, `useEffect()`, `useCustomHook()`
@@ -699,16 +744,19 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 変数の命名には以下のルールを適用します：
 
 1. **一般的な変数**
+
    - camelCase形式を使用
    - 明確で説明的な名前を使用
    - 例: `userData`, `isLoading`, `currentIndex`
 
 2. **グローバル定数**
+
    - UPPER_SNAKE_CASE形式を使用（すべて大文字）
    - 例外: `metadata`, `config`などのフレームワーク固有の特殊な名前
    - 例: `API_BASE_URL`, `MAX_RETRY_COUNT`, `DEFAULT_TIMEOUT_MS`
 
 3. **コンポーネントProps型**
+
    - PascalCase形式を使用
    - コンポーネント名 + `Props`のサフィックス
    - 例: `ButtonProps`, `UserProfileProps`
@@ -775,6 +823,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 ```
 
 **タイプ:**
+
 - **feat**: 新機能
 - **fix**: バグ修正
 - **docs**: ドキュメントのみの変更
@@ -905,11 +954,11 @@ async function retryWithExponentialBackoff<T>(
   operation: () => Promise<T>,
   isRetryable: (error: Error) => boolean,
   options: {
-    maxRetries?: number;          // 最大リトライ回数 (デフォルト: 3)
-    initialDelayMs?: number;      // 初期遅延（ミリ秒）(デフォルト: 1000)
-    maxDelayMs?: number;          // 最大遅延（ミリ秒）(デフォルト: 60000)
-    backoffFactor?: number;       // バックオフ係数 (デフォルト: 2)
-    jitterFactor?: number;        // ジッター係数 (デフォルト: 0.1)
+    maxRetries?: number; // 最大リトライ回数 (デフォルト: 3)
+    initialDelayMs?: number; // 初期遅延（ミリ秒）(デフォルト: 1000)
+    maxDelayMs?: number; // 最大遅延（ミリ秒）(デフォルト: 60000)
+    backoffFactor?: number; // バックオフ係数 (デフォルト: 2)
+    jitterFactor?: number; // ジッター係数 (デフォルト: 0.1)
     onRetry?: (error: Error, attempt: number, delayMs: number) => void; // リトライ時のコールバック
   } = {}
 ): Promise<T> {
@@ -919,7 +968,7 @@ async function retryWithExponentialBackoff<T>(
     maxDelayMs = 60000,
     backoffFactor = 2,
     jitterFactor = 0.1,
-    onRetry = () => {}
+    onRetry = () => {},
   } = options;
 
   let attempt = 0;
@@ -930,27 +979,24 @@ async function retryWithExponentialBackoff<T>(
       return await operation();
     } catch (error) {
       lastError = error as Error;
-      
+
       if (attempt >= maxRetries || !isRetryable(lastError)) {
         throw lastError;
       }
 
       // 指数バックオフ遅延計算（ジッター付き）
-      const baseDelay = Math.min(
-        initialDelayMs * Math.pow(backoffFactor, attempt),
-        maxDelayMs
-      );
-      
+      const baseDelay = Math.min(initialDelayMs * Math.pow(backoffFactor, attempt), maxDelayMs);
+
       // ジッター追加（±jitterFactor%のランダム変動）
       const jitter = baseDelay * jitterFactor * (Math.random() * 2 - 1);
       const delayMs = Math.floor(baseDelay + jitter);
 
       // リトライコールバック実行
       onRetry(lastError, attempt + 1, delayMs);
-      
+
       // 指定時間待機
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-      
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+
       attempt++;
     }
   }
@@ -965,7 +1011,9 @@ async function callAIServiceWithRetry(): Promise<AICompletionResponse> {
     (error) => {
       if (error instanceof AIServiceError) {
         // リトライ可能なエラー種別を判定
-        return ['rate_limit_exceeded', 'service_unavailable', 'gateway_timeout'].includes(error.code);
+        return ['rate_limit_exceeded', 'service_unavailable', 'gateway_timeout'].includes(
+          error.code
+        );
       }
       return false;
     },
@@ -975,15 +1023,16 @@ async function callAIServiceWithRetry(): Promise<AICompletionResponse> {
       onRetry: (error, attempt, delay) => {
         logger.warn(
           `AI Service call failed (${(error as AIServiceError).code}). ` +
-          `Retrying attempt ${attempt} after ${delay}ms delay.`
+            `Retrying attempt ${attempt} after ${delay}ms delay.`
         );
-      }
+      },
     }
   );
 }
 ```
 
 この実装は以下の特徴を持ちます:
+
 - 指数関数的に増加する待機時間によるバックオフ
 - ランダムなジッター付加による負荷分散
 - 柔軟なリトライ条件の設定
@@ -999,17 +1048,17 @@ RTL（Right-to-Left）言語（アラビア語、ヘブライ語など）のサ�
 #### レイアウト制御
 
 1. **方向属性の使用**
+
    ```tsx
    // 言語に基づいて方向属性を設定
    <html dir={locale === 'ar' ? 'rtl' : 'ltr'} lang={locale}>
    ```
 
 2. **Tailwind CSSのRTLサポート**
+
    ```tsx
    // 左右の概念を論理プロパティで扱う
-   <div className="ml-4 rtl:mr-4 rtl:ml-0">
-     {/* コンテンツ */}
-   </div>
+   <div className="ml-4 rtl:ml-0 rtl:mr-4">{/* コンテンツ */}</div>
    ```
 
 3. **Flex方向の自動反転**
@@ -1018,9 +1067,9 @@ RTL（Right-to-Left）言語（アラビア語、ヘブライ語など）のサ�
    const FlexContainer = ({ children, className, ...props }) => {
      const { locale } = useLocale();
      const isRtl = locale === 'ar';
-     
+
      return (
-       <div 
+       <div
          className={`flex ${isRtl ? 'flex-row-reverse' : 'flex-row'} ${className || ''}`}
          {...props}
        >
@@ -1033,22 +1082,19 @@ RTL（Right-to-Left）言語（アラビア語、ヘブライ語など）のサ�
 #### コンポーネント対応
 
 1. **アイコン・矢印の反転**
+
    ```tsx
    // RTL対応アイコン
    const DirectionalIcon = ({ icon: Icon, ...props }) => {
      const { locale } = useLocale();
      const isRtl = locale === 'ar';
-     
-     return (
-       <Icon 
-         className={isRtl ? 'transform rotate-180' : ''} 
-         {...props} 
-       />
-     );
+
+     return <Icon className={isRtl ? 'rotate-180 transform' : ''} {...props} />;
    };
    ```
 
 2. **双方向テキスト管理**
+
    ```tsx
    // 異なる方向のテキストを混在させる場合
    <span dir="ltr">English text</span>
@@ -1056,14 +1102,15 @@ RTL（Right-to-Left）言語（アラビア語、ヘブライ語など）のサ�
    ```
 
 3. **スクロールバーの位置調整**
+
    ```css
    /* RTL用スクロールバー位置調整 */
-   [dir="rtl"] .custom-scrollbar {
+   [dir='rtl'] .custom-scrollbar {
      left: 0;
      right: auto;
    }
-   
-   [dir="ltr"] .custom-scrollbar {
+
+   [dir='ltr'] .custom-scrollbar {
      right: 0;
      left: auto;
    }
@@ -1072,6 +1119,7 @@ RTL（Right-to-Left）言語（アラビア語、ヘブライ語など）のサ�
 #### テストと検証
 
 1. **RTL専用テストケース**
+
    ```typescript
    // RTLモード専用のテストケース
    describe('Component in RTL mode', () => {
@@ -1079,7 +1127,7 @@ RTL（Right-to-Left）言語（アラビア語、ヘブライ語など）のサ�
        // RTLモードで設定
        mockUseLocale.mockReturnValue({ locale: 'ar', isRtl: true });
      });
-     
+
      it('should flip layout direction', () => {
        render(<Component />);
        // RTL固有の検証
@@ -1096,11 +1144,13 @@ RTL（Right-to-Left）言語（アラビア語、ヘブライ語など）のサ�
 RTL対応は以下の段階で実装します：
 
 1. **準備段階（現在）**
+
    - `dir`属性をサポートする基本構造の実装
    - 論理プロパティを優先使用（`margin-inline-start`など）
    - CSS変数による方向依存値の抽象化
 
 2. **部分的実装（必要に応じて）**
+
    - 主要コンポーネントのRTL対応
    - ナビゲーションとレイアウト構造の反転サポート
    - テスト環境でのRTL検証
