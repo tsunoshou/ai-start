@@ -1,8 +1,14 @@
+import path from 'path';
+
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
 
 import logger from '../../utils/logger';
 import { Database } from '../types/supabase';
+
+// .env.localファイルを読み込む
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 // 環境変数からSupabase接続情報を取得
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -114,23 +120,24 @@ export function safeFilter(
  */
 export async function testSupabaseConnection() {
   try {
-    const { error } = await SUPABASE.from('users').select('count()', {
-      count: 'exact',
-      head: true,
-    });
+    // 本当に基本的なクエリ - 健全性チェックのみ
+    const { data, error } = await SUPABASE.from('users').select('*').limit(1);
 
     if (error) {
       logger.error('Supabase接続エラー:', error.message);
+      logger.error('エラー詳細:', error);
       return false;
     }
 
-    logger.info('Supabase接続成功');
+    // データの有無にかかわらず接続成功とみなす
+    logger.info(`Supabase接続成功 - データ: ${data ? JSON.stringify(data) : '(データなし)'}`);
     return true;
   } catch (error) {
     if (error instanceof Error) {
       logger.error('Supabase接続テスト中に例外が発生:', error.message);
+      logger.error('例外スタック:', error.stack);
     } else {
-      logger.error('Supabase接続テスト中に不明な例外が発生');
+      logger.error('Supabase接続テスト中に不明な例外が発生:', error);
     }
     return false;
   }

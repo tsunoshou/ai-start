@@ -1,30 +1,36 @@
 {
   "app": {
-    "name": "AiStart",
-    "description": "AI-assisted business plan creation SaaS platform"
+    "title": "Application",
+    "welcome": "Welcome!",
+    "description": "This is an application using Next.js and Supabase."
+  },
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "profile": "Profile"
   },
   "auth": {
     "signIn": "Sign In",
-    "signUp": "Sign Up",
     "signOut": "Sign Out",
-    "forgotPassword": "Forgot Password?"
-  },
-  "navigation": {
-    "home": "Home",
-    "dashboard": "Dashboard",
-    "programs": "Programs",
-    "projects": "Projects",
-    "settings": "Settings"
+    "signUp": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password"
   },
   "common": {
-    "loading": "Loading...",
-    "error": "An error occurred",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
     "create": "Create",
-    "back": "Back",
-    "next": "Next"
+    "update": "Update",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "confirm": "Confirm",
+    "moreInfo": "More Information"
   }
 }

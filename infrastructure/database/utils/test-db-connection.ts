@@ -1,6 +1,13 @@
+import path from 'path';
+
+import * as dotenv from 'dotenv';
+
 import logger from '../../utils/logger';
 import { testConnection } from '../client';
 import { testSupabaseConnection } from '../client/supabase';
+
+// .env.localファイルを読み込む
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 /**
  * データベース接続テスト実行スクリプト

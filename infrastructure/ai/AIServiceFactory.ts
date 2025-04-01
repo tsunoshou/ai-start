@@ -1,4 +1,6 @@
-import { AIService, AIProvider } from '../../domain/services/ai/AIService';
+import { AIProvider, AIService } from '../../domain/services/ai/AIService';
+import logger from '../utils/logger';
+
 import { OpenAIService } from './OpenAIService';
 
 /**
@@ -51,7 +53,7 @@ export class AIServiceFactory {
     }
 
     // デフォルトはダミーのOpenAIサービス（警告を表示）
-    console.warn(
+    logger.warn(
       'No AI provider API key found in environment variables. Using dummy OpenAI service.'
     );
     return new OpenAIService('dummy-key');

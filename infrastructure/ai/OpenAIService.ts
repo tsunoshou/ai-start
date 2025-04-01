@@ -8,6 +8,7 @@ import {
   AIConversationResponse,
   MessageRole,
 } from '../../domain/services/ai/AIService';
+import logger from '../../infrastructure/utils/logger';
 
 /**
  * OpenAIサービスの実装クラス
@@ -71,7 +72,7 @@ export class OpenAIService implements AIService {
   ): Promise<AIConversationResponse> {
     // 実際の実装では、OpenAI APIを呼び出す処理を実装
     // この部分はOpenAI SDKを使用して実装
-    console.log('OpenAI chat called with model:', options.model);
+    logger.info('OpenAI chat called with model:', options.model);
 
     // ダミーのレスポンスを返す（実際の実装では削除）
     return {
@@ -99,7 +100,7 @@ export class OpenAIService implements AIService {
   ): Promise<AIConversationResponse> {
     // 実際の実装では、OpenAI APIをストリーミングモードで呼び出す処理を実装
     // この部分はOpenAI SDKを使用して実装
-    console.log('OpenAI chat stream called with model:', options.model);
+    logger.info('OpenAI chat stream called with model:', options.model);
 
     // ダミーのストリーミング（実際の実装では削除）
     const chunks = ['これは', 'OpenAI API', 'のダミー', 'ストリーミング', 'レスポンスです。'];

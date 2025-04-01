@@ -116,4 +116,6 @@ module.exports = {
       typescript: {},
     },
   },
+  // .eslintrc.jsファイル自体を検証対象から除外
+  ignorePatterns: ['.eslintrc.js'],
 };
