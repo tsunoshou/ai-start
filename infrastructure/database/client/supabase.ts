@@ -50,44 +50,61 @@ export function escapeValue(value: string): string {
 }
 
 /**
- * フィルタ処理をラップして安全に実行するヘルパー関数
+ * フィルタリング操作で使用する値の型
+ */
+type FilterValue = string | number | boolean | null | Array<string | number | boolean | null>;
+
+/**
+ * 型安全なフィルタリング操作のためのヘルパー関数
+ * PostgrestFilterBuilderに対して安全なフィルタリング操作を提供します
+ *
  * @param query Postgrestクエリビルダー
  * @param column フィルタ対象のカラム
  * @param operator 比較演算子
  * @param value 比較値
  * @returns フィルタ適用後のクエリビルダー
  */
-export function safeFilter<T, K extends Record<string, unknown>>(
-  query: PostgrestFilterBuilder<T, K, T>,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function safeFilter(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: PostgrestFilterBuilder<any, any, any>,
   column: string,
   operator: string,
-  value: unknown
-): PostgrestFilterBuilder<T, K, T> {
+  value: FilterValue
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): PostgrestFilterBuilder<any, any, any> {
   // 値のタイプに応じた適切な処理
+  let processedValue = value;
   if (typeof value === 'string') {
-    value = escapeValue(value);
+    processedValue = escapeValue(value);
   }
 
   // 演算子に応じたフィルタを適用
   switch (operator) {
     case 'eq':
-      return query.eq(column, value);
+      return query.eq(column, processedValue);
     case 'neq':
-      return query.neq(column, value);
+      return query.neq(column, processedValue);
     case 'gt':
-      return query.gt(column, value);
+      return query.gt(column, processedValue);
     case 'gte':
-      return query.gte(column, value);
+      return query.gte(column, processedValue);
     case 'lt':
-      return query.lt(column, value);
+      return query.lt(column, processedValue);
     case 'lte':
-      return query.lte(column, value);
+      return query.lte(column, processedValue);
     case 'in':
-      return query.in(column, Array.isArray(value) ? value : [value]);
+      if (Array.isArray(processedValue)) {
+        return query.in(column, processedValue);
+      }
+      return query.in(column, [processedValue]);
     case 'like':
-      return query.like(column, `%${value}%`);
+      if (typeof processedValue === 'string') {
+        return query.like(column, `%${processedValue}%`);
+      }
+      return query.eq(column, processedValue);
     default:
-      return query.eq(column, value);
+      return query.eq(column, processedValue);
   }
 }
 
@@ -110,7 +127,11 @@ export async function testSupabaseConnection() {
     logger.info('Supabase接続成功');
     return true;
   } catch (error) {
-    logger.error('Supabase接続テスト中に例外が発生:', error);
+    if (error instanceof Error) {
+      logger.error('Supabase接続テスト中に例外が発生:', error.message);
+    } else {
+      logger.error('Supabase接続テスト中に不明な例外が発生');
+    }
     return false;
   }
 }

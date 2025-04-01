@@ -42,10 +42,14 @@ export async function runMigrations() {
  * クエリ実行用のSQL接続を作成
  * 接続プールを適切に設定
  */
+// postgres.jsパッケージはスネークケースのオプション名を要求するため、ESLintルールを一時的に無効化
+// eslint-disable-next-line @typescript-eslint/naming-convention
 const QUERY_CLIENT = postgres(CONNECTION_STRING, {
   max: 10, // 接続プールの最大数
-  idleTimeout: 30, // アイドル接続のタイムアウト（秒）
-  connectTimeout: 10, // 接続タイムアウト（秒）
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  idle_timeout: 30, // アイドル接続のタイムアウト（秒）
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  connect_timeout: 10, // 接続タイムアウト（秒）
 });
 
 /**

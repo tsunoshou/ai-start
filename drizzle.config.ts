@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import type { Config } from 'drizzle-kit';
+import { defineConfig } from 'drizzle-kit';
 
 // 環境変数をロード
 dotenv.config({ path: '.env.local' });
@@ -11,14 +11,14 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export default {
+export default defineConfig({
   schema: './infrastructure/database/schema/*', // スキーマの場所を更新
   out: './infrastructure/database/migrations', // マイグレーションの出力先を更新
-  driver: 'pg',
+  dialect: 'postgresql',
   dbCredentials: {
-    connectionString: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL,
   },
   // マイグレーションのファイル名の接頭辞を日本語にする
   verbose: true,
   strict: true,
-} satisfies Config;
+});
