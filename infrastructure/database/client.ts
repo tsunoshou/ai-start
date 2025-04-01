@@ -5,6 +5,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 
+import { getDatabaseUrl } from '../../config/environment';
 import logger from '../utils/logger';
 
 import * as schema from './schema';
@@ -14,11 +15,14 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 /**
  * 環境変数からデータベース接続文字列を取得
+ * 環境に応じて異なる接続文字列を使用
  */
-const CONNECTION_STRING = process.env.DATABASE_URL;
+const CONNECTION_STRING = getDatabaseUrl();
 
 if (!CONNECTION_STRING) {
-  throw new Error('DATABASE_URL環境変数が設定されていません');
+  throw new Error(
+    'データベース接続文字列を取得できませんでした。環境変数の設定を確認してください。'
+  );
 }
 
 /**
@@ -75,5 +79,29 @@ export async function testConnection() {
   } catch (error) {
     logger.error('データベース接続エラー:', error);
     return false;
+  }
+}
+
+/**
+ * マイグレーションを特定のデータベースに対して実行する関数
+ * @param connectionString 対象データベースの接続文字列
+ */
+export async function runMigrationToSpecificDB(connectionString: string) {
+  const migrationClient = postgres(connectionString, { max: 1 });
+  try {
+    logger.info(
+      `データベース ${connectionString.split('@')[1]?.split('/')[0] || '不明'} へのマイグレーションを開始します...`
+    );
+    await migrate(drizzle(migrationClient), {
+      migrationsFolder: './infrastructure/database/migrations',
+    });
+    logger.info(
+      `データベース ${connectionString.split('@')[1]?.split('/')[0] || '不明'} へのマイグレーション完了`
+    );
+  } catch (error) {
+    logger.error('マイグレーション中にエラーが発生しました:', error);
+    throw error;
+  } finally {
+    await migrationClient.end();
   }
 }
