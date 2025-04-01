@@ -15,7 +15,29 @@
     "test": "jest",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push:pg",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md}": [
+      "prettier --write"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   },
   "repository": {
     "type": "git",
@@ -30,7 +52,7 @@
   "homepage": "https://github.com/tsunoshou/ai-start#readme",
   "description": "",
   "dependencies": {
-    "@auth/core": "^0.18.1",
+    "@auth/core": "^0.38.0",
     "@supabase/supabase-js": "^2.44.2",
     "@tanstack/react-query": "^5.28.2",
     "drizzle-orm": "^0.30.4",
@@ -61,7 +83,10 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-react": "^7.37.4",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "lint-staged": "^15.5.0",
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "typescript": "^5.3.3"
