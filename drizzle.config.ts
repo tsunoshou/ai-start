@@ -1,0 +1,24 @@
+import * as dotenv from 'dotenv';
+import type { Config } from 'drizzle-kit';
+
+// 環境変数をロード
+dotenv.config({ path: '.env.local' });
+
+// DATABASE_URL環境変数が設定されていることを確認
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'DATABASE_URL環境変数が設定されていません。.env.localファイルを確認してください。'
+  );
+}
+
+export default {
+  schema: './infrastructure/database/schema/*', // スキーマの場所を更新
+  out: './infrastructure/database/migrations', // マイグレーションの出力先を更新
+  driver: 'pg',
+  dbCredentials: {
+    connectionString: process.env.DATABASE_URL,
+  },
+  // マイグレーションのファイル名の接頭辞を日本語にする
+  verbose: true,
+  strict: true,
+} satisfies Config;
