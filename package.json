@@ -69,8 +69,6 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@esbuild-kit/core-utils": "^3.3.2",
-    "@esbuild-kit/esm-loader": "^2.6.5",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",
     "@types/node": "^20.11.25",
@@ -92,6 +90,10 @@
     "lint-staged": "^15.5.0",
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.6.11",
+    "tsx": "^4.19.3",
     "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "esbuild": "^0.25.2"
   }
 }
