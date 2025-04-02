@@ -1,0 +1,21 @@
+{
+  "regions": ["auto"],
+  "github": {
+    "enabled": true,
+    "silent": true,
+    "autoAlias": true
+  },
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "env": {
+    "SKIP_DB_TEST": "true",
+    "NODE_ENV": "production"
+  },
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "development": true,
+      "release/**": true
+    }
+  }
+}
