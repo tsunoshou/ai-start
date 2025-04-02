@@ -12,30 +12,35 @@ if (!DATABASE_URL) {
   throw new Error('データベースURL環境変数が設定されていません');
 }
 
+// 接続URLからプーラーの使用を検出
+const IS_POOLER =
+  DATABASE_URL.includes('pooler.supabase.com') || DATABASE_URL.includes('pgbouncer=true');
+
 // Postgresクライアントの設定
 // SQLクエリ実行用
 export const SQL = postgres(DATABASE_URL, {
-  max: 10, // 接続プールの最大接続数
-  // タイムアウト値（ミリ秒）
+  max: IS_POOLER ? 10 : 5, // 接続プールの最大接続数（プーラー使用時は多めに）
+  // プーラー使用時は prepare 無効化が必要
   /* eslint-disable @typescript-eslint/naming-convention */
+  prepare: IS_POOLER ? false : true,
   idle_timeout: 20,
   connect_timeout: 30000,
   /* eslint-enable @typescript-eslint/naming-convention */
   ssl: DATABASE_URL.includes('localhost') || DATABASE_URL.includes('[::1]') ? false : true, // ローカル環境ではSSLを無効化
 });
 
+// Drizzle ORMインスタンス作成
+export const DB = drizzle(SQL);
+
 // テスト用の接続関数
 export async function testConnection(): Promise<boolean> {
   try {
     // 単純なクエリでデータベース接続をテスト
     const result = await SQL`SELECT 1 as test`;
+    logger.info('PostgreSQL接続テスト成功');
     return result.length > 0 && result[0].test === 1;
   } catch (error) {
     logger.error('PostgreSQL接続エラー:', error);
     return false;
   }
 }
-
-// DrizzleORMのクライアント
-// スキーマベースのタイプセーフなデータベース操作用
-export const DB = drizzle(SQL);

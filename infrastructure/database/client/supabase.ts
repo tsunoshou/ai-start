@@ -142,24 +142,22 @@ export function safeFilter(
  * データベース接続テスト用の関数
  * @returns 接続成功時はtrue、失敗時はfalse
  */
-export async function testSupabaseConnection() {
+export async function testSupabaseConnection(): Promise<boolean> {
   try {
     // 本当に基本的なクエリ - 健全性チェックのみ
-    const { data, error } = await SUPABASE.from('users').select('*').limit(1);
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    const { error } = await SUPABASE.from('_health').select('*').limit(1);
 
     if (error) {
       logger.error('Supabase接続エラー:', error.message);
-      logger.error('エラー詳細:', error);
       return false;
     }
 
-    // データの有無にかかわらず接続成功とみなす
-    logger.info(`Supabase接続成功 - データ: ${data ? JSON.stringify(data) : '(データなし)'}`);
+    logger.info('Supabase接続テスト成功');
     return true;
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof Error) {
       logger.error('Supabase接続テスト中に例外が発生:', error.message);
-      logger.error('例外スタック:', error.stack);
     } else {
       logger.error('Supabase接続テスト中に不明な例外が発生:', error);
     }

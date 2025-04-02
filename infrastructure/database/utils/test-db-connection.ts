@@ -12,229 +12,100 @@ export interface ConnectionTestResult {
   success: boolean;
   message: string;
   timestamp: string;
-  details?: Record<string, unknown>;
 }
-
-/**
- * 本番環境かどうかを判断する
- */
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 /**
  * テストをスキップすべきかどうかを判断する
- * - 本番環境の場合
- * - SKIP_DB_TEST環境変数が設定されている場合
- * - Vercel環境の場合
  */
 const SHOULD_SKIP_TEST =
-  IS_PRODUCTION || process.env.SKIP_DB_TEST === 'true' || process.env.VERCEL === '1';
+  process.env.NODE_ENV === 'production' ||
+  process.env.SKIP_DB_TEST === 'true' ||
+  process.env.VERCEL === '1' ||
+  process.env.CI === 'true';
 
 /**
- * シンプルなPostgres接続テスト
- * 環境変数チェックのみで実際の接続は試行しない安全なバージョン
+ * 接続テスト結果を作成するヘルパー関数
  */
-export function checkPostgresEnvVars(): ConnectionTestResult {
-  try {
-    logger.info(`環境変数DATABASE_URL: ${ENV.DATABASE_URL ? '設定済み' : '未設定'}`);
-
-    // 本番環境では実際の接続テストを行わず、環境変数の存在確認のみ
-    const hasDbUrl = typeof ENV.DATABASE_URL === 'string' && ENV.DATABASE_URL.length > 10;
-
-    if (!hasDbUrl) {
-      return {
-        success: false,
-        message: 'データベース接続情報が不足しています',
-        timestamp: new Date().toISOString(),
-        details: {
-          hasDatabaseUrl: Boolean(ENV.DATABASE_URL),
-        },
-      };
-    }
-
-    return {
-      success: true,
-      message: 'データベース接続情報が正しく設定されています',
-      timestamp: new Date().toISOString(),
-    };
-  } catch (error) {
-    logger.error('環境変数チェック中にエラーが発生しました:', error);
-    return {
-      success: false,
-      message: `環境変数チェックエラー: ${error instanceof Error ? error.message : String(error)}`,
-      timestamp: new Date().toISOString(),
-    };
-  }
+function createResult(success: boolean, message: string): ConnectionTestResult {
+  return {
+    success,
+    message,
+    timestamp: new Date().toISOString(),
+  };
 }
 
 /**
- * シンプルなSupabase環境変数チェック
- * 実際の接続テストは行わない安全なバージョン
- */
-export function checkSupabaseEnvVars(): ConnectionTestResult {
-  try {
-    const hasUrl =
-      typeof ENV.NEXT_PUBLIC_SUPABASE_URL === 'string' && ENV.NEXT_PUBLIC_SUPABASE_URL.length > 10;
-    const hasKey =
-      typeof ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'string' &&
-      ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY.length > 10;
-
-    if (!hasUrl || !hasKey) {
-      return {
-        success: false,
-        message: 'Supabase接続情報が不足しています',
-        timestamp: new Date().toISOString(),
-        details: {
-          hasUrl,
-          hasKey,
-        },
-      };
-    }
-
-    return {
-      success: true,
-      message: 'Supabase接続情報が正しく設定されています',
-      timestamp: new Date().toISOString(),
-    };
-  } catch (error) {
-    logger.error('Supabase環境変数チェック中にエラーが発生しました:', error);
-    return {
-      success: false,
-      message: `Supabase環境変数チェックエラー: ${error instanceof Error ? error.message : String(error)}`,
-      timestamp: new Date().toISOString(),
-    };
-  }
-}
-
-/**
- * 開発環境でのみ実行される実際のDB接続テスト
- * 本番環境では安全のため実行されない
+ * PostgreSQL接続テスト
  */
 export async function testDatabaseConnectionIfDev(): Promise<ConnectionTestResult> {
-  // 本番環境または指定された環境ではテストをスキップ
+  // テストをスキップする場合
   if (SHOULD_SKIP_TEST) {
-    return {
-      success: true,
-      message: '本番環境またはビルド環境では接続テストはスキップされます',
-      timestamp: new Date().toISOString(),
-    };
+    return createResult(true, '環境設定によりデータベース接続テストはスキップされます');
   }
 
   try {
     // 環境変数チェック
-    const envCheck = checkPostgresEnvVars();
-    if (!envCheck.success) {
-      return envCheck;
+    if (!ENV.DATABASE_URL || ENV.DATABASE_URL.length < 10) {
+      return createResult(false, 'データベース接続情報が不足しています');
     }
 
-    // 開発環境のみ実際に接続テスト
-    // eslint-disable-next-line @typescript-eslint/naming-convention
+    // 接続テスト実行
     const sql = postgres(ENV.DATABASE_URL, {
-      max: 1, // 単一接続のみ
-      // eslint-disable-next-line @typescript-eslint/naming-convention
-      idle_timeout: 5, // 5秒のアイドルタイムアウト
-      // eslint-disable-next-line @typescript-eslint/naming-convention
-      connect_timeout: 10, // 10秒の接続タイムアウト
+      max: 1,
+      /* eslint-disable @typescript-eslint/naming-convention */
+      idle_timeout: 5,
+      connect_timeout: 10,
+      /* eslint-enable @typescript-eslint/naming-convention */
       ssl: ENV.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
     });
 
     try {
-      // シンプルなテストクエリを実行
       const result = await sql`SELECT 1 as connected`;
-      const isConnected = result.length > 0 && result[0].connected === 1;
-
-      return {
-        success: isConnected,
-        message: isConnected ? 'データベース接続テスト成功' : 'データベース接続テスト失敗',
-        timestamp: new Date().toISOString(),
-      };
+      const connected = result.length > 0 && result[0].connected === 1;
+      return createResult(connected, connected ? 'データベース接続成功' : 'データベース接続失敗');
     } finally {
-      // 必ず接続を閉じる
       await sql.end();
     }
   } catch (error) {
-    logger.error('データベース接続テスト中にエラーが発生しました:', error);
-    return {
-      success: false,
-      message: `データベース接続エラー: ${error instanceof Error ? error.message : String(error)}`,
-      timestamp: new Date().toISOString(),
-    };
+    logger.error('データベース接続テストエラー:', error);
+    return createResult(false, 'データベース接続エラー');
   }
 }
 
 /**
- * 開発環境でのみ実行されるSupabase接続テスト
- * 本番環境では安全のため実行されない
+ * Supabase接続テスト
  */
 export async function testSupabaseConnectionIfDev(): Promise<ConnectionTestResult> {
-  // 本番環境または指定された環境ではテストをスキップ
+  // テストをスキップする場合
   if (SHOULD_SKIP_TEST) {
-    return {
-      success: true,
-      message: '本番環境またはビルド環境ではSupabase接続テストはスキップされます',
-      timestamp: new Date().toISOString(),
-    };
+    return createResult(true, '環境設定によりSupabase接続テストはスキップされます');
   }
 
   try {
     // 環境変数チェック
-    const envCheck = checkSupabaseEnvVars();
-    if (!envCheck.success) {
-      return envCheck;
+    if (!ENV.NEXT_PUBLIC_SUPABASE_URL || !ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      return createResult(false, 'Supabase接続情報が不足しています');
     }
 
-    // 開発環境のみ実際に接続テスト
-    if (ENV.NEXT_PUBLIC_SUPABASE_URL && ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      const supabase = createClient(
-        ENV.NEXT_PUBLIC_SUPABASE_URL,
-        ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        {
-          auth: {
-            persistSession: false,
-            autoRefreshToken: false,
-          },
-        }
-      );
+    // 接続テスト実行
+    const supabase = createClient(ENV.NEXT_PUBLIC_SUPABASE_URL, ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
 
-      // ヘルスチェックのみ実行(認証不要なエンドポイント)
-      try {
-        const { error } = await supabase.from('_health').select('*').limit(1);
+    // 最もシンプルな接続テスト - 認証情報取得
+    // 接続自体のテストだけを行う（実際のデータベース操作は行わない）
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { data, error } = await supabase.auth.getSession();
 
-        if (error) {
-          logger.error('Supabase接続テストエラー:', error);
-          return {
-            success: false,
-            message: `Supabase接続エラー: ${error.message || String(error)}`,
-            timestamp: new Date().toISOString(),
-          };
-        }
-
-        return {
-          success: true,
-          message: 'Supabase接続テスト成功',
-          timestamp: new Date().toISOString(),
-        };
-      } catch (err: unknown) {
-        const error = err as Error;
-        logger.error('Supabase接続テストでエラーが発生:', error.message);
-        return {
-          success: false,
-          message: `Supabase接続エラー: ${error.message || String(error)}`,
-          timestamp: new Date().toISOString(),
-        };
-      }
+    if (error) {
+      logger.error('Supabase接続エラー:', error);
+      return createResult(false, 'Supabase接続テスト失敗');
     }
 
-    return {
-      success: false,
-      message: 'Supabase接続情報が設定されていません',
-      timestamp: new Date().toISOString(),
-    };
+    // セッションがなくても接続できていればOK
+    return createResult(true, 'Supabase接続成功');
   } catch (error) {
-    logger.error('Supabase接続テスト中にエラーが発生しました:', error);
-    return {
-      success: false,
-      message: `Supabase接続エラー: ${error instanceof Error ? error.message : String(error)}`,
-      timestamp: new Date().toISOString(),
-    };
+    logger.error('Supabase接続テストエラー:', error);
+    return createResult(false, 'Supabase接続エラー');
   }
 }

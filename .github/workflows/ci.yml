@@ -39,7 +39,7 @@ jobs:
       - name: テスト実行
         run: npm test
         
-  # セキュリティスキャンを残しておくオプション
+  # セキュリティスキャンのみ残す（ビルドはVercelに任せる）
   security-scan:
     name: セキュリティチェック
     runs-on: ubuntu-latest
