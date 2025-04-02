@@ -1,6 +1,7 @@
 // ESLintルールを一時的に無効化（Reactコンポーネントは大文字で始める必要があるため）
 // eslint-disable-next-line @typescript-eslint/naming-convention
-import ConnectionTest from './components/ConnectionTest';
+// ConnectionTestコンポーネントの一時的な削除（デプロイ成功のため）
+// import ConnectionTest from './components/ConnectionTest';
 
 export default function Home() {
   return (
@@ -16,7 +17,8 @@ export default function Home() {
           </p>
         </div>
 
-        <ConnectionTest />
+        {/* 一時的にConnectionTestコンポーネントを削除 */}
+        {/* <ConnectionTest /> */}
       </div>
     </main>
   );
