@@ -1,4 +1,7 @@
-import { AIService, AIProvider } from '../../domain/services/ai/AIService';
+import { ENV } from '../../config/environment';
+import { AIProvider, AIService } from '../../domain/services/ai/AIService';
+import logger from '../utils/logger';
+
 import { OpenAIService } from './OpenAIService';
 
 /**
@@ -35,9 +38,9 @@ export class AIServiceFactory {
    * 設定されているAPIキーがあるプロバイダーを優先的に選択
    */
   static createServiceFromEnv(): AIService {
-    const openaiKey = process.env.OPENAI_API_KEY;
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const openaiKey = ENV.OPENAI_API_KEY;
+    const anthropicKey = ENV.ANTHROPIC_API_KEY;
+    const geminiKey = ENV.GEMINI_API_KEY;
 
     // 利用可能なAPIキーを持つプロバイダーで最初に見つかったものを使用
     if (openaiKey) {
@@ -51,7 +54,7 @@ export class AIServiceFactory {
     }
 
     // デフォルトはダミーのOpenAIサービス（警告を表示）
-    console.warn(
+    logger.warn(
       'No AI provider API key found in environment variables. Using dummy OpenAI service.'
     );
     return new OpenAIService('dummy-key');

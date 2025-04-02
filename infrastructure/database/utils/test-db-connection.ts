@@ -1,57 +1,119 @@
+import { createClient } from '@supabase/supabase-js';
+import postgres from 'postgres';
+
+import { ENV } from '@/config/environment';
+
 import logger from '../../utils/logger';
-import { testConnection } from '../client';
-import { testSupabaseConnection } from '../client/supabase';
 
 /**
- * データベース接続テスト実行スクリプト
- *
- * Drizzle直接接続とSupabase接続の両方をテストします
+ * 接続テスト結果の型
  */
-async function runTests() {
-  logger.info('=== データベース接続テスト開始 ===');
-  logger.info(`環境変数DATABASE_URL: ${process.env.DATABASE_URL ? '設定済み' : '未設定'}`);
-  logger.info(
-    `環境変数NEXT_PUBLIC_SUPABASE_URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL ? '設定済み' : '未設定'}`
-  );
-  logger.info(
-    `環境変数NEXT_PUBLIC_SUPABASE_ANON_KEY: ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '設定済み' : '未設定'}`
-  );
+export interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+  timestamp: string;
+}
 
-  // PostgreSQL直接接続テスト
-  logger.info('\n--- PostgreSQL直接接続テスト ---');
-  const directConnectionResult = await testConnection();
+/**
+ * 接続テスト結果を作成するヘルパー関数
+ */
+function createResult(success: boolean, message: string): ConnectionTestResult {
+  return {
+    success,
+    message,
+    timestamp: new Date().toISOString(),
+  };
+}
 
-  // Supabase接続テスト
-  logger.info('\n--- Supabase接続テスト ---');
-  const supabaseConnectionResult = await testSupabaseConnection();
-
-  // テスト結果の総合評価
-  logger.info('\n=== テスト結果サマリー ===');
-
-  if (directConnectionResult && supabaseConnectionResult) {
-    logger.info('✅ すべての接続テストが成功しました');
-    process.exit(0);
-  } else {
-    logger.error('❌ 一部またはすべての接続テストが失敗しました');
-
-    if (!directConnectionResult) {
-      logger.error('  - PostgreSQL直接接続: 失敗');
-      logger.error('    DATABASE_URL環境変数を確認してください');
+/**
+ * PostgreSQL接続テスト
+ * @returns 接続テスト結果
+ */
+export async function testDatabaseConnection(): Promise<ConnectionTestResult> {
+  try {
+    if (!ENV.DATABASE_URL) {
+      return createResult(false, 'データベース接続情報が不足しています');
     }
 
-    if (!supabaseConnectionResult) {
-      logger.error('  - Supabase接続: 失敗');
-      logger.error(
-        '    NEXT_PUBLIC_SUPABASE_URL、NEXT_PUBLIC_SUPABASE_ANON_KEY環境変数を確認してください'
-      );
-    }
+    const sql = postgres(ENV.DATABASE_URL, {
+      max: 1,
+      /* eslint-disable @typescript-eslint/naming-convention */
+      idle_timeout: 5,
+      connect_timeout: 10,
+      /* eslint-enable @typescript-eslint/naming-convention */
+      ssl: ENV.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
+    });
 
-    process.exit(1);
+    try {
+      const result = await sql`SELECT 1 as connected`;
+      const connected = result.length > 0 && result[0].connected === 1;
+      return createResult(connected, connected ? 'データベース接続成功' : 'データベース接続失敗');
+    } finally {
+      await sql.end();
+    }
+  } catch (error) {
+    logger.error('データベース接続エラー:', error);
+    return createResult(false, 'データベース接続エラー');
   }
 }
 
-// テスト実行
-runTests().catch((error) => {
-  logger.error('テスト実行中にエラーが発生しました:', error);
-  process.exit(1);
-});
+/**
+ * Supabase接続テスト
+ * @returns 接続テスト結果
+ */
+export async function testSupabaseConnection(): Promise<ConnectionTestResult> {
+  try {
+    if (!ENV.NEXT_PUBLIC_SUPABASE_URL || !ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      return createResult(false, 'Supabase接続情報が不足しています');
+    }
+
+    const supabase = createClient(ENV.NEXT_PUBLIC_SUPABASE_URL, ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+      logger.error('Supabase接続エラー:', error);
+      return createResult(false, 'Supabase接続テスト失敗');
+    }
+
+    return createResult(true, 'Supabase接続成功');
+  } catch (error) {
+    logger.error('Supabase接続エラー:', error);
+    return createResult(false, 'Supabase接続エラー');
+  }
+}
+
+/**
+ * OpenAI接続テスト
+ * @returns 接続テスト結果
+ */
+export async function testOpenAIConnection(): Promise<ConnectionTestResult> {
+  try {
+    if (!ENV.OPENAI_API_KEY) {
+      return createResult(false, 'OpenAI APIキーが不足しています');
+    }
+
+    const response = await fetch('https://api.openai.com/v1/models', {
+      method: 'GET',
+      headers: {
+        /* eslint-disable @typescript-eslint/naming-convention */
+        Authorization: `Bearer ${ENV.OPENAI_API_KEY}`,
+        /* eslint-enable @typescript-eslint/naming-convention */
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      logger.error('OpenAI接続エラー:', error);
+      return createResult(false, 'OpenAI接続テスト失敗');
+    }
+
+    return createResult(true, 'OpenAI接続成功');
+  } catch (error) {
+    logger.error('OpenAI接続エラー:', error);
+    return createResult(false, 'OpenAI接続エラー');
+  }
+}

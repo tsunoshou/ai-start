@@ -1,30 +1,36 @@
 {
   "app": {
-    "name": "AiStart",
-    "description": "AI支援によるビジネスプラン作成支援SaaSプラットフォーム"
+    "title": "アプリケーション",
+    "welcome": "ようこそ！",
+    "description": "これはNext.jsとSupabaseを使用したアプリケーションです。"
+  },
+  "nav": {
+    "home": "ホーム",
+    "about": "アプリについて",
+    "dashboard": "ダッシュボード",
+    "settings": "設定",
+    "profile": "プロフィール"
   },
   "auth": {
     "signIn": "ログイン",
-    "signUp": "アカウント登録",
     "signOut": "ログアウト",
-    "forgotPassword": "パスワードをお忘れですか？"
-  },
-  "navigation": {
-    "home": "ホーム",
-    "dashboard": "ダッシュボード",
-    "programs": "プログラム",
-    "projects": "プロジェクト",
-    "settings": "設定"
+    "signUp": "アカウント作成",
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "forgotPassword": "パスワードをお忘れですか？",
+    "resetPassword": "パスワードをリセット"
   },
   "common": {
-    "loading": "読み込み中...",
-    "error": "エラーが発生しました",
     "save": "保存",
     "cancel": "キャンセル",
     "delete": "削除",
     "edit": "編集",
     "create": "作成",
-    "back": "戻る",
-    "next": "次へ"
+    "update": "更新",
+    "loading": "読み込み中...",
+    "error": "エラーが発生しました",
+    "success": "成功しました",
+    "confirm": "確認",
+    "moreInfo": "詳細情報"
   }
 }

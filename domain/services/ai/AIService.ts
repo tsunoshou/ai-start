@@ -14,6 +14,7 @@ export enum AIProvider {
   OPENAI = 'openai',
   ANTHROPIC = 'anthropic',
   GOOGLE = 'google',
+  // eslint-disable-next-line @typescript-eslint/naming-convention
   OPEN_SOURCE = 'open_source',
 }
 

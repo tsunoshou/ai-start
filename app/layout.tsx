@@ -1,5 +1,10 @@
 import type { Metadata } from 'next';
+
 import '../presentation/styles/globals.css';
+
+import { DEFAULT_LOCALE } from '@/i18n/config/settings';
+
+import { I18nWrapper } from './I18nWrapper';
 
 export const metadata: Metadata = {
   title: 'AiStart - AI支援によるビジネスプラン作成支援SaaS',
@@ -13,8 +18,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
-      <body>{children}</body>
+    <html lang={DEFAULT_LOCALE}>
+      <body>
+        <I18nWrapper>{children}</I18nWrapper>
+      </body>
     </html>
   );
 }

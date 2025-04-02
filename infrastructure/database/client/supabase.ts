@@ -1,12 +1,18 @@
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 import { createClient } from '@supabase/supabase-js';
 
-import logger from '../../utils/logger';
+import {
+  getSupabaseUrl,
+  getSupabaseAnonKey,
+  getSupabaseServiceRoleKey,
+  isStaging,
+  isProduction,
+} from '../../../config/environment';
 import { Database } from '../types/supabase';
 
 // 環境変数からSupabase接続情報を取得
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_URL = getSupabaseUrl();
+const SUPABASE_ANON_KEY = getSupabaseAnonKey();
 
 // 環境変数が設定されていない場合はエラーをスロー
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -21,8 +27,71 @@ export const SUPABASE = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, 
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    // SSRで使用する場合はcookieを有効化
+    detectSessionInUrl: typeof window !== 'undefined',
+    flowType: 'pkce',
+  },
+  global: {
+    // カスタムフェッチ設定（タイムアウト付き）
+    fetch: (url, options) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒タイムアウト
+
+      return fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          ...options?.headers,
+          /* eslint-disable @typescript-eslint/naming-convention */
+          'x-application-name': 'ai-start',
+          /* eslint-enable @typescript-eslint/naming-convention */
+        },
+      }).finally(() => clearTimeout(timeoutId));
+    },
+  },
+  db: {
+    schema: 'public',
+  },
+  // 接続の問題が発生した場合のリトライ設定
+  realtime: {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    params: { eventsPerSecond: 10 },
   },
 });
+
+/**
+ * 現在の環境に適したSupabaseクライアントを作成する
+ * 環境変数に基づいて適切なURLとキーを使用
+ * @returns Supabaseクライアント
+ */
+export function createEnvironmentClient() {
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseKey = getSupabaseAnonKey();
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
+}
+
+/**
+ * 管理者権限を持つSupabaseクライアントを作成する
+ * サービスロールキーを使用するため、サーバーサイドでのみ使用すること
+ * @returns 管理者権限のSupabaseクライアント
+ */
+export function createAdminClient() {
+  const supabaseUrl = getSupabaseUrl();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: true,
+    },
+  });
+}
 
 /**
  * ユーザープロファイルをSupabaseから取得する関数
@@ -47,6 +116,34 @@ export async function getUserProfile(userId: string) {
 export function escapeValue(value: string): string {
   // 基本的なエスケープ処理を実装
   return value.replace(/'/g, "''");
+}
+
+/**
+ * 環境名を取得する
+ * @returns 環境名（日本語）
+ */
+export function getEnvironmentName(): string {
+  if (isProduction()) {
+    return '本番環境';
+  } else if (isStaging()) {
+    return 'ステージング環境';
+  } else {
+    return '開発環境';
+  }
+}
+
+/**
+ * 環境名を取得する
+ * @returns 環境名（英語）
+ */
+export function getEnvironmentNameEn(): string {
+  if (isProduction()) {
+    return 'production';
+  } else if (isStaging()) {
+    return 'staging';
+  } else {
+    return 'development';
+  }
 }
 
 /**
@@ -105,33 +202,5 @@ export function safeFilter(
       return query.eq(column, processedValue);
     default:
       return query.eq(column, processedValue);
-  }
-}
-
-/**
- * データベース接続テスト用の関数
- * @returns 接続成功時はtrue、失敗時はfalse
- */
-export async function testSupabaseConnection() {
-  try {
-    const { error } = await SUPABASE.from('users').select('count()', {
-      count: 'exact',
-      head: true,
-    });
-
-    if (error) {
-      logger.error('Supabase接続エラー:', error.message);
-      return false;
-    }
-
-    logger.info('Supabase接続成功');
-    return true;
-  } catch (error) {
-    if (error instanceof Error) {
-      logger.error('Supabase接続テスト中に例外が発生:', error.message);
-    } else {
-      logger.error('Supabase接続テスト中に不明な例外が発生');
-    }
-    return false;
   }
 }

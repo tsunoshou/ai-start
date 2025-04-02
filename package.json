@@ -1,6 +1,6 @@
 {
   "name": "ai-start",
-  "version": "1.0.0",
+  "version": "0.1.0-alpha.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -18,6 +18,10 @@
     "db:studio": "drizzle-kit studio",
     "db:test": "tsx infrastructure/database/utils/test-db-connection.ts",
     "db:migrate": "tsx infrastructure/database/client.ts",
+    "db:migrate:dev": "APP_ENV=development tsx infrastructure/database/utils/migrate-env.ts",
+    "db:migrate:staging": "APP_ENV=staging tsx infrastructure/database/utils/migrate-env.ts",
+    "db:migrate:prod": "APP_ENV=production tsx infrastructure/database/utils/migrate-env.ts",
+    "db:migrate:all": "tsx infrastructure/database/utils/migrate-all.ts",
     "prepare": "husky",
     "fmt": "prettier --write ."
   },
@@ -26,7 +30,7 @@
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{json,css,md}": [
+    "*.{json,css,md,yml,yaml}": [
       "prettier --write"
     ]
   },
@@ -59,12 +63,17 @@
     "@supabase/auth-helpers-nextjs": "^0.9.0",
     "@supabase/supabase-js": "^2.44.2",
     "@tanstack/react-query": "^5.28.2",
+    "@types/pg": "^8.11.11",
+    "@vercel/postgres": "^0.10.0",
     "dotenv": "^16.4.5",
-    "drizzle-orm": "^0.30.6",
+    "drizzle-orm": "^0.41.0",
     "lucide-react": "^0.359.0",
     "next": "^14.1.3",
     "next-auth": "^5.0.0-beta.3",
+    "next-international": "^1.3.1",
     "next-intl": "^3.9.1",
+    "openai": "^4.91.1",
+    "pg": "^8.14.1",
     "postcss": "^8.4.35",
     "postgres": "^3.4.3",
     "react": "^18.2.0",

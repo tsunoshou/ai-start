@@ -29,16 +29,20 @@ function log(level: LogLevel, message: string, data?: unknown): void {
       if (process.env.NODE_ENV !== 'production') {
         // 開発環境ではコンソールに出力
         if (data) {
+          // eslint-disable-next-line no-console
           console.log(`${prefix} ${message}`, data);
         } else {
+          // eslint-disable-next-line no-console
           console.log(`${prefix} ${message}`);
         }
       }
       break;
     case 'warn':
+      // eslint-disable-next-line no-console
       console.warn(`${prefix} ${message}`, data ? data : '');
       break;
     case 'error':
+      // eslint-disable-next-line no-console
       console.error(`${prefix} ${message}`, data ? data : '');
       break;
     default:
@@ -76,10 +80,14 @@ export function error(message: string, data?: unknown): void {
   log('error', message, data);
 }
 
-// デフォルトエクスポート
-export default {
+// ロガーオブジェクト
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const logger = {
   debug,
   info,
   warn,
   error,
 };
+
+// デフォルトエクスポート
+export default logger;

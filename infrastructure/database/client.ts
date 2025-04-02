@@ -2,23 +2,40 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 
+import { getDatabaseUrl } from '../../config/environment';
 import logger from '../utils/logger';
 
 import * as schema from './schema';
 
 /**
  * 環境変数からデータベース接続文字列を取得
+ * 環境に応じて異なる接続文字列を使用
  */
-const CONNECTION_STRING = process.env.DATABASE_URL;
+const CONNECTION_STRING = getDatabaseUrl();
 
 if (!CONNECTION_STRING) {
-  throw new Error('DATABASE_URL環境変数が設定されていません');
+  throw new Error(
+    'データベース接続文字列を取得できませんでした。環境変数の設定を確認してください。'
+  );
 }
+
+// 接続URLからプーラーの使用を検出
+const IS_POOLER =
+  CONNECTION_STRING.includes('pooler.supabase.com') || CONNECTION_STRING.includes('pgbouncer=true');
+
+logger.info(`データベース接続タイプ: ${IS_POOLER ? '接続プーラー' : '直接接続'}`);
 
 /**
  * マイグレーション用の一時的なSQL接続を作成
+ * マイグレーションは一時的な接続なので、最小限の設定で十分
  */
-const MIGRATION_CLIENT = postgres(CONNECTION_STRING, { max: 1 });
+const MIGRATION_CLIENT = postgres(CONNECTION_STRING, {
+  max: 1,
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  idle_timeout: 20,
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  connect_timeout: 10,
+});
 
 /**
  * マイグレーションを実行する関数
@@ -40,16 +57,23 @@ export async function runMigrations() {
 
 /**
  * クエリ実行用のSQL接続を作成
- * 接続プールを適切に設定
+ * 接続プーラーを使用する場合とそうでない場合で設定を最適化
  */
 // postgres.jsパッケージはスネークケースのオプション名を要求するため、ESLintルールを一時的に無効化
-// eslint-disable-next-line @typescript-eslint/naming-convention
 const QUERY_CLIENT = postgres(CONNECTION_STRING, {
-  max: 10, // 接続プールの最大数
+  // 接続プーラー使用時はプールサイズを最適化
+  max: IS_POOLER ? 20 : 10,
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  idle_timeout: 30, // アイドル接続のタイムアウト（秒）
+  idle_timeout: IS_POOLER ? 20 : 30, // 接続プーラー使用時はアイドルタイムアウトを短縮（秒）
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  connect_timeout: 10, // 接続タイムアウト（秒）
+  connect_timeout: 15, // 接続タイムアウト（秒）
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  max_lifetime: IS_POOLER ? 60 * 10 : 60 * 30, // 接続の最大寿命（秒）
+  // プリペアドステートメントの設定
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  prepare: IS_POOLER ? false : true, // 接続プーラー使用時はプリペアドステートメントを無効化
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  debug: process.env.NODE_ENV === 'development', // 開発環境ではデバッグを有効化
 });
 
 /**
@@ -65,9 +89,46 @@ export async function testConnection() {
     // 単純なSELECT文を実行してデータベース接続をテスト
     const result = await QUERY_CLIENT`SELECT NOW() as current_time`;
     logger.info('データベース接続成功:', result[0].current_time);
+    logger.info(`接続タイプ: ${IS_POOLER ? '接続プーラー' : '直接接続'}`);
     return true;
   } catch (error) {
     logger.error('データベース接続エラー:', error);
     return false;
+  }
+}
+
+/**
+ * マイグレーションを特定のデータベースに対して実行する関数
+ * @param connectionString 対象データベースの接続文字列
+ */
+export async function runMigrationToSpecificDB(connectionString: string) {
+  const isTargetPooler =
+    connectionString.includes('pooler.supabase.com') || connectionString.includes('pgbouncer=true');
+
+  const migrationClient = postgres(connectionString, {
+    max: 1,
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    idle_timeout: 20,
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    connect_timeout: 10,
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    prepare: isTargetPooler ? false : true,
+  });
+
+  try {
+    logger.info(
+      `データベース ${connectionString.split('@')[1]?.split('/')[0] || '不明'} へのマイグレーションを開始します...`
+    );
+    await migrate(drizzle(migrationClient), {
+      migrationsFolder: './infrastructure/database/migrations',
+    });
+    logger.info(
+      `データベース ${connectionString.split('@')[1]?.split('/')[0] || '不明'} へのマイグレーション完了`
+    );
+  } catch (error) {
+    logger.error('マイグレーション中にエラーが発生しました:', error);
+    throw error;
+  } finally {
+    await migrationClient.end();
   }
 }
