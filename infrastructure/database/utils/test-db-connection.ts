@@ -17,8 +17,10 @@ export interface ConnectionTestResult {
 
 /**
  * 本番環境かどうかを判断する
+ * Vercelビルド環境ではtrueを返すように修正
  */
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+const IS_BUILD_TIME = process.env.NODE_ENV !== 'development' || process.env.VERCEL === '1';
 
 /**
  * シンプルなPostgres接続テスト
@@ -99,13 +101,14 @@ export function checkSupabaseEnvVars(): ConnectionTestResult {
 /**
  * 開発環境でのみ実行される実際のDB接続テスト
  * 本番環境では安全のため実行されない
+ * ビルド時も実行されないように修正
  */
 export async function testDatabaseConnectionIfDev(): Promise<ConnectionTestResult> {
-  // 本番環境ではテストをスキップ
-  if (IS_PRODUCTION) {
+  // 本番環境またはビルド時にはテストをスキップ
+  if (IS_PRODUCTION || IS_BUILD_TIME) {
     return {
       success: true,
-      message: '本番環境では接続テストはスキップされます',
+      message: '本番環境またはビルド時には接続テストはスキップされます',
       timestamp: new Date().toISOString(),
     };
   }
@@ -152,13 +155,14 @@ export async function testDatabaseConnectionIfDev(): Promise<ConnectionTestResul
 /**
  * 開発環境でのみ実行されるSupabase接続テスト
  * 本番環境では安全のため実行されない
+ * ビルド時も実行されないように修正
  */
 export async function testSupabaseConnectionIfDev(): Promise<ConnectionTestResult> {
-  // 本番環境ではテストをスキップ
-  if (IS_PRODUCTION) {
+  // 本番環境またはビルド時にはテストをスキップ
+  if (IS_PRODUCTION || IS_BUILD_TIME) {
     return {
       success: true,
-      message: '本番環境ではSupabase接続テストはスキップされます',
+      message: '本番環境またはビルド時にはSupabase接続テストはスキップされます',
       timestamp: new Date().toISOString(),
     };
   }
