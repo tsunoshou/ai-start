@@ -1,4 +1,10 @@
+import path from 'path';
+
+import * as dotenv from 'dotenv';
 import { z } from 'zod';
+
+// .env.localファイルを読み込む
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 // 環境変数のスキーマ定義
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -11,7 +17,7 @@ const ENV_SCHEMA = z.object({
   // eslint-disable-next-line @typescript-eslint/naming-convention
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  APP_ENV: z.enum(['development', 'staging', 'production']).default('development'),
+  APP_ENV: z.enum(['local', 'development', 'staging', 'production']).default('local'),
 
   // データベース接続設定
   // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -194,8 +200,12 @@ export const getDatabaseUrl = (): string => {
       return ENV.DATABASE_URL_PRODUCTION || ENV.DATABASE_URL;
     case 'staging':
       return ENV.DATABASE_URL_STAGING || ENV.DATABASE_URL;
-    default:
+    case 'development':
       return ENV.DATABASE_URL_DEVELOPMENT || ENV.DATABASE_URL;
+    case 'local':
+    default:
+      // ローカル環境では、明示的にDATABASE_URLを使用（通常はDockerのPostgresを指す）
+      return ENV.DATABASE_URL;
   }
 };
 
@@ -210,8 +220,12 @@ export const getSupabaseUrl = (): string => {
       return ENV.NEXT_PUBLIC_SUPABASE_URL_PRODUCTION || ENV.NEXT_PUBLIC_SUPABASE_URL;
     case 'staging':
       return ENV.NEXT_PUBLIC_SUPABASE_URL_STAGING || ENV.NEXT_PUBLIC_SUPABASE_URL;
-    default:
+    case 'development':
       return ENV.NEXT_PUBLIC_SUPABASE_URL_DEVELOPMENT || ENV.NEXT_PUBLIC_SUPABASE_URL;
+    case 'local':
+    default:
+      // ローカル環境では、明示的にNEXT_PUBLIC_SUPABASE_URLを使用（通常はlocalhost:54321を指す）
+      return ENV.NEXT_PUBLIC_SUPABASE_URL;
   }
 };
 
@@ -226,8 +240,12 @@ export const getSupabaseAnonKey = (): string => {
       return ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY_PRODUCTION || ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     case 'staging':
       return ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY_STAGING || ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    default:
+    case 'development':
       return ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY_DEVELOPMENT || ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    case 'local':
+    default:
+      // ローカル環境では、明示的にNEXT_PUBLIC_SUPABASE_ANON_KEYを使用
+      return ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   }
 };
 
@@ -242,9 +260,22 @@ export const getSupabaseServiceRoleKey = (): string => {
       return ENV.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION || ENV.SUPABASE_SERVICE_ROLE_KEY;
     case 'staging':
       return ENV.SUPABASE_SERVICE_ROLE_KEY_STAGING || ENV.SUPABASE_SERVICE_ROLE_KEY;
-    default:
+    case 'development':
       return ENV.SUPABASE_SERVICE_ROLE_KEY_DEVELOPMENT || ENV.SUPABASE_SERVICE_ROLE_KEY;
+    case 'local':
+    default:
+      // ローカル環境では、明示的にSUPABASE_SERVICE_ROLE_KEYを使用
+      return ENV.SUPABASE_SERVICE_ROLE_KEY;
   }
+};
+
+/**
+ * 現在の環境がローカル環境かどうかを判定
+ * @returns ローカル環境の場合はtrue
+ */
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const isLocal = (): boolean => {
+  return ENV.APP_ENV === 'local';
 };
 
 /**

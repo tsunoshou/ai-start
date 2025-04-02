@@ -1,13 +1,7 @@
-import path from 'path';
-
-import * as dotenv from 'dotenv';
-
+import { ENV } from '../../../config/environment';
 import logger from '../../utils/logger';
 import { testConnection } from '../client';
 import { testSupabaseConnection } from '../client/supabase';
-
-// .env.localファイルを読み込む
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 /**
  * データベース接続テスト実行スクリプト
@@ -16,12 +10,12 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
  */
 async function runTests() {
   logger.info('=== データベース接続テスト開始 ===');
-  logger.info(`環境変数DATABASE_URL: ${process.env.DATABASE_URL ? '設定済み' : '未設定'}`);
+  logger.info(`環境変数DATABASE_URL: ${ENV.DATABASE_URL ? '設定済み' : '未設定'}`);
   logger.info(
-    `環境変数NEXT_PUBLIC_SUPABASE_URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL ? '設定済み' : '未設定'}`
+    `環境変数NEXT_PUBLIC_SUPABASE_URL: ${ENV.NEXT_PUBLIC_SUPABASE_URL ? '設定済み' : '未設定'}`
   );
   logger.info(
-    `環境変数NEXT_PUBLIC_SUPABASE_ANON_KEY: ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '設定済み' : '未設定'}`
+    `環境変数NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '設定済み' : '未設定'}`
   );
 
   // PostgreSQL直接接続テスト

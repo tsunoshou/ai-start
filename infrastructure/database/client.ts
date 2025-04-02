@@ -1,6 +1,3 @@
-import path from 'path';
-
-import * as dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
@@ -9,9 +6,6 @@ import { getDatabaseUrl } from '../../config/environment';
 import logger from '../utils/logger';
 
 import * as schema from './schema';
-
-// .env.localファイルを読み込む
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 /**
  * 環境変数からデータベース接続文字列を取得

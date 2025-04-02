@@ -1,18 +1,13 @@
-import path from 'path';
-
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
 
+import { getSupabaseUrl, getSupabaseAnonKey } from '../../../config/environment';
 import logger from '../../utils/logger';
 import { Database } from '../types/supabase';
 
-// .env.localファイルを読み込む
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
-
 // 環境変数からSupabase接続情報を取得
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_URL = getSupabaseUrl();
+const SUPABASE_ANON_KEY = getSupabaseAnonKey();
 
 // 環境変数が設定されていない場合はエラーをスロー
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
