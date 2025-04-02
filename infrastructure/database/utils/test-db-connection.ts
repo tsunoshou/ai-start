@@ -29,7 +29,7 @@ function createResult(success: boolean, message: string): ConnectionTestResult {
  * PostgreSQL接続テスト
  * @returns 接続テスト結果
  */
-export async function testDatabaseConnectionIfDev(): Promise<ConnectionTestResult> {
+export async function testDatabaseConnection(): Promise<ConnectionTestResult> {
   try {
     // 環境変数チェック
     if (!ENV.DATABASE_URL || ENV.DATABASE_URL.length < 10) {
@@ -63,7 +63,7 @@ export async function testDatabaseConnectionIfDev(): Promise<ConnectionTestResul
  * Supabase接続テスト
  * @returns 接続テスト結果
  */
-export async function testSupabaseConnectionIfDev(): Promise<ConnectionTestResult> {
+export async function testSupabaseConnection(): Promise<ConnectionTestResult> {
   try {
     // 環境変数チェック
     if (!ENV.NEXT_PUBLIC_SUPABASE_URL || !ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -90,5 +90,39 @@ export async function testSupabaseConnectionIfDev(): Promise<ConnectionTestResul
   } catch (error) {
     logger.error('Supabase接続テストエラー:', error);
     return createResult(false, 'Supabase接続エラー');
+  }
+}
+
+/**
+ * OpenAI接続テスト
+ * @returns 接続テスト結果
+ */
+export async function testOpenAIConnection(): Promise<ConnectionTestResult> {
+  try {
+    // 環境変数チェック
+    if (!ENV.OPENAI_API_KEY) {
+      return createResult(false, 'OpenAI APIキーが不足しています');
+    }
+
+    // 最もシンプルな接続テスト - GETリクエストで接続確認
+    const response = await fetch('https://api.openai.com/v1/models', {
+      method: 'GET',
+      headers: {
+        /* eslint-disable @typescript-eslint/naming-convention */
+        Authorization: `Bearer ${ENV.OPENAI_API_KEY}`,
+        /* eslint-enable @typescript-eslint/naming-convention */
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      logger.error('OpenAI接続エラー:', error);
+      return createResult(false, 'OpenAI接続テスト失敗');
+    }
+
+    return createResult(true, 'OpenAI接続成功');
+  } catch (error) {
+    logger.error('OpenAI接続テストエラー:', error);
+    return createResult(false, 'OpenAI接続エラー');
   }
 }

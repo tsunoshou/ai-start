@@ -12,6 +12,7 @@ type TestResults = {
   timestamp: string;
   postgres: ConnectionStatus;
   supabase: ConnectionStatus;
+  openai: ConnectionStatus;
 };
 
 export default function ConnectionTest() {
@@ -79,6 +80,16 @@ export default function ConnectionTest() {
                 <div>
                   <div className="text-xs font-medium">Supabase</div>
                   <div className="text-xs text-gray-600">{results.supabase.message}</div>
+                </div>
+              </div>
+
+              <div className="flex items-start">
+                <div
+                  className={`mr-2 h-3 w-3 rounded-full ${results.openai.success ? 'bg-green-500' : 'bg-red-500'}`}
+                ></div>
+                <div>
+                  <div className="text-xs font-medium">OpenAI</div>
+                  <div className="text-xs text-gray-600">{results.openai.message}</div>
                 </div>
               </div>
             </div>
