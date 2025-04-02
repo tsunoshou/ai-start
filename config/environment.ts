@@ -1,10 +1,18 @@
-import path from 'path';
-
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
-// .env.localファイルを読み込む
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+// サーバーサイドでのみ.env.localファイルを読み込む
+if (typeof window === 'undefined') {
+  // サーバーサイドでのみpathモジュールを動的にインポート
+  try {
+    // サーバーサイドでのみ実行
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // process.cwd()を使わずに.env.localを読み込む
+    dotenv.config({ path: '.env.local' });
+  } catch (error) {
+    console.warn('環境変数の設定中にエラーが発生しました:', error);
+  }
+}
 
 // 環境変数のスキーマ定義
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -97,6 +105,9 @@ const ENV_SCHEMA = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });
 
+// 環境変数の型を定義
+type EnvironmentVariables = z.infer<typeof ENV_SCHEMA>;
+
 // プロセス環境変数の型キャスト
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const PROCESS_ENV = {
@@ -173,15 +184,69 @@ const PROCESS_ENV = {
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const _ENV = ENV_SCHEMA.safeParse(PROCESS_ENV);
 
-// 検証に失敗した場合はエラーを表示して終了
-if (!_ENV.success) {
-  console.error('❌ 環境変数の検証に失敗しました：', _ENV.error.format());
-  throw new Error('環境変数の検証に失敗しました');
+// クライアントサイドとサーバーサイドで異なる検証ハンドリング
+// eslint-disable-next-line @typescript-eslint/naming-convention
+let ENV: EnvironmentVariables;
+
+if (typeof window === 'undefined') {
+  // サーバーサイドでは厳格な検証を行う
+  if (!_ENV.success) {
+    console.error('❌ 環境変数の検証に失敗しました：', _ENV.error.format());
+    throw new Error('環境変数の検証に失敗しました');
+  }
+  ENV = _ENV.data;
+} else {
+  // クライアントサイドでは利用可能な環境変数のみで処理を続行
+  // NEXT_PUBLIC_で始まる変数のみクライアントで利用可能
+  if (!_ENV.success) {
+    console.warn('⚠️ いくつかの環境変数が不足しています（クライアントサイド）');
+    // デフォルト値でフォールバック
+    /* eslint-disable @typescript-eslint/naming-convention */
+    const defaultValues: EnvironmentVariables = {
+      NODE_ENV: (process.env.NODE_ENV as 'development') || 'development',
+      APP_ENV: (process.env.APP_ENV as 'development') || 'development',
+      NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      DATABASE_URL: '', // クライアントでは使用しない
+      SUPABASE_SERVICE_ROLE_KEY: '', // クライアントでは使用しない
+      AUTH_SECRET: '', // クライアントでは使用しない
+      AUTH_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      DEFAULT_LOCALE: 'ja',
+      SUPPORTED_LOCALES: 'ja,en',
+      LOG_LEVEL: 'info' as const,
+      APP_URL: 'http://localhost:3000',
+      DATABASE_URL_DEVELOPMENT: undefined,
+      DATABASE_URL_STAGING: undefined,
+      DATABASE_URL_PRODUCTION: undefined,
+      NEXT_PUBLIC_SUPABASE_URL_DEVELOPMENT: undefined,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY_DEVELOPMENT: undefined,
+      SUPABASE_SERVICE_ROLE_KEY_DEVELOPMENT: undefined,
+      NEXT_PUBLIC_SUPABASE_URL_STAGING: undefined,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY_STAGING: undefined,
+      SUPABASE_SERVICE_ROLE_KEY_STAGING: undefined,
+      NEXT_PUBLIC_SUPABASE_URL_PRODUCTION: undefined,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY_PRODUCTION: undefined,
+      SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: undefined,
+      GOOGLE_CLIENT_ID: undefined,
+      GOOGLE_CLIENT_SECRET: undefined,
+      GITHUB_CLIENT_ID: undefined,
+      GITHUB_CLIENT_SECRET: undefined,
+      OPENAI_API_KEY: undefined,
+      ANTHROPIC_API_KEY: undefined,
+      GEMINI_API_KEY: undefined,
+      BLOB_READ_WRITE_TOKEN: undefined,
+    };
+    /* eslint-enable @typescript-eslint/naming-convention */
+    ENV = defaultValues;
+  } else {
+    ENV = _ENV.data;
+  }
 }
 
 // 型安全な環境変数をエクスポート
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const ENV = _ENV.data;
+export { ENV };
 
 // Supabase関連の環境変数のエイリアス
 // eslint-disable-next-line @typescript-eslint/naming-convention
