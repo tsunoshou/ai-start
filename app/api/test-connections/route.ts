@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 
 import { ENV } from '@/config/environment';
 
-import { testConnection } from '../../../infrastructure/database/client';
+import { testConnection as testPostgresConnection } from '../../../infrastructure/database/client';
+import { testConnection as testDirectPostgresConnection } from '../../../infrastructure/database/client/postgres';
 import { testSupabaseConnection } from '../../../infrastructure/database/client/supabase';
 import logger from '../../../infrastructure/utils/logger';
 
@@ -12,7 +13,10 @@ export interface ConnectionStatus {
 }
 
 export interface TestResults {
-  database: ConnectionStatus;
+  database: {
+    postgres: ConnectionStatus;
+    supabase: ConnectionStatus;
+  };
   openai: ConnectionStatus;
 }
 
@@ -23,8 +27,14 @@ export interface TestResults {
 export async function GET() {
   const results: TestResults = {
     database: {
-      success: false,
-      message: 'テスト実行中...',
+      postgres: {
+        success: false,
+        message: 'テスト実行中...',
+      },
+      supabase: {
+        success: false,
+        message: 'テスト実行中...',
+      },
     },
     openai: {
       success: false,
@@ -33,24 +43,35 @@ export async function GET() {
   };
 
   try {
-    // PostgreSQL接続テスト
-    logger.info('データベース接続テスト実行');
-    const dbConnected = await testConnection();
-    results.database = {
-      success: dbConnected,
-      message: dbConnected
-        ? 'データベース接続成功'
-        : 'データベース接続失敗 - 環境変数を確認してください',
+    // PostgreSQL直接接続テスト
+    logger.info('PostgreSQL直接接続テスト実行');
+    const directConnected = await testDirectPostgresConnection();
+    results.database.postgres = {
+      success: directConnected,
+      message: directConnected
+        ? 'PostgreSQL直接接続成功'
+        : 'PostgreSQL直接接続失敗 - 環境変数を確認してください',
     };
 
-    // Supabase接続テスト（実質的にはデータベーステストと重複するが、API経由での接続を確認）
-    const supabaseConnected = await testSupabaseConnection();
-    if (!results.database.success && supabaseConnected) {
-      results.database = {
+    // DB接続テスト（client.tsの標準接続）
+    logger.info('標準DB接続テスト実行');
+    const dbConnected = await testPostgresConnection();
+    if (!results.database.postgres.success && dbConnected) {
+      results.database.postgres = {
         success: true,
-        message: 'Supabase経由でのデータベース接続成功',
+        message: '標準DB接続成功',
       };
     }
+
+    // Supabase接続テスト
+    logger.info('Supabase接続テスト実行');
+    const supabaseConnected = await testSupabaseConnection();
+    results.database.supabase = {
+      success: supabaseConnected,
+      message: supabaseConnected
+        ? 'Supabase接続成功'
+        : 'Supabase接続失敗 - 環境変数を確認してください',
+    };
 
     // OpenAI APIテスト
     // 注: 実際のAPIキーがある場合のみテスト可能

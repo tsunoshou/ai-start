@@ -9,7 +9,10 @@ export type ConnectionStatus = {
 };
 
 export type TestResults = {
-  database: ConnectionStatus;
+  database: {
+    postgres: ConnectionStatus;
+    supabase: ConnectionStatus;
+  };
   openai: ConnectionStatus;
 };
 
@@ -67,27 +70,35 @@ export default function ConnectionTest() {
           {results && (
             <div className="space-y-4">
               <div className="flex items-start space-x-2">
-                {/* eslint-disable react/jsx-sort-props */}
                 <div
                   className={`${
-                    results.database.success ? 'bg-green-500' : 'bg-red-500'
+                    results.database.postgres.success ? 'bg-green-500' : 'bg-red-500'
                   } mt-0.5 h-4 w-4 flex-shrink-0 rounded-full`}
                 ></div>
-                {/* eslint-enable react/jsx-sort-props */}
                 <div>
                   <div className="font-medium">PostgreSQL データベース</div>
-                  <div className="text-xs text-gray-600">{results.database.message}</div>
+                  <div className="text-xs text-gray-600">{results.database.postgres.message}</div>
                 </div>
               </div>
 
               <div className="flex items-start space-x-2">
-                {/* eslint-disable react/jsx-sort-props */}
+                <div
+                  className={`${
+                    results.database.supabase.success ? 'bg-green-500' : 'bg-red-500'
+                  } mt-0.5 h-4 w-4 flex-shrink-0 rounded-full`}
+                ></div>
+                <div>
+                  <div className="font-medium">Supabase</div>
+                  <div className="text-xs text-gray-600">{results.database.supabase.message}</div>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-2">
                 <div
                   className={`${
                     results.openai.success ? 'bg-green-500' : 'bg-red-500'
                   } mt-0.5 h-4 w-4 flex-shrink-0 rounded-full`}
                 ></div>
-                {/* eslint-enable react/jsx-sort-props */}
                 <div>
                   <div className="font-medium">OpenAI API</div>
                   <div className="text-xs text-gray-600">{results.openai.message}</div>
