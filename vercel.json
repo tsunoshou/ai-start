@@ -1,5 +1,4 @@
 {
-  "regions": ["auto"],
   "github": {
     "enabled": true,
     "silent": true,
