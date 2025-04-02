@@ -22,6 +22,35 @@ export const SUPABASE = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, 
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    // SSRで使用する場合はcookieを有効化
+    detectSessionInUrl: typeof window !== 'undefined',
+    flowType: 'pkce',
+  },
+  global: {
+    // カスタムフェッチ設定（タイムアウト付き）
+    fetch: (url, options) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒タイムアウト
+
+      return fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          ...options?.headers,
+          /* eslint-disable @typescript-eslint/naming-convention */
+          'x-application-name': 'ai-start',
+          /* eslint-enable @typescript-eslint/naming-convention */
+        },
+      }).finally(() => clearTimeout(timeoutId));
+    },
+  },
+  db: {
+    schema: 'public',
+  },
+  // 接続の問題が発生した場合のリトライ設定
+  realtime: {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    params: { eventsPerSecond: 10 },
   },
 });
 

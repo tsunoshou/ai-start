@@ -1,6 +1,8 @@
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
+import logger from '../infrastructure/utils/logger';
+
 // Next.jsはサーバーサイドでは自動的に.env.local等を読み込むため、
 // Edge Runtimeでは明示的なdotenv.config()を使用しない
 if (
@@ -288,18 +290,48 @@ export const SUPABASE_KEY = ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY;
  */
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const getDatabaseUrl = (): string => {
-  switch (ENV.APP_ENV) {
-    case 'production':
-      return ENV.DATABASE_URL_PRODUCTION || ENV.DATABASE_URL;
-    case 'staging':
-      return ENV.DATABASE_URL_STAGING || ENV.DATABASE_URL;
-    case 'development':
-      return ENV.DATABASE_URL_DEVELOPMENT || ENV.DATABASE_URL;
-    case 'local':
-    default:
-      // ローカル環境では、明示的にDATABASE_URLを使用（通常はDockerのPostgresを指す）
-      return ENV.DATABASE_URL;
+  // 環境に応じた接続文字列を取得
+  const envSpecificUrl = (() => {
+    switch (ENV.APP_ENV) {
+      case 'production':
+        return ENV.DATABASE_URL_PRODUCTION;
+      case 'staging':
+        return ENV.DATABASE_URL_STAGING;
+      case 'development':
+        return ENV.DATABASE_URL_DEVELOPMENT;
+      default:
+        return null;
+    }
+  })();
+
+  // 接続プーラー形式かどうかを確認
+  const isPoolerUrl = (url: string): boolean => {
+    return url.includes('pooler.supabase.com') || url.includes('pgbouncer=true');
+  };
+
+  // 利用可能なURLからプーラー接続を優先
+  if (envSpecificUrl) {
+    if (isPoolerUrl(envSpecificUrl)) {
+      logger.info(`${ENV.APP_ENV}環境用の接続プーラーを使用します`);
+      return envSpecificUrl;
+    }
+
+    logger.info(`${ENV.APP_ENV}環境用の直接接続を使用します`);
+    return envSpecificUrl;
   }
+
+  // デフォルトの接続設定
+  if (ENV.DATABASE_URL) {
+    if (isPoolerUrl(ENV.DATABASE_URL)) {
+      logger.info('デフォルトの接続プーラーを使用します');
+    } else {
+      logger.info('デフォルトの直接接続を使用します');
+    }
+    return ENV.DATABASE_URL;
+  }
+
+  // 最後の手段
+  throw new Error('有効なデータベース接続文字列が見つかりません');
 };
 
 /**

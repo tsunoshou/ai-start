@@ -3,13 +3,12 @@
 
 import { useState } from 'react';
 
-type ConnectionStatus = {
+export type ConnectionStatus = {
   success: boolean;
   message: string;
-  timestamp: string;
 };
 
-type TestResults = {
+export type TestResults = {
   database: ConnectionStatus;
   openai: ConnectionStatus;
 };
