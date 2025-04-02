@@ -1,125 +1,156 @@
 /* eslint-disable react/jsx-sort-props */
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-export type ConnectionStatus = {
-  success: boolean;
-  message: string;
-};
-
-export type TestResults = {
-  database: {
-    postgres: ConnectionStatus;
-    supabase: ConnectionStatus;
+interface StatusData {
+  postgres: {
+    envVars: {
+      success: boolean;
+      message: string;
+    };
+    connection: {
+      success: boolean;
+      message: string;
+    };
   };
-  openai: ConnectionStatus;
-};
+  supabase: {
+    envVars: {
+      success: boolean;
+      message: string;
+    };
+    connection: {
+      success: boolean;
+      message: string;
+    };
+  };
+  nodeEnv: string;
+  timestamp: string;
+}
 
+/**
+ * ステータス表示用の赤いバッジ
+ */
+function ErrorBadge() {
+  return (
+    <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
+      エラー
+    </span>
+  );
+}
+
+/**
+ * ステータス表示用の緑のバッジ
+ */
+function SuccessBadge() {
+  return (
+    <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+      OK
+    </span>
+  );
+}
+
+/**
+ * 接続テスト用コンポーネント
+ */
 export default function ConnectionTest() {
-  const [results, setResults] = useState<TestResults | null>(null);
+  const [status, setStatus] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const runTests = async () => {
+  /**
+   * 接続状態を取得する関数
+   */
+  const fetchStatus = useCallback(async () => {
     setLoading(true);
+    setError(null);
+
     try {
-      const response = await fetch('/api/test-connections');
-      if (!response.ok) throw new Error('API request failed');
+      const response = await fetch('/api/db-status');
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
       const data = await response.json();
-      setResults(data);
-    } catch (error) {
-      console.error('接続テストエラー:', error);
+      setStatus(data);
+    } catch (err) {
+      console.error('Failed to fetch status:', err);
+      setError(err instanceof Error ? err.message : '不明なエラーが発生しました');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  return (
-    <div className="mt-4 w-full max-w-4xl">
-      <div className="flex items-center justify-between border-t pt-4 text-sm text-gray-500">
+  // コンポーネントマウント時に接続状態を取得
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  if (loading) {
+    return <div className="rounded-md border bg-gray-50 p-4">接続状態を確認中...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-md border bg-red-50 p-4 text-red-700">
+        <p className="font-bold">エラーが発生しました</p>
+        <p>{error}</p>
         <button
-          className="flex items-center text-xs text-gray-400 hover:text-gray-600"
-          onClick={() => setExpanded(!expanded)}
+          onClick={fetchStatus}
+          className="mt-2 rounded-md border border-red-300 bg-white px-3 py-1 hover:bg-red-50"
         >
-          {expanded ? '接続テストを隠す' : '接続テストを表示'}
-          <svg
-            className={`ml-1 h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          再試行
         </button>
       </div>
+    );
+  }
 
-      {expanded && (
-        <div className="mt-2 rounded-lg bg-gray-50 p-4 text-sm shadow-sm">
-          <div className="mb-4 flex justify-between">
-            <h3 className="font-medium">システム接続テスト</h3>
-            <button
-              className="rounded bg-blue-100 px-3 py-1 text-xs text-blue-800 transition-colors hover:bg-blue-200"
-              disabled={loading}
-              onClick={runTests}
-            >
-              {loading ? '実行中...' : 'テスト実行'}
-            </button>
+  if (!status) {
+    return <div className="rounded-md border bg-gray-50 p-4">接続情報なし</div>;
+  }
+
+  return (
+    <div className="rounded-md border bg-gray-50 p-4">
+      <h3 className="mb-4 text-lg font-bold">システム接続状況</h3>
+
+      <div className="mb-3">
+        <div className="mb-1 font-medium">Postgres DB:</div>
+        <div className="ml-4 flex flex-col gap-1">
+          <div>
+            環境変数: {status.postgres.envVars.success ? <SuccessBadge /> : <ErrorBadge />}{' '}
+            <span className="text-sm">{status.postgres.envVars.message}</span>
           </div>
-
-          {results && (
-            <div className="space-y-4">
-              <div className="flex items-start space-x-2">
-                <div
-                  className={`${
-                    results.database.postgres.success ? 'bg-green-500' : 'bg-red-500'
-                  } mt-0.5 h-4 w-4 flex-shrink-0 rounded-full`}
-                ></div>
-                <div>
-                  <div className="font-medium">PostgreSQL データベース</div>
-                  <div className="text-xs text-gray-600">{results.database.postgres.message}</div>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-2">
-                <div
-                  className={`${
-                    results.database.supabase.success ? 'bg-green-500' : 'bg-red-500'
-                  } mt-0.5 h-4 w-4 flex-shrink-0 rounded-full`}
-                ></div>
-                <div>
-                  <div className="font-medium">Supabase</div>
-                  <div className="text-xs text-gray-600">{results.database.supabase.message}</div>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-2">
-                <div
-                  className={`${
-                    results.openai.success ? 'bg-green-500' : 'bg-red-500'
-                  } mt-0.5 h-4 w-4 flex-shrink-0 rounded-full`}
-                ></div>
-                <div>
-                  <div className="font-medium">OpenAI API</div>
-                  <div className="text-xs text-gray-600">{results.openai.message}</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!results && !loading && (
-            <p className="text-xs text-gray-500">
-              「テスト実行」ボタンをクリックして接続状態を確認してください
-            </p>
-          )}
-
-          {loading && (
-            <div className="flex justify-center py-4">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
-            </div>
-          )}
+          <div>
+            接続テスト: {status.postgres.connection.success ? <SuccessBadge /> : <ErrorBadge />}{' '}
+            <span className="text-sm">{status.postgres.connection.message}</span>
+          </div>
         </div>
-      )}
+      </div>
+
+      <div className="mb-3">
+        <div className="mb-1 font-medium">Supabase:</div>
+        <div className="ml-4 flex flex-col gap-1">
+          <div>
+            環境変数: {status.supabase.envVars.success ? <SuccessBadge /> : <ErrorBadge />}{' '}
+            <span className="text-sm">{status.supabase.envVars.message}</span>
+          </div>
+          <div>
+            接続テスト: {status.supabase.connection.success ? <SuccessBadge /> : <ErrorBadge />}{' '}
+            <span className="text-sm">{status.supabase.connection.message}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 text-xs text-gray-500">
+        <div>環境: {status.nodeEnv}</div>
+        <div>最終更新: {new Date(status.timestamp).toLocaleString()}</div>
+      </div>
+
+      <button
+        onClick={fetchStatus}
+        className="mt-3 rounded-md border border-gray-300 bg-white px-3 py-1 hover:bg-gray-50"
+      >
+        更新
+      </button>
     </div>
   );
 }
