@@ -22,6 +22,15 @@ type ConnectionPoolConfig = {
     DIRECT: boolean;
     POOLER: boolean;
   };
+  SSL_CONFIG: {
+    LOCAL: boolean;
+    REMOTE: boolean;
+  };
+  TIMEOUT: {
+    SHORT: number;
+    MEDIUM: number;
+    LONG: number;
+  };
 };
 
 /**
@@ -53,6 +62,19 @@ export const CONNECTION_POOL: ConnectionPoolConfig = {
     DIRECT: true,
     POOLER: false,
   },
+
+  // SSL設定
+  SSL_CONFIG: {
+    LOCAL: false,
+    REMOTE: true,
+  },
+
+  // 汎用タイムアウト値（ミリ秒単位）
+  TIMEOUT: {
+    SHORT: 10000, // 10秒
+    MEDIUM: 30000, // 30秒
+    LONG: 60000, // 60秒
+  },
 } as const;
 
 /**
@@ -68,6 +90,15 @@ type PoolerDetectionConfig = {
 export const POOLER_DETECTION: PoolerDetectionConfig = {
   STRINGS: ['pooler.supabase.com', 'pgbouncer=true'],
 } as const;
+
+/**
+ * ローカル接続かどうかを判定する関数
+ * @param url 接続URL
+ * @returns ローカル接続の場合はtrue
+ */
+export function isLocalConnection(url: string): boolean {
+  return url.includes('localhost') || url.includes('[::1]');
+}
 
 /**
  * 接続URLがプーラー形式かどうかを確認する関数

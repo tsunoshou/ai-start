@@ -5,7 +5,7 @@ import postgres from 'postgres';
 import { getDatabaseUrl } from '../../config/environment';
 import logger from '../utils/logger';
 
-import { CONNECTION_POOL, isPoolerUrl } from './constants';
+import { CONNECTION_POOL, isLocalConnection, isPoolerUrl } from './constants';
 import * as schema from './schema';
 
 /**
@@ -33,6 +33,9 @@ const MIGRATION_CLIENT = postgres(CONNECTION_STRING, {
   max: 1,
   idle_timeout: 20,
   connect_timeout: 10,
+  ssl: isLocalConnection(CONNECTION_STRING)
+    ? CONNECTION_POOL.SSL_CONFIG.LOCAL
+    : CONNECTION_POOL.SSL_CONFIG.REMOTE,
 });
 
 /**
@@ -69,6 +72,11 @@ const QUERY_CLIENT = postgres(CONNECTION_STRING, {
     : CONNECTION_POOL.MAX_LIFETIME.DIRECT,
   // プリペアドステートメントの設定
   prepare: IS_POOLER ? CONNECTION_POOL.PREPARE.POOLER : CONNECTION_POOL.PREPARE.DIRECT,
+  // SSL設定
+  ssl: isLocalConnection(CONNECTION_STRING)
+    ? CONNECTION_POOL.SSL_CONFIG.LOCAL
+    : CONNECTION_POOL.SSL_CONFIG.REMOTE,
+  // デバッグ設定
   debug: process.env.NODE_ENV === 'development', // 開発環境ではデバッグを有効化
 });
 
@@ -105,6 +113,9 @@ export async function runMigrationToSpecificDB(connectionString: string) {
     idle_timeout: 20,
     connect_timeout: 10,
     prepare: isTargetPooler ? CONNECTION_POOL.PREPARE.POOLER : CONNECTION_POOL.PREPARE.DIRECT,
+    ssl: isLocalConnection(connectionString)
+      ? CONNECTION_POOL.SSL_CONFIG.LOCAL
+      : CONNECTION_POOL.SSL_CONFIG.REMOTE,
   });
 
   try {

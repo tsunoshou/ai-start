@@ -128,6 +128,24 @@ module.exports = {
           match: true,
         },
       },
+      // HTTPヘッダー名のハイフン区切りを許可
+      {
+        selector: 'objectLiteralProperty',
+        format: null,
+        filter: {
+          regex: '^[a-z]+-[a-z-]+$',
+          match: true,
+        },
+      },
+      // APIパラメータ名のアンダースコア区切りを許可
+      {
+        selector: 'parameter',
+        format: null,
+        filter: {
+          regex: '^[a-z]+_[a-z_]+$',
+          match: true,
+        },
+      },
     ],
   },
   settings: {

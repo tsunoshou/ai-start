@@ -1,3 +1,15 @@
 #!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
 
+# lint-stagedを実行してコード品質チェック
 npx lint-staged
+
+# TypeScriptのタイプチェック
+echo "TypeScriptタイプチェックを実行中..."
+npx tsc --noEmit || exit 1
+
+# ビルドチェック
+echo "ビルドチェックを実行中..."
+npm run build || exit 1
+
+echo "すべてのチェックが成功しました！"

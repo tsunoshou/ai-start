@@ -3,7 +3,7 @@ import postgres from 'postgres';
 
 import { getDatabaseUrl } from '../../../config/environment';
 import logger from '../../utils/logger';
-import { CONNECTION_POOL, isPoolerUrl } from '../constants';
+import { CONNECTION_POOL, isLocalConnection, isPoolerUrl } from '../constants';
 
 // 環境変数からデータベース接続情報を取得
 const DATABASE_URL = getDatabaseUrl();
@@ -24,7 +24,9 @@ export const SQL = postgres(DATABASE_URL, {
     ? CONNECTION_POOL.IDLE_TIMEOUT.POOLER
     : CONNECTION_POOL.IDLE_TIMEOUT.DIRECT,
   connect_timeout: CONNECTION_POOL.CONNECT_TIMEOUT,
-  ssl: DATABASE_URL.includes('localhost') || DATABASE_URL.includes('[::1]') ? false : true, // ローカル環境ではSSLを無効化
+  ssl: isLocalConnection(DATABASE_URL)
+    ? CONNECTION_POOL.SSL_CONFIG.LOCAL
+    : CONNECTION_POOL.SSL_CONFIG.REMOTE,
 });
 
 // テスト用の接続関数

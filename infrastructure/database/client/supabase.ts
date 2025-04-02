@@ -9,6 +9,7 @@ import {
   isProduction,
 } from '../../../config/environment';
 import logger from '../../utils/logger';
+import { CONNECTION_POOL } from '../constants';
 import { Database } from '../types/supabase';
 
 // 環境変数からSupabase接続情報を取得
@@ -36,7 +37,7 @@ export const SUPABASE = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, 
     // カスタムフェッチ設定（タイムアウト付き）
     fetch: (url, options) => {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒タイムアウト
+      const timeoutId = setTimeout(() => controller.abort(), CONNECTION_POOL.TIMEOUT.MEDIUM); // 30秒タイムアウト
 
       return fetch(url, {
         ...options,
