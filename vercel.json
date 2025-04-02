@@ -1,17 +1,9 @@
 {
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-IPv6-Enabled",
-          "value": "true"
-        }
-      ]
-    }
-  ],
   "regions": ["all"],
-  "env": {
-    "ENABLE_IPV6": "true"
-  }
+  "github": {
+    "enabled": true,
+    "silent": true
+  },
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next"
 }
