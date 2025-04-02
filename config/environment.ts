@@ -1,9 +1,14 @@
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
-// サーバーサイドでのみ.env.localファイルを読み込む
-if (typeof window === 'undefined') {
-  // サーバーサイドでは.env.localから環境変数を読み込む
+// Next.jsはサーバーサイドでは自動的に.env.local等を読み込むため、
+// Edge Runtimeでは明示的なdotenv.config()を使用しない
+if (
+  typeof window === 'undefined' &&
+  typeof process !== 'undefined' &&
+  process.env.NEXT_RUNTIME !== 'edge'
+) {
+  // Edge Runtimeでない場合のみdotenvを使用
   dotenv.config({ path: '.env.local' });
 }
 

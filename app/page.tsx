@@ -1,3 +1,7 @@
+// ESLintルールを一時的に無効化（Reactコンポーネントは大文字で始める必要があるため）
+// eslint-disable-next-line @typescript-eslint/naming-convention
+import ConnectionTest from './components/ConnectionTest';
+
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6">
@@ -11,6 +15,8 @@ export default function Home() {
             開発環境のセットアップが完了しました。プロジェクトディレクトリ構造がアーキテクチャ設計に従って作成されています。
           </p>
         </div>
+
+        <ConnectionTest />
       </div>
     </main>
   );
