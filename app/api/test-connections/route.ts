@@ -22,6 +22,18 @@ export interface TestResults {
  * シンプルなシステム接続テストAPI
  */
 export async function GET() {
+  // ビルド時のみテストをスキップ（Vercel/CI環境）
+  const isBuildTime = process.env.VERCEL === '1' || process.env.CI === 'true';
+
+  // ビルド時は簡易レスポンス
+  if (isBuildTime) {
+    return NextResponse.json({
+      timestamp: new Date().toISOString(),
+      postgres: { success: true, message: 'ビルド時はテストをスキップします' },
+      supabase: { success: true, message: 'ビルド時はテストをスキップします' },
+    });
+  }
+
   try {
     // PostgreSQLとSupabase接続テスト
     const [postgres, supabase] = await Promise.all([

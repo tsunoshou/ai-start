@@ -15,15 +15,6 @@ export interface ConnectionTestResult {
 }
 
 /**
- * テストをスキップすべきかどうかを判断する
- */
-const SHOULD_SKIP_TEST =
-  process.env.NODE_ENV === 'production' ||
-  process.env.SKIP_DB_TEST === 'true' ||
-  process.env.VERCEL === '1' ||
-  process.env.CI === 'true';
-
-/**
  * 接続テスト結果を作成するヘルパー関数
  */
 function createResult(success: boolean, message: string): ConnectionTestResult {
@@ -36,13 +27,9 @@ function createResult(success: boolean, message: string): ConnectionTestResult {
 
 /**
  * PostgreSQL接続テスト
+ * @returns 接続テスト結果
  */
 export async function testDatabaseConnectionIfDev(): Promise<ConnectionTestResult> {
-  // テストをスキップする場合
-  if (SHOULD_SKIP_TEST) {
-    return createResult(true, '環境設定によりデータベース接続テストはスキップされます');
-  }
-
   try {
     // 環境変数チェック
     if (!ENV.DATABASE_URL || ENV.DATABASE_URL.length < 10) {
@@ -74,13 +61,9 @@ export async function testDatabaseConnectionIfDev(): Promise<ConnectionTestResul
 
 /**
  * Supabase接続テスト
+ * @returns 接続テスト結果
  */
 export async function testSupabaseConnectionIfDev(): Promise<ConnectionTestResult> {
-  // テストをスキップする場合
-  if (SHOULD_SKIP_TEST) {
-    return createResult(true, '環境設定によりSupabase接続テストはスキップされます');
-  }
-
   try {
     // 環境変数チェック
     if (!ENV.NEXT_PUBLIC_SUPABASE_URL || !ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
