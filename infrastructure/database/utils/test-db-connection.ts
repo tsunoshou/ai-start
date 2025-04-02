@@ -31,12 +31,10 @@ function createResult(success: boolean, message: string): ConnectionTestResult {
  */
 export async function testDatabaseConnection(): Promise<ConnectionTestResult> {
   try {
-    // 環境変数チェック
-    if (!ENV.DATABASE_URL || ENV.DATABASE_URL.length < 10) {
+    if (!ENV.DATABASE_URL) {
       return createResult(false, 'データベース接続情報が不足しています');
     }
 
-    // 接続テスト実行
     const sql = postgres(ENV.DATABASE_URL, {
       max: 1,
       /* eslint-disable @typescript-eslint/naming-convention */
@@ -54,7 +52,7 @@ export async function testDatabaseConnection(): Promise<ConnectionTestResult> {
       await sql.end();
     }
   } catch (error) {
-    logger.error('データベース接続テストエラー:', error);
+    logger.error('データベース接続エラー:', error);
     return createResult(false, 'データベース接続エラー');
   }
 }
@@ -65,18 +63,14 @@ export async function testDatabaseConnection(): Promise<ConnectionTestResult> {
  */
 export async function testSupabaseConnection(): Promise<ConnectionTestResult> {
   try {
-    // 環境変数チェック
     if (!ENV.NEXT_PUBLIC_SUPABASE_URL || !ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       return createResult(false, 'Supabase接続情報が不足しています');
     }
 
-    // 接続テスト実行
     const supabase = createClient(ENV.NEXT_PUBLIC_SUPABASE_URL, ENV.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // 最もシンプルな接続テスト - 認証情報取得
-    // 接続自体のテストだけを行う（実際のデータベース操作は行わない）
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data, error } = await supabase.auth.getSession();
 
@@ -85,10 +79,9 @@ export async function testSupabaseConnection(): Promise<ConnectionTestResult> {
       return createResult(false, 'Supabase接続テスト失敗');
     }
 
-    // セッションがなくても接続できていればOK
     return createResult(true, 'Supabase接続成功');
   } catch (error) {
-    logger.error('Supabase接続テストエラー:', error);
+    logger.error('Supabase接続エラー:', error);
     return createResult(false, 'Supabase接続エラー');
   }
 }
@@ -99,12 +92,10 @@ export async function testSupabaseConnection(): Promise<ConnectionTestResult> {
  */
 export async function testOpenAIConnection(): Promise<ConnectionTestResult> {
   try {
-    // 環境変数チェック
     if (!ENV.OPENAI_API_KEY) {
       return createResult(false, 'OpenAI APIキーが不足しています');
     }
 
-    // 最もシンプルな接続テスト - GETリクエストで接続確認
     const response = await fetch('https://api.openai.com/v1/models', {
       method: 'GET',
       headers: {
@@ -122,7 +113,7 @@ export async function testOpenAIConnection(): Promise<ConnectionTestResult> {
 
     return createResult(true, 'OpenAI接続成功');
   } catch (error) {
-    logger.error('OpenAI接続テストエラー:', error);
+    logger.error('OpenAI接続エラー:', error);
     return createResult(false, 'OpenAI接続エラー');
   }
 }

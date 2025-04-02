@@ -1,8 +1,13 @@
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 import { createClient } from '@supabase/supabase-js';
 
-import { getSupabaseUrl, getSupabaseAnonKey } from '../../../config/environment';
-import logger from '../../utils/logger';
+import {
+  getSupabaseUrl,
+  getSupabaseAnonKey,
+  getSupabaseServiceRoleKey,
+  isStaging,
+  isProduction,
+} from '../../../config/environment';
 import { Database } from '../types/supabase';
 
 // 環境変数からSupabase接続情報を取得
@@ -55,6 +60,40 @@ export const SUPABASE = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, 
 });
 
 /**
+ * 現在の環境に適したSupabaseクライアントを作成する
+ * 環境変数に基づいて適切なURLとキーを使用
+ * @returns Supabaseクライアント
+ */
+export function createEnvironmentClient() {
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseKey = getSupabaseAnonKey();
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
+}
+
+/**
+ * 管理者権限を持つSupabaseクライアントを作成する
+ * サービスロールキーを使用するため、サーバーサイドでのみ使用すること
+ * @returns 管理者権限のSupabaseクライアント
+ */
+export function createAdminClient() {
+  const supabaseUrl = getSupabaseUrl();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: true,
+    },
+  });
+}
+
+/**
  * ユーザープロファイルをSupabaseから取得する関数
  * @param userId ユーザーID
  * @returns ユーザープロファイル情報
@@ -77,6 +116,34 @@ export async function getUserProfile(userId: string) {
 export function escapeValue(value: string): string {
   // 基本的なエスケープ処理を実装
   return value.replace(/'/g, "''");
+}
+
+/**
+ * 環境名を取得する
+ * @returns 環境名（日本語）
+ */
+export function getEnvironmentName(): string {
+  if (isProduction()) {
+    return '本番環境';
+  } else if (isStaging()) {
+    return 'ステージング環境';
+  } else {
+    return '開発環境';
+  }
+}
+
+/**
+ * 環境名を取得する
+ * @returns 環境名（英語）
+ */
+export function getEnvironmentNameEn(): string {
+  if (isProduction()) {
+    return 'production';
+  } else if (isStaging()) {
+    return 'staging';
+  } else {
+    return 'development';
+  }
 }
 
 /**
@@ -135,32 +202,5 @@ export function safeFilter(
       return query.eq(column, processedValue);
     default:
       return query.eq(column, processedValue);
-  }
-}
-
-/**
- * データベース接続テスト用の関数
- * @returns 接続成功時はtrue、失敗時はfalse
- */
-export async function testSupabaseConnection(): Promise<boolean> {
-  try {
-    // 本当に基本的なクエリ - 健全性チェックのみ
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    const { error } = await SUPABASE.from('_health').select('*').limit(1);
-
-    if (error) {
-      logger.error('Supabase接続エラー:', error.message);
-      return false;
-    }
-
-    logger.info('Supabase接続テスト成功');
-    return true;
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      logger.error('Supabase接続テスト中に例外が発生:', error.message);
-    } else {
-      logger.error('Supabase接続テスト中に不明な例外が発生:', error);
-    }
-    return false;
   }
 }

@@ -8,39 +8,22 @@ import {
 
 import logger from '../../../infrastructure/utils/logger';
 
-export interface ConnectionStatus {
-  success: boolean;
-  message: string;
-}
-
-export interface TestResults {
-  timestamp: string;
-  postgres: ConnectionStatus;
-  supabase: ConnectionStatus;
-  openai: ConnectionStatus;
-}
-
-/**
- * シンプルなシステム接続テストAPI
- * ボタンを押した時のみ実行される
- */
+// API接続テスト結果
 export async function GET() {
   try {
-    // 各サービスの接続テスト実行
+    // 接続テスト実行
     const [postgres, supabase, openai] = await Promise.all([
       testDatabaseConnection(),
       testSupabaseConnection(),
       testOpenAIConnection(),
     ]);
 
-    const results: TestResults = {
+    return NextResponse.json({
       timestamp: new Date().toISOString(),
       postgres,
       supabase,
       openai,
-    };
-
-    return NextResponse.json(results);
+    });
   } catch (error) {
     logger.error('接続テスト実行中にエラー:', error);
     return NextResponse.json(
