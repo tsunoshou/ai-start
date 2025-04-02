@@ -38,7 +38,7 @@ jobs:
 
       - name: テスト実行
         run: npm test
-        
+
   # セキュリティスキャンのみ残す（ビルドはVercelに任せる）
   security-scan:
     name: セキュリティチェック
@@ -59,7 +59,7 @@ jobs:
         run: npm ci
 
       - name: セキュリティ監査実行
-        run: npm audit --production || true  # エラーがあっても続行
+        run: npm audit --production || true # エラーがあっても続行
 
 # ビルドはVercelで自動的に行われるためコメントアウト
 # ビルドのチェックだけ行いたい場合は残してください
