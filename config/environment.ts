@@ -3,15 +3,8 @@ import { z } from 'zod';
 
 // サーバーサイドでのみ.env.localファイルを読み込む
 if (typeof window === 'undefined') {
-  // サーバーサイドでのみpathモジュールを動的にインポート
-  try {
-    // サーバーサイドでのみ実行
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    // process.cwd()を使わずに.env.localを読み込む
-    dotenv.config({ path: '.env.local' });
-  } catch (error) {
-    console.warn('環境変数の設定中にエラーが発生しました:', error);
-  }
+  // サーバーサイドでは.env.localから環境変数を読み込む
+  dotenv.config({ path: '.env.local' });
 }
 
 // 環境変数のスキーマ定義
@@ -203,19 +196,49 @@ if (typeof window === 'undefined') {
     // デフォルト値でフォールバック
     /* eslint-disable @typescript-eslint/naming-convention */
     const defaultValues: EnvironmentVariables = {
-      NODE_ENV: (process.env.NODE_ENV as 'development') || 'development',
-      APP_ENV: (process.env.APP_ENV as 'development') || 'development',
+      // 基本設定
+      NODE_ENV:
+        process.env.NODE_ENV === 'production'
+          ? 'production'
+          : process.env.NODE_ENV === 'test'
+            ? 'test'
+            : 'development',
+      APP_ENV:
+        process.env.APP_ENV === 'production'
+          ? 'production'
+          : process.env.APP_ENV === 'staging'
+            ? 'staging'
+            : process.env.APP_ENV === 'development'
+              ? 'development'
+              : 'local',
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+
+      // Supabase関連（クライアントで使用可能な変数）
       NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
       NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-      DATABASE_URL: '', // クライアントでは使用しない
-      SUPABASE_SERVICE_ROLE_KEY: '', // クライアントでは使用しない
-      AUTH_SECRET: '', // クライアントでは使用しない
-      AUTH_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+
+      // 国際化設定
       DEFAULT_LOCALE: 'ja',
       SUPPORTED_LOCALES: 'ja,en',
-      LOG_LEVEL: 'info' as const,
-      APP_URL: 'http://localhost:3000',
+      LOG_LEVEL:
+        process.env.LOG_LEVEL === 'debug'
+          ? 'debug'
+          : process.env.LOG_LEVEL === 'warn'
+            ? 'warn'
+            : process.env.LOG_LEVEL === 'error'
+              ? 'error'
+              : 'info',
+
+      // Auth.js設定
+      AUTH_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+
+      // サーバーサイドのみで使用する変数は空値やundefinedで初期化
+      DATABASE_URL: '',
+      SUPABASE_SERVICE_ROLE_KEY: '',
+      AUTH_SECRET: '',
+
+      // 残りの任意パラメータはundefinedで初期化
       DATABASE_URL_DEVELOPMENT: undefined,
       DATABASE_URL_STAGING: undefined,
       DATABASE_URL_PRODUCTION: undefined,
