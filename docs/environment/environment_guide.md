@@ -1,6 +1,6 @@
 # 環境設定と運用ガイド
 
-**最終更新日**: 2024-06-23
+**最終更新日**: 2024-07-01
 
 ## 目次
 
@@ -134,14 +134,17 @@ Vercelでのデプロイでは、以下のように環境変数を設定しま�
 
 1. **Preview環境（development）**:
    - Gitブランチ: `development`
+   - Vercelの環境タイプ: `Preview`
    - 環境変数: `APP_ENV=development`, `DATABASE_URL=<開発用DB>`
 
 2. **Staging環境**:
    - Gitブランチ: `release`
+   - Vercelの環境タイプ: `Staging`
    - 環境変数: `APP_ENV=staging`, `DATABASE_URL=<ステージング用DB>`
 
 3. **Production環境**:
    - Gitブランチ: `main`
+   - Vercelの環境タイプ: `Production`
    - 環境変数: `APP_ENV=production`, `DATABASE_URL=<本番用DB>`
 
 ### Vercel環境変数の設定方法

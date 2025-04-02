@@ -5,6 +5,7 @@ import postgres from 'postgres';
 import { getDatabaseUrl } from '../../config/environment';
 import logger from '../utils/logger';
 
+import { CONNECTION_POOL, isLocalConnection, isPoolerUrl } from './constants';
 import * as schema from './schema';
 
 /**
@@ -20,8 +21,7 @@ if (!CONNECTION_STRING) {
 }
 
 // 接続URLからプーラーの使用を検出
-const IS_POOLER =
-  CONNECTION_STRING.includes('pooler.supabase.com') || CONNECTION_STRING.includes('pgbouncer=true');
+const IS_POOLER = isPoolerUrl(CONNECTION_STRING);
 
 logger.info(`データベース接続タイプ: ${IS_POOLER ? '接続プーラー' : '直接接続'}`);
 
@@ -31,10 +31,11 @@ logger.info(`データベース接続タイプ: ${IS_POOLER ? '接続プーラ�
  */
 const MIGRATION_CLIENT = postgres(CONNECTION_STRING, {
   max: 1,
-  // eslint-disable-next-line @typescript-eslint/naming-convention
   idle_timeout: 20,
-  // eslint-disable-next-line @typescript-eslint/naming-convention
   connect_timeout: 10,
+  ssl: isLocalConnection(CONNECTION_STRING)
+    ? CONNECTION_POOL.SSL_CONFIG.LOCAL
+    : CONNECTION_POOL.SSL_CONFIG.REMOTE,
 });
 
 /**
@@ -59,20 +60,23 @@ export async function runMigrations() {
  * クエリ実行用のSQL接続を作成
  * 接続プーラーを使用する場合とそうでない場合で設定を最適化
  */
-// postgres.jsパッケージはスネークケースのオプション名を要求するため、ESLintルールを一時的に無効化
 const QUERY_CLIENT = postgres(CONNECTION_STRING, {
   // 接続プーラー使用時はプールサイズを最適化
-  max: IS_POOLER ? 20 : 10,
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  idle_timeout: IS_POOLER ? 20 : 30, // 接続プーラー使用時はアイドルタイムアウトを短縮（秒）
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  connect_timeout: 15, // 接続タイムアウト（秒）
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  max_lifetime: IS_POOLER ? 60 * 10 : 60 * 30, // 接続の最大寿命（秒）
+  max: IS_POOLER ? CONNECTION_POOL.POOLER_MAX_CONNECTIONS : CONNECTION_POOL.DIRECT_MAX_CONNECTIONS,
+  idle_timeout: IS_POOLER
+    ? CONNECTION_POOL.IDLE_TIMEOUT.POOLER
+    : CONNECTION_POOL.IDLE_TIMEOUT.DIRECT,
+  connect_timeout: CONNECTION_POOL.CONNECT_TIMEOUT,
+  max_lifetime: IS_POOLER
+    ? CONNECTION_POOL.MAX_LIFETIME.POOLER
+    : CONNECTION_POOL.MAX_LIFETIME.DIRECT,
   // プリペアドステートメントの設定
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  prepare: IS_POOLER ? false : true, // 接続プーラー使用時はプリペアドステートメントを無効化
-  // eslint-disable-next-line @typescript-eslint/naming-convention
+  prepare: IS_POOLER ? CONNECTION_POOL.PREPARE.POOLER : CONNECTION_POOL.PREPARE.DIRECT,
+  // SSL設定
+  ssl: isLocalConnection(CONNECTION_STRING)
+    ? CONNECTION_POOL.SSL_CONFIG.LOCAL
+    : CONNECTION_POOL.SSL_CONFIG.REMOTE,
+  // デバッグ設定
   debug: process.env.NODE_ENV === 'development', // 開発環境ではデバッグを有効化
 });
 
@@ -102,17 +106,16 @@ export async function testConnection() {
  * @param connectionString 対象データベースの接続文字列
  */
 export async function runMigrationToSpecificDB(connectionString: string) {
-  const isTargetPooler =
-    connectionString.includes('pooler.supabase.com') || connectionString.includes('pgbouncer=true');
+  const isTargetPooler = isPoolerUrl(connectionString);
 
   const migrationClient = postgres(connectionString, {
     max: 1,
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     idle_timeout: 20,
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     connect_timeout: 10,
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    prepare: isTargetPooler ? false : true,
+    prepare: isTargetPooler ? CONNECTION_POOL.PREPARE.POOLER : CONNECTION_POOL.PREPARE.DIRECT,
+    ssl: isLocalConnection(connectionString)
+      ? CONNECTION_POOL.SSL_CONFIG.LOCAL
+      : CONNECTION_POOL.SSL_CONFIG.REMOTE,
   });
 
   try {

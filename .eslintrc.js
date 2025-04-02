@@ -109,6 +109,43 @@ module.exports = {
         selector: 'enumMember',
         format: ['PascalCase'],
       },
+      // 外部ライブラリのパラメータとして使用されるObjectLiteral内のスネークケースプロパティを許可
+      {
+        selector: 'objectLiteralProperty',
+        format: null,
+        filter: {
+          regex:
+            '^(idle_timeout|connect_timeout|statement_timeout|max_lifetime|x-application-name)$',
+          match: true,
+        },
+      },
+      // 定数オブジェクトのプロパティは大文字スネークケースを許可
+      {
+        selector: 'property',
+        format: ['UPPER_CASE', 'camelCase'],
+        filter: {
+          regex: '^[A-Z][A-Z0-9_]*$',
+          match: true,
+        },
+      },
+      // HTTPヘッダー名のハイフン区切りを許可
+      {
+        selector: 'objectLiteralProperty',
+        format: null,
+        filter: {
+          regex: '^[a-z]+-[a-z-]+$',
+          match: true,
+        },
+      },
+      // APIパラメータ名のアンダースコア区切りを許可
+      {
+        selector: 'parameter',
+        format: null,
+        filter: {
+          regex: '^[a-z]+_[a-z_]+$',
+          match: true,
+        },
+      },
     ],
   },
   settings: {
