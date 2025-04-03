@@ -27,6 +27,9 @@ jobs:
       - name: 依存関係インストール
         run: npm ci
 
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps # VitestのStorybookテストでPlaywrightを使うため追加
+
       - name: コード形式チェック
         run: npm run format:check
 
