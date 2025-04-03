@@ -6,9 +6,9 @@ on:
       - main
       - development
       - 'release/*'
-    paths: # Only run when migration files or this workflow changes
-      - 'infrastructure/database/migrations/**'
-      - '.github/workflows/database-migration.yml'
+    # paths: # Temporarily commented out to force execution
+    #   - 'infrastructure/database/migrations/**'
+    #   - '.github/workflows/database-migration.yml'
 
 jobs:
   migrate-database:
