@@ -7,10 +7,10 @@ import { ReactNode } from 'react';
 import { I18N_PROVIDER_CLIENT } from '@/i18n/client';
 import { DEFAULT_LOCALE } from '@/i18n/config/settings';
 
-interface I18nWrapperProps {
+interface I18nProviderProps {
   children: ReactNode;
 }
 
-export function I18nWrapper({ children }: I18nWrapperProps) {
+export function I18nProvider({ children }: I18nProviderProps) {
   return <I18N_PROVIDER_CLIENT locale={DEFAULT_LOCALE}>{children}</I18N_PROVIDER_CLIENT>;
 }
