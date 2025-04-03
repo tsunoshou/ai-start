@@ -32,9 +32,9 @@ yarn-error.log*
 .env.staging.local
 .env.production.local
 # Environment variables directory
-.env/
+.env-files/
 # Keep example files
-!/.env/*.example
+!/.env-files/*.example
 
 # typescript
 *.tsbuildinfo
