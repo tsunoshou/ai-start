@@ -27,8 +27,13 @@ jobs:
           cache: 'npm' # npm ci を使う場合
 
       - name: Install dependencies (including Supabase CLI)
-        run: npm ci # package-lock.jsonに基づいて正確に依存関係をインストール
+        # npm ci で package-lock.json に記録された最新版の supabase-cli がインストールされるはず
+        run: npm ci
+
+      # グローバルインストールステップは不要になったため削除
+      # - name: Install latest Supabase CLI
+      #   run: npm install -g supabase@latest
 
       - name: Apply database migrations
-        # DATABASE_URL を run コマンドの前に直接設定する
+        # npx経由で実行 (npm ciでインストールされたバージョンが使われる)
         run: DATABASE_URL=${{ secrets.DATABASE_URL }} npx supabase migration up --debug
