@@ -1,10 +1,8 @@
 import type { Metadata } from 'next';
 
-import '../presentation/styles/globals.css';
-
+import './globals.css';
 import { DEFAULT_LOCALE } from '@/i18n/config/settings';
-
-import { I18nWrapper } from './I18nWrapper';
+import { I18nProvider } from '@/presentation/providers/I18nProvider';
 
 export const metadata: Metadata = {
   title: 'AiStart - AI支援によるビジネスプラン作成支援SaaS',
@@ -20,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang={DEFAULT_LOCALE}>
       <body>
-        <I18nWrapper>{children}</I18nWrapper>
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );
