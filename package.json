@@ -17,8 +17,8 @@
     "db:push": "drizzle-kit push:pg",
     "db:studio": "drizzle-kit studio",
     "db:test": "tsx infrastructure/database/utils/test-db-connection.ts",
-    "db:migrate": "node-pg-migrate up -m infrastructure/database/migrations -j json",
-    "db:migrate:down": "node-pg-migrate down -m infrastructure/database/migrations -j json",
+    "db:migrate": "node-pg-migrate up -m infrastructure/database/migrations",
+    "db:migrate:down": "node-pg-migrate down -m infrastructure/database/migrations",
     "prepare": "husky",
     "fmt": "prettier --write ."
   },
