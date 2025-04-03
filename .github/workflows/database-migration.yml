@@ -29,13 +29,8 @@ jobs:
       - name: Install dependencies (including Supabase CLI)
         run: npm ci # package-lock.jsonに基づいて正確に依存関係をインストール
 
-      - name: Link Supabase Project
-        run: npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }} # Linking requires an access token
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }} # DB password needed for linking and migrations
-
       - name: Apply database migrations
+        # DATABASE_URL があれば自動的にリモートDBに接続する
         run: npx supabase migration up --debug
         env:
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }} # migration up also needs the password
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
