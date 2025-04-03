@@ -6,8 +6,8 @@ on:
       - main
       - development
       - 'release/*' # release/vX.Y.Z のようなブランチにマッチ
-    paths:
-      - 'infrastructure/database/migrations/**' # migrationsディレクトリに変更があった場合のみ実行
+    # paths:
+    #   - 'infrastructure/database/migrations/**' # 一時的にコメントアウトして常に実行
 
 jobs:
   migrate-database:
