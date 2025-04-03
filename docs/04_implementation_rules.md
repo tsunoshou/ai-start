@@ -1,17 +1,19 @@
 # 実装ルール・命名規則
 
-最終更新日: 2025-04-03
+最終更新日: 2025-03-31
 
 ## 本ドキュメントの目的
 
 このドキュメントは、AiStartプロジェクトにおける具体的な実装ルール、コーディング規約、命名規則を定義しています。関連ドキュメントとの役割の違いは以下のとおりです：
 
 - **01_requirements_definition.md**：「何を」実現するのか（What）
+
   - ビジネス・機能要件の定義
   - 非機能要件の定義
   - 技術スタックの概要
 
 - **02_architecture_design.md**：「どのように」実現するのか（How）
+
   - アーキテクチャスタイルの選定と理由
   - ディレクトリ構造と各レイヤーの責務
   - モジュール分割と依存関係の設計
@@ -19,6 +21,7 @@
   - エラー処理戦略の詳細
 
 - **03_prototype_development.md**：プロトタイプでの検証事項（Verify）
+
   - プロトタイプの目的と検証内容
   - 検証する技術項目と評価方法
   - プロトタイプの実装範囲と制限
@@ -31,7 +34,7 @@
 
 このドキュメントは実装の一貫性と品質を確保するための具体的なルールを提供します。02_architecture_design.mdでの設計思想と原則を、実際のコードレベルでどのように実現するかを示しています。開発者はこのドキュメントを参照して、プロジェクト全体で統一されたコーディングスタイルと実装パターンを適用できます。
 
-> **注意**: 具体的なコード例については、`code_examples/04_implementation_rules_examples.md` ([./code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)) を参照してください。
+> **注意**: 具体的なコード例については、[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
 
 ## コーディング規約
 
@@ -47,9 +50,17 @@
 ### リンター設定
 
 ESLintを使用して以下のルールを強制します：
+
 - 未使用変数の警告（アンダースコアプレフィックス付き変数は除外）
 - 明示的な関数戻り値型の強制
 - 命名規則の強制（各種型、関数、変数、コンポーネントなど）
+  - 一般関数: camelCase
+  - Reactコンポーネント関数: PascalCase（特定の条件を満たす場合のみ）
+  - 変数: camelCase（PascalCaseやUPPER_CASEも特定の条件下で許可）
+  - グローバル定数: UPPER_CASE（特定の例外あり）
+  - インターフェース: PascalCase（Iプレフィックスなし）
+  - 型定義: PascalCase
+  - enumメンバー: PascalCase
 - インポート順序の管理
 - レイヤー間の依存関係制約
 - ファイル種別に応じた特別ルール
@@ -59,8 +70,15 @@ ESLintを使用して以下のルールを強制します：
 ### 自動フォーマット
 
 Prettierを使用して以下のフォーマットを自動適用します：
+
 - セミコロン、引用符、インデント、行の長さなどのスタイル統一
 - 改行、空白、括弧などの一貫したフォーマット
+
+Prettierの適用範囲から除外するファイルや特定のパターンは、`.prettierignore`で定義しています：
+
+- ビルド成果物（`.next/`, `build/`, `dist/`など）
+- `node_modules/`のような依存関係ディレクトリ
+- ドキュメントフォルダ内のマークダウンファイル（`docs/**/*.md`）：マークダウンのフォーマットを維持するため
 
 詳細な設定例は[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
 
@@ -77,11 +95,13 @@ Prettierを使用して以下のフォーマットを自動適用します：
 ```
 
 例：
+
 - `common.button.submit` - 共通の送信ボタンラベル
 - `project.details.title` - プロジェクト詳細ページのタイトル
 - `auth.login.error.invalidCredentials` - ログイン時の無効な認証情報エラー
 
 翻訳キーには以下のルールを適用します：
+
 - キャメルケースで記述
 - 階層の数は最大4レベルまで
 - 通常4階層目はエラーメッセージやバリエーションを表す
@@ -123,12 +143,8 @@ import { useTranslation } from 'next-intl';
 
 export function SubmitButton() {
   const t = useTranslation('common');
-  
-  return (
-    <button type="submit">
-      {t('button.submit')}
-    </button>
-  );
+
+  return <button type="submit">{t('button.submit')}</button>;
 }
 ```
 
@@ -151,7 +167,7 @@ RTL言語（アラビア語、ヘブライ語等）のサポートを実装す�
 // layout.tsx
 export default function RootLayout({
   children,
-  params: { locale }
+  params: { locale },
 }: {
   children: React.ReactNode;
   params: { locale: string };
@@ -159,7 +175,7 @@ export default function RootLayout({
   // RTL言語のリスト
   const rtlLocales = ['ar', 'he', 'fa', 'ur'];
   const isRtl = rtlLocales.includes(locale);
-  
+
   return (
     <html lang={locale} dir={isRtl ? 'rtl' : 'ltr'}>
       <body>{children}</body>
@@ -191,7 +207,7 @@ export default function RootLayout({
   --end: right;
 }
 
-[dir="rtl"] {
+[dir='rtl'] {
   --start: right;
   --end: left;
 }
@@ -220,10 +236,10 @@ export default function RootLayout({
 function DirectionalIcon({ icon, ...props }) {
   const { isRtl } = useRtlContext();
   return (
-    <Icon 
-      icon={icon} 
-      className={isRtl && requiresFlipping(icon) ? 'transform rotate-180' : ''} 
-      {...props} 
+    <Icon
+      icon={icon}
+      className={isRtl && requiresFlipping(icon) ? 'rotate-180 transform' : ''}
+      {...props}
     />
   );
 }
@@ -237,33 +253,47 @@ function DirectionalIcon({ icon, ...props }) {
 // 混合言語テキストを表示する際のユーティリティ
 function BidiText({ text, baseDirection = 'auto' }) {
   const bidiMarker = baseDirection === 'rtl' ? '\u200F' : '\u200E';
-  return <span>{bidiMarker}{text}</span>;
+  return (
+    <span>
+      {bidiMarker}
+      {text}
+    </span>
+  );
 }
 ```
 
 ##### 5. テスト要件
 
-- 国際化に関連するテスト要件は[09_testing_implementation.md](09_testing_implementation.md)を参照してください。
+- すべての新規UIコンポーネントはRTLモードでのビジュアルテストを必須とする
+- RTLモードでのインタラクションテストを実装する
+- RTL切り替え時のレイアウト崩れをチェックするスナップショットテストを実装する
 
 #### 型安全な翻訳
 
-エラーコードとエラー型の定義は`05_type_definitions.md` ([../05_type_definitions.md](05_type_definitions.md)) に集約されています。各レイヤーで使用するエラーコードの定義方法、エラーハンドリングのパターン、およびエラーレスポンスの構造については、型定義文書および本ドキュメントの「エラーハンドリング実装ルール」セクションを参照してください。
+// ... 既存のコード ...
+
+#### リソース更新ワークフロー
+
+// ... 既存のコード ...
 
 ### 歴史的事例データベース実装ルール
 
 1. **事例データモデル構造**
+
    - 基本メタデータ: ID、タイトル、業種、規模、期間、結果
    - 詳細属性: 主要要因、状況説明、経緯、結果詳細
    - ベクトル表現: 埋め込みベクトルとして保存するエンティティ特徴
    - 関連性タグ: 複数のカテゴリタグとメタタグ
 
 2. **事例データ CRUD 操作**
+
    - 作成/更新操作: トランザクション管理と整合性検証
    - ベクトル生成: テキスト埋め込み計算と保存手順
    - 検索操作: 類似度検索とフィルタリングの組み合わせ
    - バッチ操作: 大量データ処理の分割実行
 
 3. **分析エンジン実装**
+
    - モジュール分割: 特徴抽出、類似度計算、評価計算、提案生成
    - パイプライン構造: 順次処理とエラーハンドリング
    - キャッシュ戦略: 計算コスト最適化と結果再利用
@@ -275,70 +305,62 @@ function BidiText({ text, baseDirection = 'auto' }) {
    - 提案生成指示: 具体性と実用性を強調する指示構文
    - 出力構造化: JSON応答フォーマットの定義と解析
 
-詳細な実装例は`code_examples/04_implementation_rules_examples.md` ([./code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)) を参照してください。
+詳細な実装例は[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
 
 ## プロジェクト構造
 
 ### ディレクトリ構造
 
-`02_architecture_design.md` ([../02_architecture_design.md](02_architecture_design.md)) の記載に基づく正確なディレクトリ構造を採用します。主な構造は以下の通りです：
+02_architecture_design.mdの記載に基づく正確なディレクトリ構造を採用します。主な構造は以下の通りです：
 
-- **app/**: Next.js App Router（ページとルーティング）
 - **domain/**: ドメイン層（モデル、サービス、イベント、リポジトリインターフェース）
 - **application/**: アプリケーション層（DTOs、ユースケース）
 - **infrastructure/**: インフラストラクチャ層（データベース、マッパー、外部サービス連携）
-- **presentation/**: プレゼンテーション層（UI コンポーネント）
+- **presentation/**: プレゼンテーション層（API、UIコンポーネント）
 - **shared/**: 共有リソース（ユーティリティ、定数）
-- **config/**: アプリケーション設定 (`tsyringe` のコンテナ設定などを含む)
-- **tests/**: テスト (`09_testing_implementation.md` ([../09_testing_implementation.md](09_testing_implementation.md)) で詳細定義)
-- **i18n/**: 国際化リソース
+- **config/**: アプリケーション設定
+- **tests/**: テスト
+- **app/**: Next.js App Router
 
-この構造では、`src/` ディレクトリを挟まずに、直接ルートディレクトリ下に各レイヤーのディレクトリを配置します。これにより、インポートパスがシンプルになり、コードの可読性と保守性が向上します。
-
-詳細な構造例は`code_examples/04_implementation_rules_examples.md` ([./code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)) を参照してください。
+詳細な構造例は[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
 
 ## 命名規則
 
 ### ファイル命名規則
 
-| ファイルタイプ | 命名規則 | 例 |
-|--------------|---------|-----|
-| Reactコンポーネント | PascalCase.tsx | Button.tsx, UserCard.tsx |
-| ページコンポーネント | page.tsx | page.tsx (app/projects/page.tsx) |
-| レイアウトコンポーネント | layout.tsx | layout.tsx (app/layout.tsx) |
-| APIルート | route.ts | route.ts (app/api/users/route.ts) |
-| ユーティリティ | kebab-case.ts | format-date.ts, string-utils.ts |
-| | | またはディレクトリ + index.ts (例: date-utils/) |
-| 型定義 | kebab-case.ts | user-types.ts, api-types.ts (types/フォルダ内) |
-| エンティティ | PascalCase.ts | User.ts, Program.ts |
-| 値オブジェクト | camelCase.ts | ids.ts, email.ts |
-| リポジトリインターフェース | PascalCaseRepository.ts | UserRepository.ts |
-| リポジトリ実装 | {Infrastructure}PascalCaseRepository.ts | SupabaseUserRepository.ts, PostgresProjectRepository.ts |
-| ユースケース | PascalCaseUsecase.ts | CreateProjectUsecase.ts |
-| DTOクラス | PascalCaseDTO.ts | UserDTO.ts, ProjectDTO.ts |
-| マッパー | PascalCaseMapper.ts | UserMapper.ts, ProjectMapper.ts |
-| QueryObject/ReadModel | PascalCaseQuery.ts / PascalCaseReadModel.ts | UserProjectsQuery.ts, ActiveUsersReadModel.ts |
-| テストファイル | {対象ファイル名}.test.ts | User.test.ts, formatDate.test.ts |
-| 定数ファイル | camelCase.ts | appConstants.ts, errorCodes.ts |
-| カスタムフック | use{名詞}.ts | useAuth.ts, useFormValidation.ts |
-| 言語リソースファイル | {言語コード}.json | en.json, ja.json |
-| 翻訳ユーティリティ | i18n{機能}.ts | i18nConfig.ts, i18nUtils.ts |
-| 事例データモデル | {モデル}Entity.ts, {モデル}DTO.ts | CaseStudyEntity.ts, AnalysisResultDTO.ts |
-| 分析アルゴリズム | {機能}Algorithm.ts | SimilarityAlgorithm.ts, RiskEvaluationAlgorithm.ts |
-| DIコンテナ設定 | container.ts / {module}.container.ts | container.ts, auth.container.ts (config/ 内) |
-| 状態管理Context | PascalCaseContext.tsx | AuthContext.tsx, ThemeContext.tsx |
+| ファイルタイプ             | 命名規則                                | 例                                                      |
+| -------------------------- | --------------------------------------- | ------------------------------------------------------- |
+| Reactコンポーネント        | PascalCase.tsx                          | Button.tsx, UserCard.tsx                                |
+| ページコンポーネント       | page.tsx                                | page.tsx (app/projects/page.tsx)                        |
+| レイアウトコンポーネント   | layout.tsx                              | layout.tsx (app/layout.tsx)                             |
+| APIルート                  | route.ts                                | route.ts (app/api/users/route.ts)                       |
+| ユーティリティ             | camelCase.ts                            | formatDate.ts, stringUtils.ts                           |
+| 型定義                     | camelCase.ts                            | index.ts, api.ts (types/フォルダ内)                     |
+| エンティティ               | PascalCase.ts                           | User.ts, Program.ts                                     |
+| 値オブジェクト             | camelCase.ts                            | ids.ts, email.ts                                        |
+| リポジトリインターフェース | PascalCaseRepository.ts                 | UserRepository.ts                                       |
+| リポジトリ実装             | {Infrastructure}PascalCaseRepository.ts | SupabaseUserRepository.ts, PostgresProjectRepository.ts |
+| ユースケース               | PascalCaseUsecase.ts                    | CreateProjectUsecase.ts                                 |
+| DTOクラス                  | PascalCaseDTO.ts                        | UserDTO.ts, ProjectDTO.ts                               |
+| マッパー                   | PascalCaseMapper.ts                     | UserMapper.ts, ProjectMapper.ts                         |
+| テストファイル             | {対象ファイル名}.test.ts                | User.test.ts, formatDate.test.ts                        |
+| 定数ファイル               | camelCase.ts                            | appConstants.ts, errorCodes.ts                          |
+| カスタムフック             | use{名詞}.ts                            | useAuth.ts, useFormValidation.ts                        |
+| 言語リソースファイル       | {言語コード}.json                       | en.json, ja.json                                        |
+| 翻訳ユーティリティ         | i18n{機能}.ts                           | i18nConfig.ts, i18nUtils.ts                             |
+| 事例データモデル           | {モデル}Entity.ts, {モデル}DTO.ts       | CaseStudyEntity.ts, AnalysisResultDTO.ts                |
+| 分析アルゴリズム           | {機能}Algorithm.ts                      | SimilarityAlgorithm.ts, RiskEvaluationAlgorithm.ts      |
 
 ### ディレクトリ命名規則
 
-| ディレクトリタイプ | 命名規則 | 例 |
-|-----------------|---------|-----|
-| 機能モジュール | kebab-case | program-management/, user-profiles/ |
-| Reactコンポーネント | kebab-case | common/, program/, project/ |
-| テストディレクトリ | camelCase | unit/, integration/, e2e/ |
-| app内ルートグループ | (kebab-case) | (auth)/, (dashboard)/ |
-| Query/ReadModel | queries/ / read-models/ | infrastructure/queries/, application/read-models/ |
-| 言語リソース | i18n/ | i18n/locales/, i18n/config/ |
-| 歴史的事例関連 | case-studies/, historical-data/ | case-studies/algorithms/, historical-data/models/ |
+| ディレクトリタイプ  | 命名規則                        | 例                                                |
+| ------------------- | ------------------------------- | ------------------------------------------------- |
+| 機能モジュール      | kebab-case                      | program-management/, user-profiles/               |
+| Reactコンポーネント | kebab-case                      | common/, program/, project/                       |
+| テストディレクトリ  | camelCase                       | unit/, integration/, e2e/                         |
+| app内ルートグループ | (kebab-case)                    | (auth)/, (dashboard)/                             |
+| 言語リソース        | i18n/                           | i18n/locales/, i18n/config/                       |
+| 歴史的事例関連      | case-studies/, historical-data/ | case-studies/algorithms/, historical-data/models/ |
 
 ディレクトリの深さは機能ごとに3〜4階層以内に抑え、過度に深いネストは避けます。
 
@@ -347,17 +369,20 @@ function BidiText({ text, baseDirection = 'auto' }) {
 プロジェクトのモジュール分割には以下の原則を適用します：
 
 1. **レイヤーアーキテクチャに基づく水平分割**
+
    - **ドメイン層**: システムの核となるビジネスロジックとルール
    - **アプリケーション層**: ユースケースの実装とオーケストレーション
    - **インフラストラクチャ層**: 外部サービスとの連携
    - **プレゼンテーション層**: ユーザーインターフェース実装
 
 2. **関心事の分離**
+
    - 各レイヤー内では機能ごとに適切なディレクトリ分割を行う
    - ドメインモデルのカテゴリごとに適切なサブディレクトリを構成
    - 共通ユーティリティと特定機能のロジックを分離
 
 3. **インターフェース（出入口）の明確化**
+
    - 各モジュールは明示的なインターフェースを通じてのみ外部と通信
    - `index.ts` ファイルで公開APIを定義
    - 内部実装の詳細は隠蔽
@@ -365,7 +390,6 @@ function BidiText({ text, baseDirection = 'auto' }) {
 4. **単一責任の原則に基づくモジュール設計**
    - 各モジュールは明確に定義された単一の責任を持つ
    - モジュールサイズが大きくなりすぎる場合は、さらに分割を検討
-   - 依存性の注入（DI）を活用し、モジュール間の結合度を低く保つ
 
 ## 安全な型変換
 
@@ -374,10 +398,12 @@ function BidiText({ text, baseDirection = 'auto' }) {
 プロジェクトでは型安全性を確保するため、以下の方針でブランド型（特にID型）を使用します：
 
 1. **プリミティブ型の拡張**
+
    - 文字列や数値を基にした独自の型を定義
    - readonly属性を持つ一意のシンボルプロパティで型を区別
 
 2. **型変換の安全性確保**
+
    - 生の文字列からID型への変換は検証を伴う専用関数を使用
    - 新規IDの生成には型付けされた生成関数を使用
 
@@ -392,6 +418,7 @@ function BidiText({ text, baseDirection = 'auto' }) {
 データベースからのデータをドメインエンティティに変換する際、文字列からID型への安全な変換が必要です。マッパー関数はデータアクセス層とドメイン層の境界で型変換を担当します。
 
 主な責務：
+
 - データベースレコードからドメインモデルへの安全な変換
 - ドメインモデルからDTOへの変換
 
@@ -400,10 +427,12 @@ function BidiText({ text, baseDirection = 'auto' }) {
 ### 型変換のベストプラクティス
 
 - **`as unknown as T`の使用は特定の条件下でのみ行う**
+
   - 主にドメイン層とインフラ層の境界でのみ使用
   - 内部ロジックではブランド型を維持して型安全性を確保
 
 - **型変換の集中化**
+
   - ID変換ロジックは`createId`と`generateId`関数に集中させる
   - マッパーレイヤーで型変換を行い、他の箇所では型キャストを避ける
 
@@ -433,7 +462,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 
 #### エラーコード定義
 
-エラーコードとエラー型の定義は`05_type_definitions.md` ([../05_type_definitions.md](05_type_definitions.md)) に集約されています。各レイヤーで使用するエラーコードの定義方法、エラーハンドリングのパターン、およびエラーレスポンスの構造については、型定義文書および本ドキュメントの「エラーハンドリング実装ルール」セクションを参照してください。
+エラーコードとエラー型の定義は[05_type_definitions.md#共通エラー型](05_type_definitions.md#共通エラー型)に集約されています。各レイヤーで使用するエラーコードの定義方法、エラーハンドリングのパターン、およびエラーレスポンスの構造については、型定義文書を参照してください。
 
 ### リポジトリとRLSの実装パターン
 
@@ -442,6 +471,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 リポジトリは**データアクセス層**の責務を担い、ドメインオブジェクトの永続化と取得に特化します。以下の原則に厳密に従ってください：
 
 1. **リポジトリの基本責務（許可される操作）**:
+
    - **基本的なCRUD操作のみ**: Create, Read, Update, Delete操作
      - 例: `create(user)`, `findById(userId)`, `update(user)`, `delete(userId)`
    - **単純なFinderメソッド**: 主キーや一意の属性による検索
@@ -454,6 +484,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
      - 例: `withTransaction(callback)`, `beginTransaction()`, `commitTransaction()`
 
 2. **リポジトリで禁止される操作**:
+
    - **ビジネスロジックの実装**: ドメインルールや業務ロジックの判断/実行
      - 禁止例: `approveUserRegistration()`, `calculateProjectScore()`
      - 代替: DomainServiceやApplicationServiceに委譲
@@ -474,9 +505,11 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
      - 代替: クライアント（UseCaseやController）側で指定
 
 3. **代替パターン（複雑な操作の委譲先）**:
-   - **QueryObject/ReadModel**: 複雑なクエリや集計、結合を要する読み取り操作。通常、`infrastructure/queries` または `application/read-models` に配置する。
+
+   - **QueryObject/ReadModel**: 複雑なクエリや集計、結合を要する読み取り操作
      - 例: `UserProjectsStatisticsQuery`, `ActiveUsersSummaryReadModel`
-   - **ApplicationService**: 複数リポジトリを跨ぐ操作や業務ロジック。`application/services` または `application/usecases` に配置。
+   - **ApplicationService**: 複数リポジトリを跨ぐ操作や業務ロジック
+     - 例: `UserRegistrationService`, `ProjectPublishingService`
    - **DomainService**: 複数エンティティに関わるドメインロジック
      - 例: `PermissionEvaluationService`, `ScoreCalculationService`
    - **Mapper**: 複雑なデータ変換処理
@@ -501,6 +534,7 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 リポジトリのメソッド名は責務を明確に反映し、以下の命名規則に従います：
 
 1. **CRUD操作の標準メソッド**:
+
    - `create(entity: Entity): Promise<Entity>` - エンティティの作成
    - `findById(id: ID): Promise<Entity | null>` - IDによる単一エンティティ取得
    - `findByIds(ids: ID[]): Promise<Entity[]>` - 複数IDによるエンティティ取得
@@ -508,22 +542,24 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
    - `delete(id: ID): Promise<void>` - エンティティの削除
 
 2. **許容される拡張Finder**:
+
    - `findBy{AttributeName}(value: any): Promise<Entity | null>` - 単一属性による検索
    - `findAllBy{AttributeName}(value: any): Promise<Entity[]>` - 単一属性による複数検索
    - `findByFilter(filter: SimpleFilter): Promise<Entity[]>` - シンプルなフィルター条件による検索
    - `exists(id: ID): Promise<boolean>` - エンティティの存在確認
 
 3. **許容される関連エンティティ取得**:
+
    - `findRelated{EntityName}(id: ID): Promise<RelatedEntity[]>` - 関連エンティティ取得（直接の関連のみ）
 
 4. **許容されるページネーション/ソート**:
    - `findAll(options?: { pagination?: PaginationOptions, sort?: SortOptions }): Promise<PaginatedResult<Entity>>`
 
-**上記以外の複雑な操作はリポジトリの責務外**とし、適切な代替パターン（QueryObject、ReadModel、ApplicationService）に委譲してください。QueryObject/ReadModel はリード（読み取り）操作に特化し、複雑なデータ取得ロジックをカプセル化します。
+**上記以外の複雑な操作はリポジトリの責務外**とし、適切な代替パターン（QueryObject、ReadModel、ApplicationService）に委譲してください。
 
 #### リポジトリインターフェース定義
 
-リポジトリインターフェースはドメインレイヤーに定義され、永続化の詳細から独立したデータアクセスのためのコントラクトを提供します。詳細な型定義と実装パターンについては`05_type_definitions.md#リポジトリインターフェース型` ([../05_type_definitions.md](05_type_definitions.md)) を参照してください。
+リポジトリインターフェースはドメインレイヤーに定義され、永続化の詳細から独立したデータアクセスのためのコントラクトを提供します。詳細な型定義と実装パターンについては[05_type_definitions.md#リポジトリインターフェース型](05_type_definitions.md#リポジトリインターフェース型)を参照してください。
 
 #### リポジトリ実装クラス
 
@@ -544,11 +580,13 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 **基本設計原則**
 
 1. **完全な抽象化と交換可能性**
+
    - 特定のAIプロバイダーに依存しない抽象インターフェースを定義する
    - すべてのプロバイダー実装は共通インターフェースを実装すること
    - アプリケーションコードは具象実装ではなく常に抽象インターフェースに依存すること
 
 2. **ファクトリーとDI（依存性注入）パターンの活用**
+
    - `AIServiceFactory`を使用してプロバイダー実装のインスタンスを生成する
    - 依存性注入を通じてサービスインスタンスを提供する
    - 環境変数やコンフィグに基づいて適切なプロバイダーを選択する仕組みを組み込む
@@ -560,38 +598,43 @@ ID型はUUID形式の文字列をベースとしたブランド型として定�
 
 **コードの構造**
 
-AI関連のコードは主に `lib/ai/` ディレクトリ以下に配置します。
-
 ```
 /lib
   /ai
-    /providers                # 各AIプロバイダー固有の実装
+    /providers
       /openai
-        openai-service.ts     # OpenAIサービスクラス
-        openai-config.ts      # OpenAI設定
-        openai-types.ts       # OpenAI固有の型定義
+        openai-service.ts
+        openai-config.ts
+        openai-types.ts
       /anthropic
-        # ... (Anthropicも同様)
+        anthropic-service.ts
+        anthropic-config.ts
+        anthropic-types.ts
       /google
-        # ... (Googleも同様)
+        google-service.ts
+        google-config.ts
+        google-types.ts
       /open-source
-        # ... (オープンソースモデルも同様)
-    ai-service-interface.ts   # 全プロバイダー共通のインターフェース定義
-    ai-service-factory.ts     # プロバイダー選択とインスタンス生成
-    ai-service-registry.ts    # (オプション) サービスインスタンス管理
-    ai-types.ts               # プロバイダー共通の型定義 (リクエスト/レスポンス形式など)
-    ai-constants.ts           # AI関連の定数 (モデル名、デフォルト設定など)
-    index.ts                  # lib/ai モジュールの公開インターフェース
+        open-source-service.ts
+        open-source-config.ts
+        open-source-types.ts
+    ai-service-interface.ts
+    ai-service-factory.ts
+    ai-service-registry.ts
+    ai-types.ts
+    index.ts
 ```
 
 **命名規則**
 
 1. **インターフェース**
+
    - `AIServiceInterface` - AIサービスの基本インターフェース
    - `AIModelConfig` - モデル設定型
    - `AICompletionOptions` - 補完オプション型
 
 2. **具象クラス**
+
    - `OpenAIService` - OpenAI実装
    - `AnthropicService` - Anthropic実装
    - `GoogleAIService` - Google実装
@@ -599,363 +642,522 @@ AI関連のコードは主に `lib/ai/` ディレクトリ以下に配置しま�
 
 3. **ファクトリーと関連クラス**
    - `AIServiceFactory` - プロバイダーサービス作成ファクトリー
-   - `AIServiceRegistry` - (オプション) サービスインスタンス管理レジストリ
-   - `AIModelCapabilityRegistry` - (オプション) モデル能力情報レジストリ
+   - `AIServiceRegistry` - サービスインスタンス管理レジストリ
+   - `AIModelCapabilityRegistry` - モデル能力情報レジストリ
 
 **エラー処理**
 
-1.  **統一されたエラー型**:
-    *   すべてのAIサービス実装は、共通のエラー型 `AIServiceError`
-2.  **リトライ戦略**:
-    *   一時的なネットワークエラーやレート制限エラー（プロバイダーが示す場合）に対しては、指数バックオフを用いた自動リトライメカニズムを `AIService` の実装またはラッパーで提供する。
-    *   リトライ回数や最大待機時間は設定可能にする (`config/`)。
-3.  **フォールバック戦略**:
-    *   主要なプロバイダー（例: OpenAI）で永続的なエラーが発生した場合、設定された優先順位 (`config/ai.ts` などで定義) に基づいて自動的に次のプロバイダー（例: Anthropic）にフォールバックする機能を `AIServiceFactory` または上位のサービスで実装する。
-    *   フォールバック発生時には、適切なログ記録と、必要に応じてユーザーへの通知（例: 「現在、代替AIで処理中です」）を行う。
-    *   すべてのプロバイダーが利用不可の場合、定義された最終的なエラー (`AIErrorCode.ALL_PROVIDERS_UNAVAILABLE` など) を返す。
-4.  **タイムアウト管理**:
-    *   各AIプロバイダーへのリクエストには適切なタイムアウト値を設定する。タイムアウト値は設定可能にする (`config/`)。
-    *   タイムアウト発生時は `AIErrorCode.TIMEOUT` を含む `AIServiceError` を返す。
+1. **統一されたエラー型**
 
-**インターフェース定義 (`ai-service-interface.ts`)**
+   - すべてのAIサービスエラーは`AIServiceError`型に変換すること
+   - プロバイダー固有のエラーコードは共通エラーコードにマッピングすること
+   - エラーはログに詳細に記録し、監視システムで追跡できるようにすること
 
-主要なメソッドとして以下を定義します。ストリーミングと非ストリーミングの両方をサポートします。
+2. **リトライとフォールバック戦略**
+
+   - 一時的なエラーには指数バックオフによるリトライを実装すること
+   - 致命的なエラーでは代替プロバイダーへのフォールバックを試みること
+   - すべてのフォールバック試行は監視・ログ記録すること
+
+3. **レート制限処理**
+   - レート制限エラーの特別な処理メカニズムを実装すること
+   - キューイングまたはバックオフ戦略を使用してレート制限を回避すること
+   - 適切な警告で管理者に通知する仕組みを備えること
+
+**ストリーミング実装**
+
+1. **ストリーミングレスポンス規格**
+
+   - Server-Sent Events（SSE）またはWebSocketを使用すること
+   - 共通形式でチャンク化された応答を返すこと
+   - 状態更新と完了イベントを適切に伝達すること
+
+2. **エラー処理**
+   - ストリーミング中のエラーは適切にクライアントに伝播すること
+   - 接続断のグレースフルハンドリングを実装すること
+   - 部分的な応答の適切な処理方法を提供すること
+
+**モデル能力管理**
+
+1. **モデル能力レジストリ**
+
+   - 各AIモデルの能力を中央レジストリで管理すること
+   - コンテキスト長制限とコスト情報を含めること
+   - 新しいモデルを簡単に追加できる拡張構造にすること
+
+2. **モデル選択ロジック**
+   - 使用目的に最適なモデルを選択するロジックを実装すること
+   - コスト、性能、速度のバランスを考慮したモデル選択を行うこと
+   - ユースケースに基づく自動モデル選択機能を提供すること
+
+**モニタリングと分析**
+
+1. **使用状況とパフォーマンス追跡**
+
+   - すべてのAIリクエストの使用量、レイテンシー、コストを追跡すること
+   - プロバイダー間の比較分析を自動化すること
+   - 定期的なパフォーマンスレポートを生成すること
+
+2. **品質評価**
+   - 応答品質の自動評価メカニズムを実装すること
+   - ユーザーフィードバックを収集し分析すること
+   - 継続的な改善のためのA/Bテスト機能を備えること
+
+### プロンプト管理
+
+// ... existing code ...
+
+## コードスタイルルール
+
+### 関数の命名規則
+
+関数の命名には以下のルールを適用します：
+
+1. **一般的な関数**
+
+   - camelCase形式を使用（小文字で始まる）
+   - 動詞または動詞句で開始する
+   - 例: `getData()`, `calculateTotal()`, `convertToModel()`
+
+2. **Reactコンポーネント関数**
+
+   - PascalCase形式を使用（大文字で始まる）
+   - 以下の条件を満たす場合のみPascalCaseを許可：
+     - Next.js特有のページファイル/コンポーネント (`page.tsx`, `layout.tsx`など)
+     - components/ディレクトリ内の関数
+     - すでに大文字で始まる関数名
+   - 例: `Button()`, `UserProfile()`, `DashboardLayout()`
+
+3. **Reactフック**
+
+   - camelCase形式を使用
+   - `use`接頭辞を必ず使用
+   - 例: `useState()`, `useEffect()`, `useCustomHook()`
+
+4. **イベントハンドラ**
+   - camelCase形式を使用
+   - `handle`接頭辞を使用
+   - 例: `handleClick()`, `handleSubmit()`, `handleInputChange()`
+
+### 変数の命名規則
+
+変数の命名には以下のルールを適用します：
+
+1. **一般的な変数**
+
+   - camelCase形式を使用
+   - 明確で説明的な名前を使用
+   - 例: `userData`, `isLoading`, `currentIndex`
+
+2. **グローバル定数**
+
+   - UPPER_SNAKE_CASE形式を使用（すべて大文字）
+   - 例外: `metadata`, `config`などのフレームワーク固有の特殊な名前
+   - 例: `API_BASE_URL`, `MAX_RETRY_COUNT`, `DEFAULT_TIMEOUT_MS`
+
+3. **コンポーネントProps型**
+
+   - PascalCase形式を使用
+   - コンポーネント名 + `Props`のサフィックス
+   - 例: `ButtonProps`, `UserProfileProps`
+
+4. **Enum型**
+   - 型自体はPascalCase
+   - メンバーもPascalCase
+   - 例: `enum Role { Admin, User, Guest }`
+
+### React関連ルール
+
+- コンポーネントは関数コンポーネントとして実装
+- Hooksはカスタムフックとして抽出し、`use`プレフィックスを付ける
+- クライアントコンポーネントには`'use client'`ディレクティブを先頭に記述
+- Propsには適切な型定義を必ず行う
+- データフェッチングはサーバーコンポーネントで行う
+
+詳細なコード例は[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
+
+## ドキュメント規約
+
+### コードコメント
+
+- 公開APIと複雑なロジックには必ずJSDocコメントを付ける
+- パラメータと戻り値の型は明示する
+- 副作用があれば明示的に記述する
+
+詳細なコード例は[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
+
+### Markdownドキュメント
+
+- 各機能の設計文書はMarkdownで作成
+- ディレクトリには`README.md`を配置して目的と内容を説明
+- 重要な設計決定はADR (Architecture Decision Record)として記録
+
+## Git運用ルール
+
+### ブランチ戦略
+
+01_requirements_definition.mdに記載されたブランチ戦略に準拠:
+
+```
+各開発ブランチ → development → release → main
+    |               |             |         |
+    v               v             v         v
+ 開発作業        開発環境     ステージング環境  本番環境
+```
+
+- **main**: 本番環境用。直接コミット禁止
+- **release**: ステージング環境用。developmentからのマージのみ
+- **development**: 開発環境用。機能ブランチからのマージ
+- **feature/xxx**: 機能開発用
+- **bugfix/xxx**: バグ修正用
+- **hotfix/xxx**: 緊急の本番修正用
+
+### コミットメッセージ規約
+
+```
+<タイプ>: <簡潔な説明>
+
+[任意の詳細説明]
+
+[関連する課題番号: #123]
+```
+
+**タイプ:**
+
+- **feat**: 新機能
+- **fix**: バグ修正
+- **docs**: ドキュメントのみの変更
+- **style**: コードの意味に影響を与えない変更
+- **refactor**: バグ修正や機能追加ではないコード変更
+- **perf**: パフォーマンス向上
+- **test**: テスト関連
+- **chore**: ビルドプロセスやツール関連
+
+## 品質基準
+
+### テスト要件
+
+- **単体テスト**: ドメインモデル、ユースケース、ユーティリティ関数に対して80%以上のカバレッジ
+- **統合テスト**: リポジトリ実装、API Routes、主要フローに対して実施
+- **E2Eテスト**: 重要ユーザージャーニーを網羅
+
+### テスト命名規則
+
+- テストファイル: `{対象ファイル名}.test.ts`
+- テストケース: `describe('対象クラス/関数名', () => { it('should 期待される動作', () => {}) })`
+
+詳細なコード例は[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
+
+### パフォーマンス要件
+
+- Lighthouse スコア: Performance 90+, Accessibility 95+
+- First Contentful Paint: 1.5秒以内
+- Largest Contentful Paint: 2.5秒以内
+- Time to Interactive: 3.5秒以内
+- API応答時間: 150ms以内（AI API除く）
+- AI API応答時間: 3秒以内（ストリーミング開始時間）
+
+## セキュリティルール
+
+### 認証・認可
+
+- Auth.jsを使用した認証実装
+- OAuth2+OIDC準拠の認証フロー
+- PKCE拡張の実装
+- ユーザー権限のチェックは必ずサーバーサイドで実施
+
+### データアクセス制御
+
+- PostgreSQL Row Level Securityを活用したデータアクセス制御
+- リポジトリ層でのセキュリティチェック実装
+- セキュアなAPIエンドポイント設計
+
+### 入力検証
+
+- サーバーサイドでの入力検証の徹底
+- Zodを使用したスキーマ検証
+
+## ロギング関連の命名規則
+
+### ログレベル
+
+- **ログレベルはすべて大文字で定義**
+  ```
+  DEBUG, INFO, WARN, ERROR, FATAL
+  ```
+
+### ログメッセージ
+
+- **ログメッセージは簡潔かつ情報をコンテキスト含める**
+- **エラーログには必ず関連エラー情報を含める**
+
+詳細なコード例は[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
+
+## テスト関連の命名規則
+
+### テストファイル命名
+
+- **テストファイルは対象ファイル名に .test.ts または .spec.ts を付与**
+- **E2Eテストには .e2e.ts サフィックスを使用**
+
+### テスト関数命名
+
+- **Jest/Vitest のテスト関数は明確な説明文を使用**
+- **テストケースは期待される動作を明確に説明**
+
+### テストファイル構成
+
+- **テストは関連する機能/モジュールごとにグループ化**
+- **セットアップとクリーンアップを明確に区分**
+
+詳細なコード例は[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
+
+### モック・スタブの命名
+
+- **モックオブジェクトには簡潔で意図が明確な名前を使用**
+- **テストデータには役割を表す単純な名前を使用**
+
+## 共通スタイルガイド補足
+
+### コメント規約
+
+- **TODO コメントには担当者と課題番号を含める**
+- **FIXMEコメントには具体的な問題点を記述**
+- **コードブロックには目的を説明するコメントを付ける**
+
+詳細なコード例は[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
+
+### インポート規約
+
+- **絶対パスを使用したインポート**
+  - プロジェクト内のモジュールをインポートする際は、常に絶対パスを使用する
+
+### エラーハンドリング
+
+- プロバイダー固有のエラーを共通の`AIServiceError`型に変換
+- レート制限エラーには自動リトライと指数バックオフを実装
+- 一時的なサービス障害に対するフェイルオーバー機能の実装
+
+#### 指数バックオフ実装パターン
+
+レート制限や一時的なサービス障害に対応するため、以下の指数バックオフパターンを実装します：
 
 ```typescript
-import { Result } from '@/shared/utils/result';
-import { AIServiceError } from '@/lib/ai/ai-types'; // 型定義は 05_type_definitions.md 参照
+/**
+ * 指数バックオフを使用してAI API呼び出しをリトライする関数
+ * @param operation - 実行する非同期操作
+ * @param isRetryable - エラーがリトライ可能かを判定する関数
+ * @param options - リトライオプション
+ * @returns 操作の結果
+ */
+async function retryWithExponentialBackoff<T>(
+  operation: () => Promise<T>,
+  isRetryable: (error: Error) => boolean,
+  options: {
+    maxRetries?: number; // 最大リトライ回数 (デフォルト: 3)
+    initialDelayMs?: number; // 初期遅延（ミリ秒）(デフォルト: 1000)
+    maxDelayMs?: number; // 最大遅延（ミリ秒）(デフォルト: 60000)
+    backoffFactor?: number; // バックオフ係数 (デフォルト: 2)
+    jitterFactor?: number; // ジッター係数 (デフォルト: 0.1)
+    onRetry?: (error: Error, attempt: number, delayMs: number) => void; // リトライ時のコールバック
+  } = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    initialDelayMs = 1000,
+    maxDelayMs = 60000,
+    backoffFactor = 2,
+    jitterFactor = 0.1,
+    onRetry = () => {},
+  } = options;
 
-export interface AIServiceInterface {
-  /**
-   * テキスト補完を実行します (非ストリーミング)。
-   * @param prompt プロンプト文字列
-   * @param options 補完オプション (モデル、温度設定など)
-   * @returns Result<AICompletionResponse, AIServiceError>
-   */
-  getCompletion(
-    prompt: string,
-    options?: AICompletionOptions
-  ): Promise<Result<AICompletionResponse, AIServiceError>>;
+  let attempt = 0;
+  let lastError: Error;
 
-  /**
-   * テキスト補完をストリーミングで実行します。
-   * @param prompt プロンプト文字列
-   * @param options 補完オプション
-   * @returns AsyncGenerator<Result<AIStreamingChunk, AIServiceError>>
-   */
-  streamCompletion(
-    prompt: string,
-    options?: AICompletionOptions
-  ): AsyncGenerator<Result<AIStreamingChunk, AIServiceError>>;
+  while (attempt <= maxRetries) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error as Error;
 
-  // 必要に応じて他のメソッドを追加 (例: 埋め込み生成、画像生成など)
-  // getEmbeddings(text: string): Promise<Result<EmbeddingVector, AIServiceError>>;
+      if (attempt >= maxRetries || !isRetryable(lastError)) {
+        throw lastError;
+      }
+
+      // 指数バックオフ遅延計算（ジッター付き）
+      const baseDelay = Math.min(initialDelayMs * Math.pow(backoffFactor, attempt), maxDelayMs);
+
+      // ジッター追加（±jitterFactor%のランダム変動）
+      const jitter = baseDelay * jitterFactor * (Math.random() * 2 - 1);
+      const delayMs = Math.floor(baseDelay + jitter);
+
+      // リトライコールバック実行
+      onRetry(lastError, attempt + 1, delayMs);
+
+      // 指定時間待機
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+
+      attempt++;
+    }
+  }
+
+  throw lastError;
+}
+
+// 使用例
+async function callAIServiceWithRetry(): Promise<AICompletionResponse> {
+  return retryWithExponentialBackoff(
+    () => aiService.completion(options),
+    (error) => {
+      if (error instanceof AIServiceError) {
+        // リトライ可能なエラー種別を判定
+        return ['rate_limit_exceeded', 'service_unavailable', 'gateway_timeout'].includes(
+          error.code
+        );
+      }
+      return false;
+    },
+    {
+      maxRetries: 5,
+      initialDelayMs: 2000,
+      onRetry: (error, attempt, delay) => {
+        logger.warn(
+          `AI Service call failed (${(error as AIServiceError).code}). ` +
+            `Retrying attempt ${attempt} after ${delay}ms delay.`
+        );
+      },
+    }
+  );
 }
 ```
 
-**具体的な実装例**
-
-詳細な実装例は `code_examples/04_implementation_rules_examples.md` ([./code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)) を参照してください。
-
-### 依存性注入 (`tsyringe`) の活用方針
-
-本プロジェクトでは、モジュール間の依存関係を管理し、テスト容易性を向上させるために、`tsyringe` を依存性注入 (DI) コンテナとして利用します。
-
-**基本方針**
-
-1.  **コンストラクタインジェクションを基本とする**: 依存性はクラスのコンストラクタを通じて注入します。
-2.  **インターフェースに対するプログラミング**: 具象クラスではなく、インターフェース（抽象）に依存するように設計します。DIコンテナが実行時に適切な具象クラスを注入します。
-3.  **適用範囲**: 主にアプリケーション層 (`application/`) とインフラストラクチャ層 (`infrastructure/`) で利用します。ドメイン層のエンティティや値オブジェクトには通常適用しません。プレゼンテーション層（Reactコンポーネント）への適用は限定的にします（例: グローバルサービスの注入）。
-
-**設定 (`config/container.ts`)**
-
-*   DIコンテナの設定と登録は `config/container.ts` に集約します。
-*   モジュールごとに設定ファイルを分割することも可能です（例: `config/auth.container.ts`）。
-*   インターフェース（トークン）と具象クラスのマッピングを定義します。
-*   ライフサイクル（`Lifecycle.Singleton`, `Lifecycle.Transient` など）を適切に設定します。
-
-```typescript
-// config/container.ts
-import { container, Lifecycle } from 'tsyringe';
-import { UserRepository } from '@/domain/repositories/UserRepository';
-import { SupabaseUserRepository } from '@/infrastructure/repositories/SupabaseUserRepository';
-import { AuthService } from '@/application/services/AuthService';
-// ... 他の依存関係のインポート
-
-// リポジトリの登録 (インターフェース UserRepository に対して SupabaseUserRepository を注入)
-container.register<UserRepository>('UserRepository', {
-  useClass: SupabaseUserRepository,
-});
-// ライフサイクルを指定する場合 (Singleton)
-// container.register<UserRepository>('UserRepository', {
-//   useClass: SupabaseUserRepository,
-// }, { lifecycle: Lifecycle.Singleton });
-
-// アプリケーションサービスの登録
-container.register<AuthService>('AuthService', {
-  useClass: AuthService,
-});
-
-// AIServiceInterface の登録 (Factory経由)
-import { AIServiceFactory } from '@/lib/ai/ai-service-factory';
-import { AIServiceInterface } from '@/lib/ai/ai-service-interface';
-
-container.register<AIServiceInterface>('AIServiceInterface', {
-    useFactory: (dependencyContainer) => {
-        // Factoryに必要な依存があればここで解決
-        // const config = dependencyContainer.resolve<AppConfig>('AppConfig');
-        return AIServiceFactory.create(); // 環境変数等に基づいて適切な実装を返す
-    }
-});
-
-
-export default container;
-```
-
-**利用方法**
-
-1.  **注入されるクラス (`@injectable`)**: DIコンテナによってインスタンス化され、注入されるクラスには `@injectable()` デコレータを付与します。
-
-    ```typescript
-    // infrastructure/repositories/SupabaseUserRepository.ts
-    import { injectable, inject } from 'tsyringe';
-    import { UserRepository } from '@/domain/repositories/UserRepository';
-    import { SupabaseClient } from '@supabase/supabase-js'; // 仮
-
-    @injectable()
-    export class SupabaseUserRepository implements UserRepository {
-      // SupabaseClient など、さらに依存があれば注入できる
-      constructor(@inject('SupabaseClient') private supabase: SupabaseClient) {}
-      // ... リポジトリの実装 ...
-    }
-    ```
-
-2.  **依存性を注入するクラス (`@inject`)**: コンストラクタで依存性を受け取るクラスでは、引数に `@inject(トークン)` デコレータを使用します。トークンは通常、インターフェース名を文字列として使用します。
-
-    ```typescript
-    // application/services/AuthService.ts
-    import { injectable, inject } from 'tsyringe';
-    import { UserRepository } from '@/domain/repositories/UserRepository';
-    import { User } from '@/domain/models/User'; // 仮
-
-    @injectable()
-    export class AuthService {
-      constructor(
-        @inject('UserRepository') private userRepository: UserRepository
-        // @inject('AIServiceInterface') private aiService: AIServiceInterface // 他のサービスも注入可能
-      ) {}
-
-      async findUserById(userId: string): Promise<User | null> {
-        // 注入されたリポジトリを使用
-        return this.userRepository.findById(userId);
-      }
-      // ... 認証関連のメソッド ...
-    }
-    ```
-
-3.  **インスタンスの取得**: アプリケーションのエントリーポイント（例: API Route ハンドラ、サーバーコンポーネント）でコンテナからルートとなるインスタンスを取得します。
+この実装は以下の特徴を持ちます:
+
+- 指数関数的に増加する待機時間によるバックオフ
+- ランダムなジッター付加による負荷分散
+- 柔軟なリトライ条件の設定
+- カスタマイズ可能なパラメータ設定
+- リトライ状況を監視するためのコールバック
+
+## UI実装ルール
+
+### RTL対応の実装指針
+
+RTL（Right-to-Left）言語（アラビア語、ヘブライ語など）のサポートは将来の要件ですが、設計段階から考慮する必要があります。以下の実装指針に従ってください。
+
+#### レイアウト制御
 
-    ```typescript
-    // app/api/users/[id]/route.ts
-    import container from '@/config/container';
-    import { AuthService } from '@/application/services/AuthService';
-    import { NextRequest, NextResponse } from 'next/server';
-
-    // コンテナから AuthService インスタンスを取得
-    const authService = container.resolve(AuthService);
-
-    export async function GET(
-      request: NextRequest,
-      { params }: { params: { id: string } }
-    ) {
-      const userId = params.id;
-      const user = await authService.findUserById(userId); // 解決されたインスタンスを使用
-
-      if (!user) {
-        return NextResponse.json({ message: 'User not found' }, { status: 404 });
-      }
-      return NextResponse.json(user);
-    }
-    ```
-
-**注意点**
-
-*   循環依存を避けるように設計してください。
-*   デコレータを使用するため、`tsconfig.json` で `emitDecoratorMetadata` と `experimentalDecorators` を有効にする必要があります。
-*   テスト時には、`container.registerInstance` などを使用して依存性をモックに差し替えることが容易になります ([`09_testing_implementation.md`](../09_testing_implementation.md) で詳細)。
-
-### 状態管理 (React Context + TanStack Query) の方針
-
-フロントエンドの状態管理は、サーバーキャッシュ状態とクライアントUI状態を区別し、それぞれの特性に合わせて React Context API と TanStack Query (React Query) を組み合わせて利用します。
-
-**役割分担**
-
-1.  **TanStack Query (React Query)**:
-    *   **責務**: サーバー状態のキャッシュ、非同期データフェッチ、更新、無効化。API から取得するデータ（プロジェクト一覧、ユーザー情報、ステップ情報など）の管理。
-    *   **主な機能**: `useQuery`, `useMutation`, `queryClient` を利用。
-    *   **配置**: データフェッチロジックはカスタムフック (`hooks/queries/`) やリポジトリパターン（クライアントサイド）にカプセル化することを推奨。
-2.  **React Context API**:
-    *   **責務**: グローバルなクライアントUI状態、認証状態、テーマ設定、言語設定など、複数のコンポーネントで共有され、サーバー状態とは直接関連しない状態の管理。
-    *   **主な機能**: `createContext`, `useContext`, `useState`, `useReducer` を利用。
-    *   **配置**: 機能ごとの Context を作成 (`contexts/`) し、必要な範囲で Provider を配置。
-
-**利用パターン**
-
-1.  **データフェッチ**:
-    *   サーバーからデータを取得する場合は、常に TanStack Query の `useQuery` を使用します。
-    *   データ取得ロジックはカスタムフックにまとめます。例: `useProjectsQuery()`, `useUserProfileQuery(userId)`。
-    *   `queryKey` の命名規則を定め、一貫性を保ちます (`['projects', { filter }]`, `['users', userId]` など)。
-    *   初期データ (`initialData`) や `staleTime`, `cacheTime` を適切に設定し、パフォーマンスを最適化します。
-2.  **データ更新**:
-    *   サーバー上のデータを更新する場合は、TanStack Query の `useMutation` を使用します。
-    *   `onSuccess` や `onError` コールバック内で `queryClient.invalidateQueries` や `queryClient.setQueryData` を使用し、関連するクエリのキャッシュを更新・無効化します。
-3.  **グローバルUI状態**:
-    *   認証情報（ユーザーオブジェクト、ログイン状態など）、テーマ（ライト/ダーク）、選択言語などは React Context で管理します。
-    *   `AuthContext`, `ThemeContext`, `LocaleContext` などを定義し、`_app.tsx` や共通レイアウトで Provider を設定します。
-    *   状態更新ロジックが複雑な場合は `useReducer` を利用します。
-4.  **コンポーネントローカル状態**:
-    *   特定のコンポーネントまたはその子コンポーネントのみで使用される一時的なUI状態（フォーム入力値、モーダルの開閉状態など）は `useState` を使用します。Context や TanStack Query に不必要に入れるべきではありません。
-
-**サーバーコンポーネントとの連携**
-
-*   サーバーコンポーネント内で取得したデータをクライアントコンポーネントに渡す場合、TanStack Query の `initialData` オプションを活用して、クライアントサイドでの初期レンダリング時の不要なデータフェッチを避けます。
-*   クライアントコンポーネントで使用する Context Provider は、その Context を利用するクライアントコンポーネント群をラップする、最も近い共通の親クライアントコンポーネントまたはレイアウトに配置します。
-
-**`'use client'` の使用範囲**
-
-*   TanStack Query のフック (`useQuery`, `useMutation`) や React Context の `useContext` を使用するコンポーネント、および `useState`, `useEffect` などのクライアントサイドフックを利用するコンポーネントには `'use client'` ディレクティブが必要です。
-*   `'use client'` の境界をできるだけコンポーネントツリーの末端（Leaf Components）に近づけるように設計し、サーバーコンポーネントの利点を最大限に活かします。状態やインタラクションが必要な部分のみをクライアントコンポーネントとして切り出します。
-
-**注意点**
-
-*   Context の Provider の範囲を適切に設定し、不要な再レンダリングを避けます。`React.memo` や `useCallback`, `useMemo` を適宜利用します。
-*   TanStack Query の `queryClient` はアプリケーション全体で一つのインスタンスを共有します。通常、`_app.tsx` や共通レイアウトで `QueryClientProvider` を設定します。
-
-詳細な実装例は `code_examples/04_implementation_rules_examples.md` ([./code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)) を参照してください。
-
-### エラーハンドリング実装ルール
-
-アプリケーション全体で一貫したエラーハンドリングを行い、堅牢性とユーザー体験を向上させるため、以下のルールを適用します。
-
-**基本方針**
-
-1.  **`Result` 型の活用**: 関数やメソッドが失敗する可能性がある場合、原則として `Result<T, E extends AppError>` 型 ([`06_utility_functions.md`](../06_utility_functions.md) で定義) を返り値として使用し、成功 (`Ok`) または失敗 (`Err`) を明示的に表現します。これにより、例外処理の強制と型安全なエラーハンドリングを実現します。
-2.  **例外 (`throw`) の限定的使用**: `Result` 型で表現できない致命的なエラー（設定不備、回復不能な内部状態など）や、フレームワークが予期する特定の例外（Next.js の `notFound()` など）を除き、予期されるエラー処理のために安易に例外をスローしません。
-3.  **エラー型の統一**: アプリケーション固有のエラーは、`AppError` ([`05_type_definitions.md#共通エラー型`](../05_type_definitions.md)) を基底クラスとし、具体的なエラー種別を示す `ErrorCode` ([`05_type_definitions.md#エラーコード`](../05_type_definitions.md)) を含めます。外部ライブラリやAPIのエラーは、適切な `AppError` にラップまたは変換します。
-4.  **レイヤー間のエラー伝播**: 下位レイヤー（インフラ層、ドメイン層）で発生したエラーは、`Result` 型を通じて上位レイヤー（アプリケーション層、プレゼンテーション層）に伝播させます。上位レイヤーは受け取った `Result` を検証し、適切に処理（エラー変換、ログ記録、ユーザー通知など）します。
-
-**実装パターン**
-
-1.  **関数の返り値**:
-    ```typescript
-    import { Result, ok, err } from '@/shared/utils/result';
-    import { AppError, ErrorCode } from '@/shared/types/errors'; // 05_type_definitions.md
-
-    async function fetchProject(projectId: string): Promise<Result<Project, AppError>> {
-      try {
-        const response = await fetch(`/api/projects/${projectId}`);
-        if (!response.ok) {
-          if (response.status === 404) {
-            return err(new AppError(ErrorCode.PROJECT_NOT_FOUND, `Project ${projectId} not found`));
-          }
-          // 他のステータスコードに応じたエラー処理
-          return err(new AppError(ErrorCode.API_REQUEST_FAILED, `Failed to fetch project: ${response.statusText}`));
-        }
-        const project: Project = await response.json();
-        return ok(project);
-      } catch (error) {
-        // ネットワークエラーなど
-        return err(new AppError(ErrorCode.NETWORK_ERROR, 'Network error occurred', { cause: error }));
-      }
-    }
-    ```
-2.  **`Result` の処理**:
-    ```typescript
-    const projectResult = await fetchProject('some-id');
-
-    if (projectResult.isErr()) {
-      const error = projectResult.error;
-      // エラーの種類に応じた処理
-      logger.error(`Failed to fetch project: ${error.message}`, { code: error.code, cause: error.cause });
-
-      if (error.code === ErrorCode.PROJECT_NOT_FOUND) {
-        // ユーザーに「プロジェクトが見つかりません」と表示
-        showNotFoundError();
-      } else {
-        // 一般的なエラーメッセージを表示
-        showGenericError();
-      }
-      return; // エラー発生時は処理を中断
-    }
-
-    // 成功した場合のみ値を使用
-    const project = projectResult.value;
-    displayProject(project);
-    ```
-3.  **エラー変換**: 下位レイヤーのエラーを上位レイヤーでより抽象的なエラーに変換する必要がある場合。
-    ```typescript
-    async function updateUserProfile(userId: string, data: UpdateProfileDTO): Promise<Result<void, AppError>> {
-      const repoResult = await userRepository.update(userId, data); // リポジトリは DB固有エラーを返す可能性
-      if (repoResult.isErr()) {
-        const dbError = repoResult.error;
-        if (dbError.code === ErrorCode.DB_UNIQUE_CONSTRAINT_VIOLATION) {
-          // DBエラーをビジネスロジックエラーに変換
-          return err(new AppError(ErrorCode.USER_EMAIL_ALREADY_EXISTS, 'Email already exists'));
-        }
-        // その他のDBエラーは汎用的なエラーとしてそのまま伝播させるか、別のコードに変換
-        return err(new AppError(ErrorCode.DATABASE_ERROR, 'Failed to update user profile', { cause: dbError }));
-      }
-      return ok(undefined);
-    }
-    ```
-4.  **ロギング**:
-    *   エラーが発生した箇所（`Result` が `Err` であった場合）で、エラー情報をログに記録します。`logger` ユーティリティ ([`06_utility_functions.md`](../06_utility_functions.md)) を使用します。
-    *   ログには、`ErrorCode`、エラーメッセージ、可能であれば発生元のスタックトレースやコンテキスト情報 (`cause`) を含めます。
-    *   ユーザーに見せるエラーメッセージと、ログに残す詳細な技術的エラー情報を区別します。機密情報はログ記録前にマスクします。
-    *   エラーの重要度に応じてログレベル（`error`, `warn`, `info`）を使い分けます。
-5.  **ユーザーへの通知 (UI レイヤー)**:
-    *   プレゼンテーション層（React コンポーネント）で `Result` を受け取り、エラーが発生した場合はユーザーフレンドリーなメッセージを表示します。
-    *   エラーコード (`ErrorCode`) に基づいて、表示するメッセージやUIの挙動を制御します。
-    *   `toast` 通知、フォームのエラーメッセージ表示、専用のエラーページへのリダイレクトなど、状況に応じた適切なフィードバック方法を選択します。
-    *   技術的なエラー詳細はユーザーに見せず、代わりに参照可能なエラーIDなどを表示してサポートを依頼する形式を検討します。
-
-**注意点**
-
-*   非同期処理 (`async/await`) 内でも `Result` 型を適切に扱い、`Promise` が `reject` される状況を極力減らします。
-*   `Result` 型の導入により冗長に見える箇所もありますが、エラー処理の強制とコードの堅牢性向上を優先します。ユーティリティ関数 ([`06_utility_functions.md`](../06_utility_functions.md)) を活用して記述を簡潔に保ちます。
-
-### Next.js 開発規約
-
-- API Routesは機能ドメイン別にグループ化
-
-#### サーバーコンポーネントとクライアントコンポーネント間のデータ受け渡し
-
-Next.js App Router におけるサーバーコンポーネント (Server Components, SC) とクライアントコンポーネント (Client Components, CC) の連携においては、以下のルールに従います。
-
-1.  **Props 経由のデータ受け渡し**:
-    *   SC から CC へデータを渡す基本的な方法は Props を利用します。
-    *   **シリアライズ可能なデータのみ**: SC から CC へ Props として渡せるのは、JSON としてシリアライズ可能なデータ型のみです（文字列、数値、真偽値、プレーンオブジェクト、配列など）。`Date`, `Map`, `Set`, 関数、クラスインスタンスなどは直接渡せません。
-    *   **変換**: シリアライズ不可能なデータ（例: `Date` オブジェクト）は、SC 側で文字列や数値（タイムスタンプ）に変換してから CC へ渡します。CC 側で必要に応じて元の型に復元します。ドメインオブジェクトなども DTO に変換してから渡すのが基本です。
-    *   **機密情報**: パスワードハッシュなど、クライアントに公開すべきでない情報は Props として渡さないでください。
-2.  **Server Actions の活用**:
-    *   クライアント側のインタラクション（フォーム送信、ボタンクリックなど）に応じてサーバー側の処理（データ更新、AI 呼び出しなど）を実行したい場合は、Server Actions を積極的に利用します。
-    *   Server Actions は SC または CC から呼び出し可能で、シリアライズ可能な引数と戻り値を使用します。
-    *   フォーム送信と組み合わせることで、JavaScript が無効な環境でも機能するプログレッシブエンハンスメントを実現しやすくなります。
-    *   Server Actions 内での状態更新後は、`revalidatePath` や `revalidateTag` を使用して関連データのキャッシュを更新します。
-3.  **Props Drilling の回避**:
-    *   深い階層の CC にデータを渡すために Props をバケツリレーするのは避けます。
-    *   グローバルに近い状態や複数の離れたコンポーネントで共有される状態は、React Context API ([「状態管理の方針」](#状態管理-react-context--tanstack-query-の方針)参照) を利用し、必要な CC から直接アクセスできるようにします。Provider は `'use client'` 境界の内側に配置します。
-4.  **サーバーコンポーネントのクライアントキャッシュ (`initialData`)**:
-    *   SC で取得したデータを、そのデータを必要とする CC の TanStack Query (`useQuery`) の `initialData` として渡すことで、クライアントでの初期ロード時の不要な再フェッチを防ぎます。
-
-詳細な実装例は `code_examples/04_implementation_rules_examples.md` ([./code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)) を参照してください。
-
-## 品質保証
-
-- Next.jsのサーバーコンポーネントとAPI Routesのテスト方法標準化 ([`09_testing_implementation.md`](../09_testing_implementation.md) で詳細定義)
-
-## ドキュメント管理
-
-- 障害対応手順書 ([`10_deployment_implementation.md`](../10_deployment_implementation.md) の一部)
-
-</rewritten_file>
+1. **方向属性の使用**
+
+   ```tsx
+   // 言語に基づいて方向属性を設定
+   <html dir={locale === 'ar' ? 'rtl' : 'ltr'} lang={locale}>
+   ```
+
+2. **Tailwind CSSのRTLサポート**
+
+   ```tsx
+   // 左右の概念を論理プロパティで扱う
+   <div className="ml-4 rtl:ml-0 rtl:mr-4">{/* コンテンツ */}</div>
+   ```
+
+3. **Flex方向の自動反転**
+   ```tsx
+   // RTL対応フレックスコンテナ
+   const FlexContainer = ({ children, className, ...props }) => {
+     const { locale } = useLocale();
+     const isRtl = locale === 'ar';
+
+     return (
+       <div
+         className={`flex ${isRtl ? 'flex-row-reverse' : 'flex-row'} ${className || ''}`}
+         {...props}
+       >
+         {children}
+       </div>
+     );
+   };
+   ```
+
+#### コンポーネント対応
+
+1. **アイコン・矢印の反転**
+
+   ```tsx
+   // RTL対応アイコン
+   const DirectionalIcon = ({ icon: Icon, ...props }) => {
+     const { locale } = useLocale();
+     const isRtl = locale === 'ar';
+
+     return <Icon className={isRtl ? 'rotate-180 transform' : ''} {...props} />;
+   };
+   ```
+
+2. **双方向テキスト管理**
+
+   ```tsx
+   // 異なる方向のテキストを混在させる場合
+   <span dir="ltr">English text</span>
+   <span dir="rtl">النص العربي</span>
+   ```
+
+3. **スクロールバーの位置調整**
+
+   ```css
+   /* RTL用スクロールバー位置調整 */
+   [dir='rtl'] .custom-scrollbar {
+     left: 0;
+     right: auto;
+   }
+
+   [dir='ltr'] .custom-scrollbar {
+     right: 0;
+     left: auto;
+   }
+   ```
+
+#### テストと検証
+
+1. **RTL専用テストケース**
+
+   ```typescript
+   // RTLモード専用のテストケース
+   describe('Component in RTL mode', () => {
+     beforeEach(() => {
+       // RTLモードで設定
+       mockUseLocale.mockReturnValue({ locale: 'ar', isRtl: true });
+     });
+
+     it('should flip layout direction', () => {
+       render(<Component />);
+       // RTL固有の検証
+     });
+   });
+   ```
+
+2. **視覚的リグレッションテスト**
+   - スナップショットテストでRTLモードを検証
+   - 複数言語環境での自動視覚テスト設定
+
+#### RTL移行戦略
+
+RTL対応は以下の段階で実装します：
+
+1. **準備段階（現在）**
+
+   - `dir`属性をサポートする基本構造の実装
+   - 論理プロパティを優先使用（`margin-inline-start`など）
+   - CSS変数による方向依存値の抽象化
+
+2. **部分的実装（必要に応じて）**
+
+   - 主要コンポーネントのRTL対応
+   - ナビゲーションとレイアウト構造の反転サポート
+   - テスト環境でのRTL検証
+
+3. **完全実装（RTL言語追加時）**
+   - 全UIコンポーネントのRTL対応完了
+   - 文字方向混在時の細かな調整
+   - 完全なアクセシビリティ検証
+
+これらの指針は、01_requirements_definition.mdの「国際化対応（i18n）機能」要件と02_architecture_design.mdの「RTL（右から左への記述）言語サポート」アーキテクチャ設計に基づいています。

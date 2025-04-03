@@ -1,15 +1,15 @@
 # 型定義コード例集
 
-**最終更新日:** 2025-04-03
+最終更新日: 2025-03-26
 
-このドキュメントは`05_type_definitions.md`で説明されている型定義の具体的な実装例を提供します。「05_type_definitions.md」が概念と原則を説明するのに対し、このファイルは実際のコード例を集約しています。
+このドキュメントは[「05_type_definitions.md」](../05_type_definitions.md)で説明されている型定義の具体的な実装例を提供します。「05_type_definitions.md」が概念と原則を説明するのに対し、このファイルは実際のコード例を集約しています。
 
 ## 目次
 
 - [基本・汎用ユーティリティ型の実装例](#基本汎用ユーティリティ型の実装例)
-- [ドメインモデル Value Object/Entity の実装例](#ドメインモデル-value-objectentity-の実装例)
+- [ドメインモデル型定義の実装例](#ドメインモデル型定義の実装例)
 - [API DTOの型定義実装例](#api-dtoの型定義実装例)
-- [データ永続化モデル (Drizzle Schema) の例](#データ永続化モデル-drizzle-schema-の例)
+- [データエンティティ型定義の実装例](#データエンティティ型定義の実装例)
 - [状態管理関連の型定義実装例](#状態管理関連の型定義実装例)
 - [ユーティリティ型の実装例](#ユーティリティ型の実装例)
 
@@ -18,357 +18,219 @@
 ### 共通基本型
 
 ```typescript
-// src/shared/types/common.ts (例：パスはプロジェクト構成に依存)
+// types/common/basic.ts
 
 /**
- * 日付関連の基本型定義。
- * アプリケーション全体で日付表現を統一するための型。
+ * 日付関連の基本型定義
+ * アプリケーション全体で日付表現を統一するための型
  */
 
-/** ISO 8601形式の日付時刻文字列型 */
+/** ISO形式の日付時刻文字列型 */
 export type ISODateTimeString = string;
 
-/** YYYY-MM-DD形式の日付文字列型 */
+/** YYYY-MM-DD形式の日付型 */
 export type DateOnlyString = string;
 
-/** JavaScriptのDateオブジェクト */
+/** タイムスタンプ型（Dateオブジェクト） */
 export type Timestamp = Date;
 
 /**
- * 識別子を表す基本型。
- * UUIDやCUIDなどの文字列形式を想定。
- * より型安全性を高める場合はドメイン層でValue Object (例: UserId) を使用する。
+ * ドメイン固有の値オブジェクト
+ * 型安全性を高めるためのブランド型
  */
-export type Identifier = string;
 
-/** パーセンテージ (0-100) */
-export type Percentage = number;
+/** メールアドレス型（ブランド型） */
+export type Email = string & { readonly __brand: unique symbol };
+
+/** パスワード型 */
+export type Password = string;
+
+/** 進捗率型（0-100の数値） */
+export type PercentageProgress = number;
+
+/** ID型（文字列ベース、型安全性のためのブランド型） */
+export type ID = string & { readonly __brand: unique symbol };
 ```
 
 ### 共通オブジェクト型
 
 ```typescript
-// src/shared/types/common.ts (続き)
+// types/common/objects.ts
 
-import { ISODateTimeString, Identifier } from './common';
-
-/**
- * 多くのエンティティが持つ基本プロパティ。
- * ドメインエンティティの基底クラスやインターフェースで使用されることを想定。
- */
-export interface BaseDomainEntity {
-  // IDは各エンティティのValue Object (e.g., UserId, ProductId) で定義される
-  readonly createdAt: Timestamp;
-  readonly updatedAt: Timestamp;
-}
+import { ISODateTimeString, ID } from './basic';
 
 /**
- * ページネーションリクエストのパラメータ
+ * ベースエンティティ
+ * すべてのエンティティが持つ共通プロパティの定義
  */
-export interface PaginationParams {
-  page: number; // 1始まりのページ番号
-  limit: number; // 1ページあたりのアイテム数
-}
+export type BaseEntity = {
+  id: ID;
+  createdAt: ISODateTimeString;
+  updatedAt: ISODateTimeString;
+};
 
 /**
- * ページネーションされたレスポンスデータ
- * @template T - リストされるアイテムの型
+ * ページネーション関連の型定義
  */
-export interface PaginatedResponse<T> {
+export type PaginationParams = {
+  page: number;
+  limit: number;
+};
+
+export type PaginatedResponse<T> = {
   items: T[];
-  totalItems: number;
-  totalPages: number;
-  currentPage: number;
-  itemsPerPage: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-}
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+};
 
-/** ソート方向 */
+/**
+ * フィルター/ソート関連の型定義
+ */
 export type SortDirection = 'asc' | 'desc';
 
-/**
- * ソートパラメータ
- * @template T - ソート対象のオブジェクト型
- */
-export interface SortParams<T> {
+export type SortParams<T> = {
   field: keyof T;
   direction: SortDirection;
-}
+};
 
-/** フィルタリング演算子 */
-export type FilterOperator = 
-  | 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' 
-  | 'in' | 'nin' | 'like' | 'ilike' // ilike: case-insensitive like
-  | 'isNull' | 'isNotNull';
+export type FilterOperator =
+  | 'eq' // =
+  | 'neq' // !=
+  | 'gt' // >
+  | 'gte' // >=
+  | 'lt' // <
+  | 'lte' // <=
+  | 'in' // IN ()
+  | 'nin' // NOT IN ()
+  | 'like'; // LIKE
 
-/**
- * フィルタリングパラメータ
- * @template T - フィルタリング対象のオブジェクト型
- */
-export interface FilterParams<T> {
+export type FilterParams<T> = {
   field: keyof T;
   operator: FilterOperator;
-  value?: unknown; // isNull, isNotNull では不要
-}
+  value: unknown;
+};
 ```
 
-## ドメインモデル Value Object/Entity の実装例
+## ドメインモデル型定義の実装例
 
-### Value Objects (値オブジェクト)
-
-```typescript
-// src/domain/models/value-objects/user-id.ts
-import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
-import { Result, ok, err } from 'neverthrow';
-
-// Opaque Type / Nominal Typing を実現するヘルパー
-type Brand<K, T> = K & { __brand: T };
-
-export type UserId = Brand<string, 'UserId'>;
-
-/**
- * UserId を生成するファクトリ関数。
- * 不変条件: 有効なUUID v4であること。
- * @param {string} [value] - 既存のID文字列。省略時は新規生成。
- * @returns {Result<UserId, Error>} 生成結果またはエラー
- */
-export function createUserId(value?: string): Result<UserId, Error> {
-  const id = value ?? uuidv4();
-  if (!uuidValidate(id)) {
-    return err(new Error('Invalid UserId format (must be UUID v4).'));
-  }
-  return ok(id as UserId);
-}
-
-// src/domain/models/value-objects/email.ts
-import { z } from 'zod';
-// type Brand<K, T> = K & { __brand: T }; // 上記で定義済み or 共通化
-
-export type Email = Brand<string, 'Email'>;
-
-const emailSchema = z.string().email({ message: "Invalid email format." });
-
-/**
- * Email を生成するファクトリ関数。
- * 不変条件: 有効なメールアドレス形式であること。
- * @param {string} value - メールアドレス文字列
- * @returns {Result<Email, Error>} 生成結果またはエラー
- */
-export function createEmail(value: string): Result<Email, Error> {
-  const validationResult = emailSchema.safeParse(value);
-  if (!validationResult.success) {
-    return err(new Error(validationResult.error.errors[0]?.message || 'Invalid email format.'));
-  }
-  return ok(validationResult.data as Email);
-}
-```
-
-### User Entity (ユーザーエンティティ)
+### ユーザードメインモデル
 
 ```typescript
-// src/domain/models/entities/user.ts
+// types/domain/models/user.ts
 
-import { Result, ok, err } from 'neverthrow';
-import { UserId, createUserId } from '../value-objects/user-id';
-import { Email, createEmail } from '../value-objects/email';
-import { Password } from '../value-objects/password'; // Password VOも定義推奨
-import { UserRole } from '../enums/user-role.enum'; // Enumも定義推奨
-import { UserSettings } from '../value-objects/user-settings'; // Settings VOも定義推奨
+import { Email, ID, DateOnlyString, Timestamp } from '../../common/basic';
 
 /**
- * ユーザーエンティティのプロパティ
+ * ユーザー認証情報を表すモデル
+ * 認証に必要な最小限の情報のみを含む
  */
-export interface UserProps {
-  readonly id: UserId;
-  name: string;
+export type UserAuthInfo = {
+  id: ID;
   email: Email;
-  passwordHash: string; // Password VOから取得したハッシュ値
-  roles: UserRole[];
-  settings: UserSettings;
   isVerified: boolean;
-  lastLoginAt?: Date | null;
-  readonly createdAt: Date;
-  updatedAt: Date;
-  // プロフィール関連は別エンティティ (UserProfile) やVOに切り出すことも検討
-  displayName?: string;
-  bio?: string | null;
-  avatarUrl?: string | null;
-}
+  lastLoginAt: Timestamp | null;
+};
 
 /**
- * ユーザーエンティティ
- * ファクトリメソッドやビジネスロジックを持つクラスとして実装
+ * ユーザープロファイル情報を表すモデル
  */
-export class User {
-  private props: UserProps;
+export type UserProfile = {
+  displayName: string;
+  biography: string | null;
+  avatarUrl: string | null;
+  birthDate: DateOnlyString | null;
+  location: string | null;
+  preferredLanguage: string;
+};
 
-  private constructor(props: UserProps) {
-    this.props = props;
-  }
+/**
+ * ユーザードメインモデル
+ * ビジネスロジックで扱うユーザーの完全な表現
+ */
+export type User = UserAuthInfo &
+  UserProfile & {
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+    roles: UserRole[];
+    settings: UserSettings;
+  };
 
-  /**
-   * 新規ユーザー作成 (ファクトリメソッド)
-   * @param data - 作成に必要なデータ
-   * @returns {Result<User, Error>} 作成結果またはエラー
-   */
-  public static create(data: {
-    name: string;
-    email: string;
-    rawPassword: string; // 生パスワード
-    roles?: UserRole[];
-  }): Result<User, Error> {
-    const userIdResult = createUserId();
-    if (userIdResult.isErr()) return err(userIdResult.error);
+/**
+ * ユーザーロール
+ * システム内でのユーザーの権限を定義
+ */
+export type UserRole = 'USER' | 'ADMIN' | 'EDITOR';
 
-    const emailResult = createEmail(data.email);
-    if (emailResult.isErr()) return err(emailResult.error);
-
-    // Password VOでハッシュ化処理を行う想定
-    const passwordResult = Password.create(data.rawPassword);
-    if (passwordResult.isErr()) return err(passwordResult.error);
-    const passwordHash = passwordResult.value.getHashedValue();
-
-    const now = new Date();
-    const props: UserProps = {
-      id: userIdResult.value,
-      name: data.name,
-      email: emailResult.value,
-      passwordHash,
-      roles: data.roles ?? [UserRole.USER], // デフォルトロール
-      settings: UserSettings.getDefault(), // デフォルト設定
-      isVerified: false,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    // ここでドメインイベントを発行することも可能 (UserCreatedEvent)
-
-    return ok(new User(props));
-  }
-
-  /**
-   * 永続化層からの再構築 (ファクトリメソッド)
-   * @param props - DBなどから取得したプロパティ
-   * @returns {User} 再構築されたUserインスタンス
-   */
-  public static reconstitute(props: UserProps): User {
-    // バリデーションは省略（DBからのデータは信頼できる前提、または別途実施）
-    return new User(props);
-  }
-
-  // --- ゲッター --- 
-  get id(): UserId { return this.props.id; }
-  get name(): string { return this.props.name; }
-  get email(): Email { return this.props.email; }
-  get passwordHash(): string { return this.props.passwordHash; }
-  get roles(): UserRole[] { return [...this.props.roles]; } // イミュータブルに
-  get settings(): UserSettings { return this.props.settings; } // VOはイミュータブル前提
-  get isVerified(): boolean { return this.props.isVerified; }
-  get lastLoginAt(): Date | null | undefined { return this.props.lastLoginAt; }
-  get createdAt(): Date { return this.props.createdAt; }
-  get updatedAt(): Date { return this.props.updatedAt; }
-
-  // --- ビジネスロジックメソッド --- 
-
-  /** メールアドレスを変更する */
-  public changeEmail(newEmailValue: string): Result<void, Error> {
-    const emailResult = createEmail(newEmailValue);
-    if (emailResult.isErr()) {
-      return err(emailResult.error);
-    }
-    if (this.props.email !== emailResult.value) {
-        this.props.email = emailResult.value;
-        this.props.isVerified = false; // メール変更時は未検証に
-        this.markAsUpdated();
-        // Domain Event: UserEmailChanged
-    }
-    return ok(undefined);
-  }
-
-  /** パスワードを変更する */
-  public changePassword(newRawPassword: string): Result<void, Error> {
-    const passwordResult = Password.create(newRawPassword);
-    if (passwordResult.isErr()) return err(passwordResult.error);
-    
-    this.props.passwordHash = passwordResult.value.getHashedValue();
-    this.markAsUpdated();
-    // Domain Event: UserPasswordChanged
-    return ok(undefined);
-  }
-
-  /** ロールを追加する */
-  public addRole(role: UserRole): void {
-    if (!this.props.roles.includes(role)) {
-      this.props.roles.push(role);
-      this.markAsUpdated();
-      // Domain Event: UserRoleAdded
-    }
-  }
-
-  /** ユーザーを検証済みにする */
-  public verify(): void {
-    if (!this.props.isVerified) {
-        this.props.isVerified = true;
-        this.markAsUpdated();
-        // Domain Event: UserVerified
-    }
-  }
-
-  /** 最終ログイン日時を更新 */
-  public updateLastLogin(): void {
-    this.props.lastLoginAt = new Date();
-    // 最終ログインはupdatedAtを更新しない場合もある
-  }
-
-  // --- ヘルパー --- 
-  private markAsUpdated(): void {
-    this.props.updatedAt = new Date();
-  }
-}
+/**
+ * ユーザー設定
+ * ユーザーの個人設定を表現
+ */
+export type UserSettings = {
+  notifications: {
+    email: boolean;
+    push: boolean;
+  };
+  theme: 'light' | 'dark' | 'system';
+  timezone: string;
+};
 ```
 
-### AI Prompt Entity (AIプロンプトエンティティ)
+### AIプロンプトドメインモデル
 
 ```typescript
-// src/domain/models/entities/ai-prompt.ts
-// (Userエンティティと同様の構造で実装。Value Object, Enumを含む)
+// types/domain/models/ai-prompt.ts
 
-import { PromptId } from '../value-objects/prompt-id';
-import { PromptCategory } from '../enums/prompt-category.enum';
-import { AIModelType } from '../enums/ai-model-type.enum';
-import { PromptVariable } from '../value-objects/prompt-variable';
-import { UserId } from '../value-objects/user-id';
+import { ID, Timestamp } from '../../common/basic';
 
-export interface AIPromptProps {
-  readonly id: PromptId;
+/**
+ * AIプロンプトカテゴリ
+ * プロンプトの分類を表現
+ */
+export type PromptCategory =
+  | 'GENERAL'
+  | 'CREATIVE_WRITING'
+  | 'BUSINESS'
+  | 'PROGRAMMING'
+  | 'EDUCATION';
+
+/**
+ * AIモデルタイプ
+ * 対応しているAIモデルの種類
+ */
+export type AIModelType = 'GPT_3_5' | 'GPT_4' | 'CLAUDE_3_SONNET' | 'CLAUDE_3_OPUS';
+
+/**
+ * プロンプト変数
+ * プロンプトテンプレート内で置換される変数を定義
+ */
+export type PromptVariable = {
+  name: string;
+  description: string;
+  defaultValue?: string;
+  required: boolean;
+};
+
+/**
+ * AIプロンプトドメインモデル
+ * ユーザーが作成・使用するプロンプトの完全な表現
+ */
+export type AIPrompt = {
+  id: ID;
   title: string;
   description: string;
-  content: string; // プロンプト本文
+  content: string;
   category: PromptCategory;
   compatibleModels: AIModelType[];
   variables: PromptVariable[];
   isPublic: boolean;
-  creatorId: UserId;
-  readonly createdAt: Date;
-  updatedAt: Date;
+  creatorId: ID;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
   usageCount: number;
-  averageRating: number | null; // 0-5など
-}
-
-export class AIPrompt {
-  private props: AIPromptProps;
-
-  private constructor(props: AIPromptProps) {
-    this.props = props;
-  }
-
-  // ファクトリメソッド (create, reconstitute) ...
-
-  // ゲッター ...
-
-  // ビジネスロジック (例: レーティング更新、公開/非公開切り替え) ...
-}
+  averageRating: number | null;
+};
 ```
 
 ## API DTOの型定義実装例
@@ -376,359 +238,543 @@ export class AIPrompt {
 ### ユーザーAPI DTOs
 
 ```typescript
-// src/interfaces/http/rest/v1/dtos/user.dto.ts (例：パスはプロジェクト構成に依存)
+// types/api/dtos/user.ts
 
-import { z } from 'zod'; // バリデーションライブラリとしてZodを使用
-import { UserRole } from '@/domain/models/enums/user-role.enum';
+import { DateOnlyString, ID } from '../../common/basic';
+import { UserRole } from '../../domain/models/user';
 
-// POST /api/v1/users - ユーザー登録リクエストボディ
-export const CreateUserRequestSchema = z.object({
-  name: z.string().min(1, "Name is required").max(100),
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters long"),
-});
-export type CreateUserRequestDto = z.infer<typeof CreateUserRequestSchema>;
+/**
+ * ユーザー登録リクエスト
+ */
+export type RegisterUserRequest = {
+  email: string;
+  password: string;
+  displayName: string;
+  agreeToTerms: boolean;
+};
 
-// GET /api/v1/users/{userId} - ユーザー情報レスポンス
-export const UserResponseSchema = z.object({
-  id: z.string().uuid(), // UserId VOではなくstring (UUID)
-  name: z.string(),
-  email: z.string().email(), // Email VOではなくstring
-  roles: z.array(z.nativeEnum(UserRole)),
-  isVerified: z.boolean(),
-  lastLoginAt: z.date().nullable().optional(),
-  createdAt: z.date(), // Dateオブジェクトをそのまま or ISODateTimeString
-  updatedAt: z.date(),
-  settings: z.object({ // Settings VOの内容を展開
-    theme: z.enum(['light', 'dark', 'system']),
-    notifications: z.object({
-      email: z.boolean(),
-      push: z.boolean(),
-    }),
-    timezone: z.string(),
-  }),
-  // プロフィール情報も含む場合
-  displayName: z.string().optional(),
-  bio: z.string().nullable().optional(),
-  avatarUrl: z.string().url().nullable().optional(),
-});
-export type UserResponseDto = z.infer<typeof UserResponseSchema>;
+/**
+ * ユーザー登録レスポンス
+ */
+export type RegisterUserResponse = {
+  id: ID;
+  email: string;
+  displayName: string;
+  createdAt: string;
+  verificationEmailSent: boolean;
+};
 
-// PUT /api/v1/users/{userId}/profile - プロフィール更新リクエスト
-export const UpdateUserProfileRequestSchema = z.object({
-    displayName: z.string().max(100).optional(),
-    bio: z.string().max(500).nullable().optional(),
-    avatarUrl: z.string().url().nullable().optional(),
-});
-export type UpdateUserProfileRequestDto = z.infer<typeof UpdateUserProfileRequestSchema>;
+/**
+ * ユーザーログインリクエスト
+ */
+export type LoginUserRequest = {
+  email: string;
+  password: string;
+  rememberMe?: boolean;
+};
+
+/**
+ * ユーザーログインレスポンス
+ */
+export type LoginUserResponse = {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  user: UserProfileResponse;
+};
+
+/**
+ * ユーザープロファイルレスポンス
+ */
+export type UserProfileResponse = {
+  id: ID;
+  email: string;
+  displayName: string;
+  biography: string | null;
+  avatarUrl: string | null;
+  birthDate: DateOnlyString | null;
+  location: string | null;
+  roles: UserRole[];
+  createdAt: string;
+  lastLoginAt: string | null;
+};
+
+/**
+ * ユーザープロファイル更新リクエスト
+ */
+export type UpdateUserProfileRequest = {
+  displayName?: string;
+  biography?: string | null;
+  avatarUrl?: string | null;
+  birthDate?: DateOnlyString | null;
+  location?: string | null;
+  preferredLanguage?: string;
+};
 ```
 
 ### AIプロンプトAPI DTOs
 
 ```typescript
-// src/interfaces/http/rest/v1/dtos/ai-prompt.dto.ts
+// types/api/dtos/ai-prompt.ts
 
-import { z } from 'zod';
-import { PromptCategory } from '@/domain/models/enums/prompt-category.enum';
-import { AIModelType } from '@/domain/models/enums/ai-model-type.enum';
+import { AIModelType, PromptCategory, PromptVariable } from '../../domain/models/ai-prompt';
+import { ID } from '../../common/basic';
 
-// プロンプト変数 DTO スキーマ
-const PromptVariableDtoSchema = z.object({
-  name: z.string().min(1),
-  description: z.string(),
-  defaultValue: z.string().optional(),
-  required: z.boolean(),
-});
+/**
+ * プロンプト作成リクエスト
+ */
+export type CreatePromptRequest = {
+  title: string;
+  description: string;
+  content: string;
+  category: PromptCategory;
+  compatibleModels: AIModelType[];
+  variables: PromptVariable[];
+  isPublic: boolean;
+};
 
-// POST /api/v1/prompts - AIプロンプト作成リクエスト
-export const CreateAIPromptRequestSchema = z.object({
-  title: z.string().min(1).max(200),
-  description: z.string().max(1000),
-  content: z.string().min(10),
-  category: z.nativeEnum(PromptCategory),
-  compatibleModels: z.array(z.nativeEnum(AIModelType)).min(1),
-  variables: z.array(PromptVariableDtoSchema).optional().default([]),
-  isPublic: z.boolean().optional().default(false),
-});
-export type CreateAIPromptRequestDto = z.infer<typeof CreateAIPromptRequestSchema>;
+/**
+ * プロンプト更新リクエスト
+ */
+export type UpdatePromptRequest = {
+  title?: string;
+  description?: string;
+  content?: string;
+  category?: PromptCategory;
+  compatibleModels?: AIModelType[];
+  variables?: PromptVariable[];
+  isPublic?: boolean;
+};
 
-// GET /api/v1/prompts/{promptId} - AIプロンプト詳細レスポンス
-export const AIPromptResponseSchema = z.object({
-  id: z.string().uuid(), // PromptId VOではなくstring (UUID)
-  title: z.string(),
-  description: z.string(),
-  content: z.string(),
-  category: z.nativeEnum(PromptCategory),
-  compatibleModels: z.array(z.nativeEnum(AIModelType)),
-  variables: z.array(PromptVariableDtoSchema),
-  isPublic: z.boolean(),
-  creatorId: z.string().uuid(), // UserId VOではなくstring
-  createdAt: z.date(), // or ISODateTimeString
-  updatedAt: z.date(), // or ISODateTimeString
-  usageCount: z.number().int().nonnegative(),
-  averageRating: z.number().min(0).max(5).nullable(),
-});
-export type AIPromptResponseDto = z.infer<typeof AIPromptResponseSchema>;
+/**
+ * プロンプトレスポンス（詳細）
+ */
+export type PromptResponse = {
+  id: ID;
+  title: string;
+  description: string;
+  content: string;
+  category: PromptCategory;
+  compatibleModels: AIModelType[];
+  variables: PromptVariable[];
+  isPublic: boolean;
+  creatorId: ID;
+  creatorName: string;
+  createdAt: string;
+  updatedAt: string;
+  usageCount: number;
+  averageRating: number | null;
+  isFavorited: boolean;
+};
 
-// GET /api/v1/prompts - AIプロンプト一覧取得クエリパラメータ
-export const ListAIPromptsQuerySchema = z.object({
-  page: z.coerce.number().int().positive().optional().default(1),
-  limit: z.coerce.number().int().positive().max(100).optional().default(10),
-  sortBy: z.string().optional().default('createdAt'), // 例: 'title', 'usageCount', 'averageRating'
-  sortDirection: z.enum(['asc', 'desc']).optional().default('desc'),
-  category: z.nativeEnum(PromptCategory).optional(),
-  model: z.nativeEnum(AIModelType).optional(),
-  search: z.string().optional(), // タイトルや説明での検索
-  creatorId: z.string().uuid().optional(),
-  isPublic: z.coerce.boolean().optional(),
-});
-export type ListAIPromptsQueryDto = z.infer<typeof ListAIPromptsQuerySchema>;
+/**
+ * プロンプト一覧レスポンス（簡易）
+ */
+export type PromptListItemResponse = {
+  id: ID;
+  title: string;
+  description: string;
+  category: PromptCategory;
+  compatibleModels: AIModelType[];
+  creatorId: ID;
+  creatorName: string;
+  createdAt: string;
+  usageCount: number;
+  averageRating: number | null;
+  isFavorited: boolean;
+};
 
-// GET /api/v1/prompts - AIプロンプト一覧レスポンス
-// PaginatedResponse を利用 (src/shared/types/common.ts で定義)
-// export type ListAIPromptsResponseDto = PaginatedResponse<AIPromptResponseDto>;
+/**
+ * プロンプト実行リクエスト
+ */
+export type ExecutePromptRequest = {
+  promptId: ID;
+  modelType: AIModelType;
+  variables: Record<string, string>;
+  temperature?: number;
+  maxTokens?: number;
+};
 ```
 
-## データ永続化モデル (Drizzle Schema) の例
+## データエンティティ型定義の実装例
 
-**注意:** このセクションのコードは、ORM (Drizzle) のスキーマ定義ファイル (`src/infrastructure/database/drizzle/schema.ts` など) に記述される内容の**例**です。このドキュメントファイル自体に記述するものではありません。
+### データベースエンティティの型定義
 
 ```typescript
-// src/infrastructure/database/drizzle/schema.ts (例)
+// types/data/entities/user.ts
 
-import { pgTable, text, uuid, timestamp, boolean, varchar, integer, real, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { BaseEntity } from '../../common/objects';
 
-// -- Enums (PostgreSQLのENUM型を使う場合) --
-// import { pgEnum } from 'drizzle-orm/pg-core';
-// export const userRoleEnum = pgEnum('user_role', ['USER', 'ADMIN', 'EDITOR']);
-// export const promptCategoryEnum = pgEnum('prompt_category', ['GENERAL', 'CREATIVE_WRITING', ...]);
-// export const aiModelTypeEnum = pgEnum('ai_model_type', ['GPT_3_5', 'GPT_4', ...]);
+/**
+ * ユーザーテーブルエンティティ
+ * データベース上のユーザーテーブルと1:1で対応
+ */
+export type UserEntity = BaseEntity & {
+  email: string;
+  passwordHash: string;
+  displayName: string;
+  biography: string | null;
+  avatarUrl: string | null;
+  birthDate: string | null;
+  location: string | null;
+  preferredLanguage: string;
+  isVerified: boolean;
+  verificationToken: string | null;
+  verificationTokenExpiresAt: string | null;
+  resetPasswordToken: string | null;
+  resetPasswordTokenExpiresAt: string | null;
+  lastLoginAt: string | null;
+};
 
-// -- Users Table --
+/**
+ * ユーザーロールテーブルエンティティ
+ * ユーザーとロールの多対多関係を表現
+ */
+export type UserRoleEntity = {
+  userId: string;
+  role: string;
+  assignedAt: string;
+};
+
+/**
+ * ユーザー設定テーブルエンティティ
+ */
+export type UserSettingsEntity = {
+  userId: string;
+  notificationEmail: boolean;
+  notificationPush: boolean;
+  theme: string;
+  timezone: string;
+  updatedAt: string;
+};
+```
+
+```typescript
+// types/data/entities/ai-prompt.ts
+
+import { BaseEntity } from '../../common/objects';
+
+/**
+ * AIプロンプトテーブルエンティティ
+ */
+export type AIPromptEntity = BaseEntity & {
+  title: string;
+  description: string;
+  content: string;
+  category: string;
+  compatibleModels: string; // JSON文字列
+  variables: string; // JSON文字列
+  isPublic: boolean;
+  creatorId: string;
+  usageCount: number;
+  averageRating: number | null;
+};
+
+/**
+ * プロンプトお気に入りテーブルエンティティ
+ */
+export type PromptFavoriteEntity = {
+  userId: string;
+  promptId: string;
+  createdAt: string;
+};
+
+/**
+ * プロンプト評価テーブルエンティティ
+ */
+export type PromptRatingEntity = {
+  userId: string;
+  promptId: string;
+  rating: number; // 1-5
+  comment: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+```
+
+### データベーススキーマ型定義
+
+```typescript
+// types/data/schema/schema.ts
+
+import { InferModel } from 'drizzle-orm';
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  varchar,
+  json,
+  numeric,
+  uuid,
+} from 'drizzle-orm/pg-core';
+
+/**
+ * ユーザーテーブルスキーマ
+ */
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  name: varchar('name', { length: 100 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   passwordHash: text('password_hash').notNull(),
-  // roles: userRoleEnum('roles').array().notNull().default(sql`ARRAY['USER']::user_role[]`), // Enum配列を使う場合
-  roles: text('roles').array().notNull().default(['USER']), // TEXT配列で代用する場合
-  isVerified: boolean('is_verified').default(false).notNull(),
-  lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  // プロフィール情報 (usersテーブルに含める場合)
-  displayName: varchar('display_name', { length: 100 }),
-  bio: text('bio'),
-  avatarUrl: text('avatar_url'), // URL or storage path
+  displayName: varchar('display_name', { length: 100 }).notNull(),
+  biography: text('biography'),
+  avatarUrl: text('avatar_url'),
+  birthDate: varchar('birth_date', { length: 10 }),
+  location: varchar('location', { length: 100 }),
+  preferredLanguage: varchar('preferred_language', { length: 10 }).notNull().default('ja'),
+  isVerified: boolean('is_verified').notNull().default(false),
+  verificationToken: text('verification_token'),
+  verificationTokenExpiresAt: timestamp('verification_token_expires_at'),
+  resetPasswordToken: text('reset_password_token'),
+  resetPasswordTokenExpiresAt: timestamp('reset_password_token_expires_at'),
+  lastLoginAt: timestamp('last_login_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-// -- User Settings Table (別テーブルにする場合) --
-export const userSettings = pgTable('user_settings', {
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).primaryKey(),
-  theme: varchar('theme', { length: 50 }).default('system').notNull(),
-  emailNotifications: boolean('email_notifications').default(true).notNull(),
-  pushNotifications: boolean('push_notifications').default(false).notNull(),
-  timezone: varchar('timezone', { length: 100 }).default('UTC').notNull(),
-  language: varchar('language', { length: 10 }).default('ja').notNull(),
+/**
+ * ユーザーロールテーブルスキーマ
+ */
+export const userRoles = pgTable('user_roles', {
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id),
+  role: varchar('role', { length: 50 }).notNull(),
+  assignedAt: timestamp('assigned_at').notNull().defaultNow(),
 });
 
-// -- AI Prompts Table --
+/**
+ * AIプロンプトテーブルスキーマ
+ */
 export const aiPrompts = pgTable('ai_prompts', {
   id: uuid('id').defaultRandom().primaryKey(),
-  title: varchar('title', { length: 200 }).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
   description: text('description').notNull(),
   content: text('content').notNull(),
-  // category: promptCategoryEnum('category').notNull(), // Enumを使う場合
-  category: varchar('category', { length: 50 }).notNull(), // VARCHARで代用する場合
-  // compatibleModels: aiModelTypeEnum('compatible_models').array().notNull(), // Enum配列を使う場合
-  compatibleModels: text('compatible_models').array().notNull(), // TEXT配列で代用する場合
-  // variables: jsonb('variables'), // JSONB型で変数を格納する場合
-  isPublic: boolean('is_public').default(false).notNull(),
-  creatorId: uuid('creator_id').references(() => users.id, { onDelete: 'set null' }), // 作成者が削除されてもプロンプトは残す場合
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  usageCount: integer('usage_count').default(0).notNull(),
-  averageRating: real('average_rating'), // 浮動小数点数
-}, (table) => ({
-    // インデックス例
-    creatorIdx: uniqueIndex('prompt_creator_idx').on(table.creatorId),
-    categoryIdx: uniqueIndex('prompt_category_idx').on(table.category),
-}));
+  category: varchar('category', { length: 50 }).notNull(),
+  compatibleModels: json('compatible_models').notNull(),
+  variables: json('variables').notNull(),
+  isPublic: boolean('is_public').notNull().default(false),
+  creatorId: uuid('creator_id')
+    .notNull()
+    .references(() => users.id),
+  usageCount: numeric('usage_count').notNull().default('0'),
+  averageRating: numeric('average_rating', { precision: 3, scale: 2 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
 
-// -- Prompt Variables Table (別テーブルにする場合) --
-export const promptVariables = pgTable('prompt_variables', {
-    id: uuid('id').defaultRandom().primaryKey(),
-    promptId: uuid('prompt_id').references(() => aiPrompts.id, { onDelete: 'cascade' }).notNull(),
-    name: varchar('name', { length: 100 }).notNull(),
-    description: text('description').notNull(),
-    defaultValue: text('default_value'),
-    required: boolean('required').default(true).notNull(),
-}, (table) => ({
-    // プロンプトIDと変数名でユニーク制約
-    promptVarNameKey: primaryKey({ columns: [table.promptId, table.name] })
-}));
-
-// -- Relations (リレーション定義) --
-export const usersRelations = relations(users, ({ one, many }) => ({
-  settings: one(userSettings, {
-    fields: [users.id],
-    references: [userSettings.userId],
-  }),
-  createdPrompts: many(aiPrompts),
-}));
-
-export const userSettingsRelations = relations(userSettings, ({ one }) => ({
-  user: one(users, {
-    fields: [userSettings.userId],
-    references: [users.id],
-  }),
-}));
-
-export const aiPromptsRelations = relations(aiPrompts, ({ one, many }) => ({
-  creator: one(users, {
-    fields: [aiPrompts.creatorId],
-    references: [users.id],
-  }),
-  variables: many(promptVariables),
-}));
-
-export const promptVariablesRelations = relations(promptVariables, ({ one }) => ({
-    prompt: one(aiPrompts, {
-        fields: [promptVariables.promptId],
-        references: [aiPrompts.id],
-    }),
-}));
-
+// 型推論
+export type User = InferModel<typeof users>;
+export type UserRole = InferModel<typeof userRoles>;
+export type AIPrompt = InferModel<typeof aiPrompts>;
 ```
 
 ## 状態管理関連の型定義実装例
 
+### グローバル状態型定義
+
 ```typescript
-// src/store/features/user/userSlice.ts (例：Redux Toolkit)
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { UserResponseDto } from '@/interfaces/http/rest/v1/dtos/user.dto.ts';
+// types/state/global-state.ts
 
-export interface UserState {
-  currentUser: UserResponseDto | null;
+import { ID } from '../common/basic';
+import { User } from '../domain/models/user';
+
+/**
+ * 認証状態
+ */
+export type AuthState = {
+  isAuthenticated: boolean;
   isLoading: boolean;
+  user: User | null;
+  accessToken: string | null;
   error: string | null;
-}
-
-const initialState: UserState = {
-  currentUser: null,
-  isLoading: false,
-  error: null,
 };
 
-const userSlice = createSlice({
-  name: 'user',
-  initialState,
-  reducers: {
-    fetchUserStart(state) {
-      state.isLoading = true;
-      state.error = null;
-    },
-    fetchUserSuccess(state, action: PayloadAction<UserResponseDto>) {
-      state.currentUser = action.payload;
-      state.isLoading = false;
-    },
-    fetchUserFailure(state, action: PayloadAction<string>) {
-      state.isLoading = false;
-      state.error = action.payload;
-    },
-    clearUser(state) {
-      state.currentUser = null;
-    },
-    updateUserSettingsOptimistic(state, action: PayloadAction<Partial<UserResponseDto['settings']>>) {
-        if (state.currentUser) {
-            state.currentUser.settings = { 
-                ...state.currentUser.settings, 
-                ...action.payload 
-            };
-        }
-    },
-  },
-});
+/**
+ * テーマ設定状態
+ */
+export type ThemeState = {
+  mode: 'light' | 'dark' | 'system';
+  fontSize: 'small' | 'medium' | 'large';
+};
 
-export const { 
-    fetchUserStart, 
-    fetchUserSuccess, 
-    fetchUserFailure, 
-    clearUser,
-    updateUserSettingsOptimistic 
-} = userSlice.actions;
+/**
+ * 言語設定状態
+ */
+export type LanguageState = {
+  currentLanguage: 'ja' | 'en';
+  isRTL: boolean;
+};
 
-export default userSlice.reducer;
+/**
+ * トースト通知状態
+ */
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export type ToastNotification = {
+  id: string;
+  type: ToastType;
+  message: string;
+  duration?: number;
+  dismissible?: boolean;
+};
+
+export type ToastState = {
+  notifications: ToastNotification[];
+};
+
+/**
+ * グローバルアプリケーション状態
+ */
+export type GlobalState = {
+  auth: AuthState;
+  theme: ThemeState;
+  language: LanguageState;
+  toast: ToastState;
+};
+```
+
+### コンポーネント状態型定義
+
+```typescript
+// types/state/component-state.ts
+
+import { FilterParams, PaginationParams, SortParams } from '../common/objects';
+import { AIPrompt } from '../domain/models/ai-prompt';
+import { AIModelType, PromptCategory } from '../domain/models/ai-prompt';
+
+/**
+ * プロンプト一覧画面の状態
+ */
+export type PromptListState = {
+  isLoading: boolean;
+  prompts: AIPrompt[];
+  totalPrompts: number;
+  pagination: PaginationParams;
+  sort: SortParams<AIPrompt>;
+  filters: {
+    search: string;
+    categories: PromptCategory[];
+    compatibleModels: AIModelType[];
+    onlyFavorites: boolean;
+    onlyMine: boolean;
+  };
+  error: string | null;
+};
+
+/**
+ * プロンプト実行画面の状態
+ */
+export type PromptExecutionState = {
+  prompt: AIPrompt | null;
+  isLoading: boolean;
+  selectedModel: AIModelType;
+  variables: Record<string, string>;
+  temperature: number;
+  maxTokens: number;
+  result: {
+    isStreaming: boolean;
+    content: string;
+    error: string | null;
+  };
+};
+
+/**
+ * フォームステート共通型（汎用）
+ */
+export type FormState<T> = {
+  values: T;
+  errors: Partial<Record<keyof T, string>>;
+  touched: Partial<Record<keyof T, boolean>>;
+  isSubmitting: boolean;
+  isValid: boolean;
+  submitCount: number;
+};
 ```
 
 ## ユーティリティ型の実装例
 
-### 型ガード関数
-
 ```typescript
-// src/shared/utils/type-guards.ts
-
-import { UserResponseDto } from '@/interfaces/http/rest/v1/dtos/user.dto.ts';
-import { AIPromptResponseDto } from '@/interfaces/http/rest/v1/dtos/ai-prompt.dto.ts';
+// types/utils/type-utils.ts
 
 /**
- * UserResponseDto かどうかを判定する型ガード関数
- * @param obj - 判定対象のオブジェクト
- * @returns {obj is UserResponseDto} 型ガード結果
+ * 部分的に必須プロパティを持つ型を作成
+ * Partialの逆操作で、指定したプロパティのみを必須にする
  */
-export function isUserResponse(obj: unknown): obj is UserResponseDto {
-  if (!obj || typeof obj !== 'object') {
-    return false;
-  }
-  // 主要なプロパティの存在と型をチェック (より厳密なチェックも可能)
-  return (
-    'id' in obj && typeof obj.id === 'string' &&
-    'email' in obj && typeof obj.email === 'string' &&
-    'roles' in obj && Array.isArray(obj.roles) &&
-    'settings' in obj && typeof obj.settings === 'object' && obj.settings !== null
-  );
-}
+export type RequiredPick<T, K extends keyof T> = T & Required<Pick<T, K>>;
 
 /**
- * AIPromptResponseDto かどうかを判定する型ガード関数
- * @param obj - 判定対象のオブジェクト
- * @returns {obj is AIPromptResponseDto} 型ガード結果
+ * 特定のプロパティを除外して残りを必須にする型
  */
-export function isAIPromptResponse(obj: unknown): obj is AIPromptResponseDto {
-    if (!obj || typeof obj !== 'object') {
-        return false;
+export type RequiredOmit<T, K extends keyof T> = Required<Omit<T, K>> & Pick<T, K>;
+
+/**
+ * 少なくとも1つのプロパティを持つ型を作成
+ */
+export type AtLeastOne<T, U = { [K in keyof T]: Pick<T, K> }> = Partial<T> & U[keyof U];
+
+/**
+ * ディープ部分型（ネストされたオブジェクトにも対応）
+ */
+export type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
     }
-    return (
-        'id' in obj && typeof obj.id === 'string' &&
-        'title' in obj && typeof obj.title === 'string' &&
-        'content' in obj && typeof obj.content === 'string' &&
-        'category' in obj && typeof obj.category === 'string' &&
-        'creatorId' in obj && typeof obj.creatorId === 'string'
-    );
-}
+  : T;
+
+/**
+ * 読み取り専用の深いネストを持つ型
+ */
+export type DeepReadonly<T> = T extends (infer R)[]
+  ? ReadonlyArray<DeepReadonly<R>>
+  : T extends object
+    ? {
+        readonly [P in keyof T]: DeepReadonly<T[P]>;
+      }
+    : T;
+
+/**
+ * 非nullableな型（nullとundefinedを除外）
+ */
+export type NonNullable<T> = T extends null | undefined ? never : T;
+
+/**
+ * レコード型のキーと値の型を入れ替える
+ */
+export type Invert<T extends Record<string, string>> = {
+  [K in T[keyof T]]: keyof T extends infer U
+    ? U extends keyof T
+      ? T[U] extends K
+        ? U
+        : never
+      : never
+    : never;
+};
+
+/**
+ * 列挙型から文字列のユニオン型を作成
+ */
+export type EnumToUnion<T extends Record<string, string | number>> = T[keyof T];
+
+/**
+ * オプショナルな関数パラメータ型
+ */
+export type OptionalParameters<T extends (...args: any) => any> = T extends (
+  ...args: infer P
+) => any
+  ? Partial<P> extends P
+    ? P
+    : never
+  : never;
 ```
 
-### マッピング関数型
+## 相互参照
 
-```typescript
-// src/infrastructure/mappers/user.mapper.ts (型定義部分)
+このドキュメントで示したコード例は、[「05_type_definitions.md」](../05_type_definitions.md)で説明されている型定義の設計原則と実装パターンの具体的な実装例です。型定義の概念的な理解や設計原則についての詳細は「05_type_definitions.md」を参照してください。
 
-import { User as DomainUser } from '@/domain/models/entities/user';
-import { users as PersistenceUser } from '@/infrastructure/database/drizzle/schema'; // Drizzle Schemaから生成される型
-import { UserResponseDto } from '@/interfaces/http/rest/v1/dtos/user.dto.ts';
+その他の関連ドキュメント:
 
-/** ドメインモデルから永続化モデルへのマッパー関数型 */
-export type MapDomainToPersistence = (domainUser: DomainUser) => Omit<PersistenceUser, 'createdAt' | 'updatedAt' | 'id'> & { id?: string };
-
-/** 永続化モデルからドメインモデルへのマッパー関数型 */
-export type MapPersistenceToDomain = (persistenceUser: PersistenceUser) => DomainUser;
-
-/** ドメインモデルからDTOへのマッパー関数型 */
-export type MapDomainToDto = (domainUser: DomainUser) => UserResponseDto;
-
-// DTOからドメインモデルへのマッピングは通常、ドメインのファクトリメソッドや
-// アプリケーションサービス層で行われるため、独立したマッパー関数は少ない。
-```
-
-🦄
+- 実装ルールと命名規則の詳細については[「04_implementation_rules.md」](../04_implementation_rules.md)を参照してください。
+- これらの型を使用するユーティリティ関数の実装例については[「06_utility_functions_examples.md」](code_examples/06_utility_functions_examples.md)を参照してください。
+- アーキテクチャ設計の詳細については[「02_architecture_design.md」](../02_architecture_design.md)を参照してください。

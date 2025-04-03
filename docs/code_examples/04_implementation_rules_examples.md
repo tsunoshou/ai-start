@@ -1,8 +1,8 @@
 # 実装ルール・命名規則のコード例集
 
-**最終更新日:** 2025-04-03
+最終更新日: 2025-03-26
 
-このドキュメントは、`04_implementation_rules.md`で説明されている実装ルールと命名規則に関するコードサンプルを集約したものです。
+このドキュメントは、[04_implementation_rules.md](../04_implementation_rules.md)で説明されている実装ルールと命名規則に関するコードサンプルを集約したものです。
 概念の詳細な説明については、メインドキュメントを参照してください。
 
 ## リンター設定例
@@ -10,82 +10,123 @@
 ```javascript
 // .eslintrc.js
 module.exports = {
-  extends: [
-    'next/core-web-vitals',
-    'plugin:@typescript-eslint/recommended',
-    'prettier'
-  ],
+  extends: ['next/core-web-vitals', 'plugin:@typescript-eslint/recommended', 'prettier'],
   plugins: ['@typescript-eslint', 'import'],
   rules: {
     // 基本的なルール
     'no-unused-vars': 'off',
-    '@typescript-eslint/no-unused-vars': ['error', { 
-      argsIgnorePattern: '^_',
-      varsIgnorePattern: '^_' 
-    }],
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+      },
+    ],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
-    
+
     // インポート順序のルール
     'import/order': [
       'error',
       {
-        groups: [
-          'builtin',
-          'external',
-          'internal',
-          'parent',
-          'sibling',
-          'index'
-        ],
+        groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
         'newlines-between': 'always',
-        alphabetize: { order: 'asc' }
-      }
+        alphabetize: { order: 'asc' },
+      },
     ],
-    
+
     // React関連のルール
-    'react/jsx-sort-props': ['warn', {
-      callbacksLast: true,
-      shorthandFirst: true,
-      ignoreCase: true,
-      reservedFirst: true
-    }],
-    
+    'react/jsx-sort-props': [
+      'warn',
+      {
+        callbacksLast: true,
+        shorthandFirst: true,
+        ignoreCase: true,
+        reservedFirst: true,
+      },
+    ],
+
     // 命名規則のルール
     '@typescript-eslint/naming-convention': [
       'error',
+      // デフォルトケース
+      {
+        selector: 'default',
+        format: ['camelCase'],
+      },
+      // 変数のケース
+      {
+        selector: 'variable',
+        format: ['camelCase', 'UPPER_CASE', 'PascalCase'],
+      },
+      // 一般的な関数名はcamelCaseのみ
+      {
+        selector: 'function',
+        format: ['camelCase'],
+      },
+      // Reactコンポーネント関数（app/ ディレクトリ内の関数）はPascalCaseを許可
+      {
+        selector: 'function',
+        filter: {
+          // app/ ディレクトリ内のページ/レイアウトコンポーネントに一致
+          regex: '^.+/(page|layout|loading|error|template|not-found)\\.[jt]sx?$',
+          match: true,
+        },
+        format: ['PascalCase'],
+      },
+      // presentation/components/ ディレクトリ内の関数はPascalCaseを許可
+      {
+        selector: 'function',
+        filter: {
+          regex: '^.+/components/.+\\.[jt]sx?$',
+          match: true,
+        },
+        format: ['PascalCase'],
+      },
+      // .tsx ファイル内の大文字で始まる関数はPascalCaseを許可
+      {
+        selector: 'function',
+        filter: {
+          regex: '^[A-Z].+$',
+          match: true,
+        },
+        format: ['PascalCase'],
+      },
       // インターフェース名はIプレフィックスなし
       {
         selector: 'interface',
         format: ['PascalCase'],
         custom: {
           regex: '^I[A-Z]',
-          match: false
-        }
+          match: false,
+        },
       },
       // 型名はPascalCase
       {
         selector: 'typeLike',
-        format: ['PascalCase']
+        format: ['PascalCase'],
       },
-      // 定数は大文字スネークケース
+      // グローバル定数は大文字スネークケース（metadataとconfigは例外）
       {
         selector: 'variable',
         modifiers: ['const', 'global'],
         format: ['UPPER_CASE'],
-        regex: '^[A-Z][A-Z0-9_]*$'
+        filter: {
+          regex: '^(metadata|config)$',
+          match: false,
+        },
       },
       // enumメンバーはPascalCase
       {
         selector: 'enumMember',
-        format: ['PascalCase']
-      }
-    ]
+        format: ['PascalCase'],
+      },
+    ],
   },
   settings: {
     'import/resolver': {
-      typescript: {}
-    }
-  }
+      typescript: {},
+    },
+  },
 };
 ```
 
@@ -104,9 +145,45 @@ module.exports = {
   arrowParens: 'always',
   endOfLine: 'lf',
   jsxSingleQuote: false,
-  jsxBracketSameLine: false,
-  plugins: [require('prettier-plugin-tailwindcss')],
+  bracketSameLine: false,
+  plugins: ['prettier-plugin-tailwindcss'],
 };
+```
+
+## Prettierの無視設定例
+
+```bash
+# .prettierignore
+# ビルド生成物
+.next/
+out/
+build/
+dist/
+
+# 依存関係
+node_modules/
+
+# 各種設定ファイル
+next.config.js
+next-env.d.ts
+postcss.config.js
+tailwind.config.js
+
+# 公開フォルダ
+public/
+
+# ロック/キャッシュファイル
+package-lock.json
+yarn.lock
+.vercel
+.env
+.env.*
+
+# Supabase
+supabase/
+
+# ドキュメント
+docs/**/*.md
 ```
 
 ## 命名規則の例
@@ -123,11 +200,11 @@ UserProfileCard/             # 複合コンポーネント（ディレクトリ�
 └── useUserProfileData.ts    # 関連フック
 
 # ユーティリティファイル
-date-utils/                  # 関連するユーティリティのグループ（ディレクトリ）
+format-date.ts               # 単一の関数を含むユーティリティ（kebab-case）
+string-utils/                # 関連するユーティリティのグループ（ディレクトリ）
 ├── index.ts                 # エクスポート
-├── format-date.ts           # 日付フォーマット関数
-└── calculate-duration.ts    # 期間計算関数
-string-utils.ts              # 単一ファイルにまとめた文字列ユーティリティ（kebab-case）
+├── format-string.ts         # 文字列フォーマット関数
+└── validate-string.ts       # 文字列検証関数
 
 # 型定義ファイル
 user-types.ts                # ドメイン固有の型定義（kebab-case）
@@ -192,7 +269,7 @@ function handleFormSubmit(event: FormEvent) {
 
 ### コンポーネント基本構造
 
-```tsx
+````tsx
 // ProfileCard.tsx
 import { useState } from 'react';
 import Image from 'next/image';
@@ -213,13 +290,13 @@ export interface ProfileCardProps {
 
 /**
  * ユーザープロファイル情報を表示するカードコンポーネント
- * 
+ *
  * @example
  * ```tsx
- * <ProfileCard 
- *   user={currentUser} 
- *   size="md" 
- *   onCardClick={handleProfileSelect} 
+ * <ProfileCard
+ *   user={currentUser}
+ *   size="md"
+ *   onCardClick={handleProfileSelect}
  * />
  * ```
  */
@@ -230,54 +307,46 @@ export function ProfileCard({
   isSelectable = false,
 }: ProfileCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   // 内部状態の変更を処理する関数
   const handleExpandToggle = () => {
     setIsExpanded((prev) => !prev);
   };
-  
+
   // 親コンポーネントのコールバックへのイベント委譲
   const handleClick = () => {
     if (isSelectable && onCardClick) {
       onCardClick(user.id);
     }
   };
-  
+
   // クラス名の条件付き構築
   const cardClasses = [
     'profile-card',
     `profile-card--${size}`,
     isSelectable ? 'profile-card--selectable' : '',
     isExpanded ? 'profile-card--expanded' : '',
-  ].filter(Boolean).join(' ');
-  
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <Card 
-      className={cardClasses}
-      onClick={handleClick}
-      data-testid="profile-card"
-    >
+    <Card className={cardClasses} onClick={handleClick} data-testid="profile-card">
       <div className="profile-card__header">
-        <Avatar 
-          src={user.avatarUrl} 
-          alt={`${user.name}のプロフィール画像`} 
-          size={size} 
-        />
+        <Avatar src={user.avatarUrl} alt={`${user.name}のプロフィール画像`} size={size} />
         <h3 className="profile-card__name">{user.name}</h3>
       </div>
-      
+
       {isExpanded && (
         <div className="profile-card__details">
           <p className="profile-card__bio">{user.bio}</p>
-          <p className="profile-card__member-since">
-            登録日: {formatDate(user.createdAt)}
-          </p>
+          <p className="profile-card__member-since">登録日: {formatDate(user.createdAt)}</p>
         </div>
       )}
-      
-      <Button 
-        variant="ghost" 
-        size="sm" 
+
+      <Button
+        variant="ghost"
+        size="sm"
         className="profile-card__expand-button"
         onClick={handleExpandToggle}
         aria-expanded={isExpanded}
@@ -287,7 +356,7 @@ export function ProfileCard({
     </Card>
   );
 }
-```
+````
 
 ### サーバーコンポーネントの例
 
@@ -311,18 +380,18 @@ interface UserDashboardProps {
 export async function UserDashboard({ userId }: UserDashboardProps) {
   // サーバーサイドでデータを取得
   const userStats = await getUserStats(userId);
-  
+
   return (
     <div className="dashboard-container">
       <h1 className="dashboard-title">ダッシュボード</h1>
-      
+
       <section className="stats-section">
         <h2 className="section-title">統計情報</h2>
         <ErrorBoundary fallback={<p>統計情報の読み込みに失敗しました</p>}>
           <UserStatsDisplay stats={userStats} />
         </ErrorBoundary>
       </section>
-      
+
       <section className="activity-section">
         <h2 className="section-title">最近のアクティビティ</h2>
         <ErrorBoundary fallback={<p>アクティビティの読み込みに失敗しました</p>}>
@@ -360,18 +429,15 @@ interface UserPreferencesFormProps {
 /**
  * ユーザー設定を編集するフォームコンポーネント（クライアントコンポーネント）
  */
-export function UserPreferencesForm({ 
-  initialPreferences, 
-  userId 
-}: UserPreferencesFormProps) {
+export function UserPreferencesForm({ initialPreferences, userId }: UserPreferencesFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  
+
   const form = useForm<UserPreferences>({
     resolver: zodResolver(userPreferencesSchema),
     defaultValues: initialPreferences,
   });
-  
+
   async function handleSubmit(data: UserPreferences) {
     try {
       setIsSubmitting(true);
@@ -391,7 +457,7 @@ export function UserPreferencesForm({
       setIsSubmitting(false);
     }
   }
-  
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -410,7 +476,7 @@ export function UserPreferencesForm({
             />
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="emailNotifications"
@@ -423,7 +489,7 @@ export function UserPreferencesForm({
             />
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="language"
@@ -438,9 +504,9 @@ export function UserPreferencesForm({
             />
           )}
         />
-        
-        <Button 
-          type="submit" 
+
+        <Button
+          type="submit"
           disabled={isSubmitting || !form.formState.isDirty}
           loading={isSubmitting}
         >
@@ -455,54 +521,43 @@ export function UserPreferencesForm({
 ## サーバーアクションの実装例
 
 ```typescript
-// src/app/actions/user-actions.ts (例：パスはプロジェクト構成に依存)
+// user-actions.ts
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
-import { db } from '@/infrastructure/database/drizzle/db'; // Drizzle DBインスタンス
-import { userPreferences as userPreferencesTable } from '@/infrastructure/database/drizzle/schema'; // Drizzle スキーマ
-import { logger } from '@/infrastructure/logger/logger'; // Logger
-import { ApiError } from '@/shared/errors/api.error'; // カスタムエラー
-import { getAuthSession } from '@/infrastructure/auth/session'; // 認証関数
-import type { UserPreferences } from '@/domain/models/value-objects/user-preferences'; // 型定義
-
-/**
- * ユーザー設定更新のバリデーションスキーマ
- */
-const updateUserPreferencesSchema = z.object({
-  theme: z.enum(['light', 'dark', 'system']),
-  emailNotifications: z.boolean(),
-  language: z.enum(['ja', 'en']),
-});
+import { db } from '@/lib/db';
+import { logger } from '@/lib/logger';
+import { ApiError } from '@/lib/errors';
+import type { UserPreferences, User } from '@/types/user-types';
 
 /**
  * ユーザー設定更新のサーバーアクション
  *
- * @param userId - 更新対象のユーザーID
- * @param preferences - 更新するユーザー設定データ (バリデーション前の値)
- * @returns {Promise<UserPreferences>} 更新後のユーザー設定
- * @throws {ApiError} バリデーションエラー、権限エラー、DB操作エラー時
- * @example
- * ```typescript
- * const updatedPrefs = await updateUserPreferences(userId, { theme: 'dark', emailNotifications: true, language: 'ja' });
- * ```
+ * @param userId ユーザーID
+ * @param preferences 更新するユーザー設定
+ * @returns 更新後のユーザー設定
+ * @throws {ApiError} データベース操作に失敗した場合
  */
 export async function updateUserPreferences(
   userId: string,
-  preferences: unknown
+  preferences: UserPreferences
 ): Promise<UserPreferences> {
-  try {
-    logger.info('ユーザー設定更新アクション開始', { userId });
-    // バリデーション実行
-    const validatedData = updateUserPreferencesSchema.parse(preferences);
+  // 入力値のバリデーション
+  const preferencesSchema = z.object({
+    theme: z.enum(['light', 'dark', 'system']),
+    emailNotifications: z.boolean(),
+    language: z.enum(['ja', 'en']),
+  });
 
-    // 権限チェック
+  try {
+    // バリデーション実行
+    const validatedData = preferencesSchema.parse(preferences);
+
+    // ユーザーの存在確認と権限チェック
     const session = await getAuthSession();
     if (!session || session.user.id !== userId) {
-      logger.warn('ユーザー設定更新時の権限エラー', { userId, sessionId: session?.user.id });
       throw new ApiError({
         statusCode: 403,
         message: '権限がありません',
@@ -510,58 +565,41 @@ export async function updateUserPreferences(
       });
     }
 
-    // データベース操作 (Drizzleを使用)
-    logger.debug('Drizzleによるユーザー設定更新開始', { userId });
-    const result = await db
-      .update(userPreferencesTable)
-      .set(validatedData)
-      .where(eq(userPreferencesTable.userId, userId))
-      .returning(); // 更新後のデータを返す
-
-    if (result.length === 0) {
-      logger.error('ユーザー設定の更新結果が0件', { userId });
-      throw new ApiError({
-        statusCode: 404,
-        message: 'ユーザー設定が見つからないか、更新に失敗しました。',
-        code: 'UPDATE_FAILED',
-      });
-    }
+    // データベース操作
+    const updatedPreferences = await db.userPreferences.update({
+      where: { userId },
+      data: validatedData,
+    });
 
     // キャッシュの再検証
     revalidatePath(`/users/${userId}/settings`);
-    logger.info('キャッシュ再検証実行', { path: `/users/${userId}/settings` });
 
     // 変更をログに記録
     logger.info('ユーザー設定を更新しました', {
       userId,
-      updatedPreferences: result[0],
+      changes: validatedData,
     });
 
-    return result[0];
-
+    return updatedPreferences;
   } catch (error) {
     // エラーハンドリング
     if (error instanceof z.ZodError) {
-      logger.warn('ユーザー設定更新時のバリデーションエラー', { userId, errors: error.errors });
       throw new ApiError({
         statusCode: 400,
-        message: '入力データ形式が不正です',
+        message: 'データ形式が不正です',
         code: 'VALIDATION_ERROR',
         cause: error,
       });
     }
 
+    logger.error('ユーザー設定の更新に失敗しました', {
+      userId,
+      error,
+    });
+
     if (error instanceof ApiError) {
-      // 既にApiErrorの場合はそのままスロー
-      logger.error(`ユーザー設定更新中のApiError: ${error.code}`, { userId, message: error.message, metadata: error.metadata });
       throw error;
     }
-
-    // 予期せぬエラー
-    logger.error('ユーザー設定の更新中に予期せぬエラーが発生しました', {
-      userId,
-      error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error),
-    });
 
     throw new ApiError({
       statusCode: 500,
@@ -573,59 +611,22 @@ export async function updateUserPreferences(
 }
 
 /**
- * ユーザー統計情報オブジェクトの型定義（例）
- */
-interface UserStats {
-  totalPosts: number;
-  followers: number;
-  following: number;
-  lastActive: Date | null;
-}
-
-/**
  * ユーザーの統計情報を取得するサーバーアクション
- * @param {string} userId - 統計情報を取得するユーザーID
- * @returns {Promise<UserStats>} ユーザー統計情報オブジェクト
- * @throws {ApiError} データ取得失敗時
- * @example
- * ```typescript
- * const stats = await getUserStats(userId);
- * console.log(stats.totalPosts);
- * ```
  */
-export async function getUserStats(userId: string): Promise<UserStats> {
+export async function getUserStats(userId: string) {
   try {
-    logger.info('ユーザー統計情報の取得アクション開始', { userId });
-    // 認証チェック（必要に応じて）
-    // const session = await getAuthSession();
-    // if (!session) throw new ApiError({ statusCode: 401, message: '認証が必要です' });
-
-    // ここでDrizzleを使ってDBから統計情報を取得する実装を想定
-    // 例: const posts = await db.select(...).from(postsTable).where(eq(postsTable.authorId, userId));
-    // 例: const followers = await db.select(...);
-    logger.debug('DBから統計情報取得（実装は省略）', { userId });
-
-    // 仮のデータを返す
-    const stats: UserStats = {
+    // 実際の実装...
+    return {
       totalPosts: 42,
       followers: 123,
       following: 56,
       lastActive: new Date(),
     };
-
-    logger.info('ユーザー統計情報の取得に成功', { userId, stats });
-    return stats;
-
   } catch (error) {
     logger.error('ユーザー統計情報の取得に失敗しました', {
       userId,
-      error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error),
+      error,
     });
-
-    if (error instanceof ApiError) {
-      throw error;
-    }
-
     throw new ApiError({
       statusCode: 500,
       message: 'ユーザー統計情報の取得に失敗しました',
@@ -639,73 +640,26 @@ export async function getUserStats(userId: string): Promise<UserStats> {
 ## エラーハンドリングとログ記録の例
 
 ```typescript
-// src/infrastructure/services/external-user-service.ts (例：パスはプロジェクト構成に依存)
-import { logger } from '@/infrastructure/logger/logger'; // Loggerへのパス
-import { ApiError } from '@/shared/errors/api.error'; // カスタムエラーへのパス
-import type { User } from '@/domain/models/entities/user'; // Userエンティティへのパス
+// error-handling-example.ts
+import { logger } from '@/lib/logger';
+import { ApiError } from '@/lib/errors';
+import type { User } from '@/types/user-types';
 
 /**
- * 外部APIからユーザーデータを取得し、基本的な処理を行う例
- * エラーハンドリングとログ記録を含む
- *
- * @param {string} userId - 取得対象のユーザーID
- * @returns {Promise<User>} 取得・処理されたユーザーデータ
- * @throws {ApiError} 外部APIエラー、データ処理エラー、予期せぬエラー時
+ * 例外処理とログ記録の実装例
  */
-async function fetchAndProcessExternalUserData(userId: string): Promise<Partial<User>> { // 戻り値型をPartialに変更
+async function fetchAndProcessUserData(userId: string): Promise<User> {
   try {
-    logger.debug('外部ユーザーデータの取得を開始', { userId });
+    logger.debug('ユーザーデータの取得を開始', { userId });
 
+    // 外部APIからのデータ取得（エラーが発生する可能性あり）
     const response = await fetch(`https://api.example.com/users/${userId}`);
 
+    // HTTPエラーチェック
     if (!response.ok) {
-      let errorData = {};
-      try {
-        errorData = await response.json();
-      } catch { /* JSONパース失敗は無視 */ }
-      logger.error('外部APIからのユーザーデータ取得失敗', {
-        userId,
-        status: response.status,
-        statusText: response.statusText,
-        errorData,
-      });
+      const errorData = await response.json().catch(() => ({}));
       throw new ApiError({
         statusCode: response.status,
-        message: `外部APIからのユーザーデータ取得に失敗しました (Status: ${response.status})`,
-        code: 'EXTERNAL_API_ERROR',
-        metadata: { userId, status: response.status, errorData },
-      });
-    }
-
-    const userData = await response.json();
-    logger.info('外部APIからのユーザーデータ取得成功', { userId });
-
-    // データ処理例（ここでは単純なバリデーション）
-    if (!userData || typeof userData.id !== 'string') {
-        logger.error('外部APIからのユーザーデータ形式不正', { userId, receivedData: userData });
-        throw new ApiError({
-            statusCode: 500, // または適切なエラーコード
-            message: '外部APIから受け取ったユーザーデータの形式が不正です',
-            code: 'INVALID_EXTERNAL_DATA',
-            metadata: { userId },
-        });
-    }
-
-    // 本来はここでドメインモデルへのマッピングなどを行う
-    // ここでは取得したデータをそのまま返す（一部のプロパティのみの想定）
-    const processedUser: Partial<User> = {
-        name: userData.name, // nameプロパティが存在する想定
-        // ... 他に必要なプロパティ
-    };
-
-    logger.info('外部ユーザーデータの処理完了', { userId });
-    return processedUser;
-
-  } catch (error) {
-    if (error instanceof ApiError) {
-        // 既にApiErrorの場合はログレベルを調整して再スロー
-        logger.error(`外部ユーザーデータ処理中のエラー: ${error.code}`, {
-            userId,
         message: 'ユーザーデータの取得に失敗しました',
         code: 'API_ERROR',
         metadata: {
@@ -715,9 +669,9 @@ async function fetchAndProcessExternalUserData(userId: string): Promise<Partial<
         },
       });
     }
-    
+
     const userData = await response.json();
-    
+
     // データ処理（条件に応じたエラー発生）
     if (!userData.isActive) {
       logger.warn('非アクティブユーザーへのアクセス試行', { userId });
@@ -728,10 +682,9 @@ async function fetchAndProcessExternalUserData(userId: string): Promise<Partial<
         metadata: { userId },
       });
     }
-    
+
     logger.info('ユーザーデータの取得に成功', { userId });
     return userData;
-    
   } catch (error) {
     // エラー種別に応じた処理
     if (error instanceof ApiError) {
@@ -743,7 +696,7 @@ async function fetchAndProcessExternalUserData(userId: string): Promise<Partial<
       });
       throw error;
     }
-    
+
     if (error instanceof TypeError || error instanceof SyntaxError) {
       // クライアントコードのエラー
       logger.error('データ処理中にエラーが発生しました', {
@@ -758,7 +711,7 @@ async function fetchAndProcessExternalUserData(userId: string): Promise<Partial<
         cause: error,
       });
     }
-    
+
     // その他の未知のエラー
     logger.error('予期しないエラーが発生しました', {
       error: error instanceof Error ? error.message : String(error),
@@ -795,63 +748,63 @@ describe('ProfileCard', () => {
   // 基本的なレンダリングテスト
   it('正しくユーザー情報をレンダリングする', () => {
     render(<ProfileCard user={mockUser} />);
-    
+
     // 要素の存在確認
     expect(screen.getByText('山田太郎')).toBeInTheDocument();
     expect(screen.getByAltText('山田太郎のプロフィール画像')).toBeInTheDocument();
     expect(screen.getByText('詳細を表示')).toBeInTheDocument();
-    
+
     // 初期状態では詳細が表示されないことを確認
     expect(screen.queryByText('ソフトウェアエンジニア')).not.toBeInTheDocument();
   });
-  
+
   // インタラクションテスト
   it('詳細ボタンをクリックすると詳細情報が表示される', () => {
     render(<ProfileCard user={mockUser} />);
-    
+
     // 詳細ボタンをクリック
     fireEvent.click(screen.getByText('詳細を表示'));
-    
+
     // 詳細情報が表示されることを確認
     expect(screen.getByText('ソフトウェアエンジニア')).toBeInTheDocument();
     expect(screen.getByText(/登録日:/)).toBeInTheDocument();
     expect(screen.getByText('詳細を隠す')).toBeInTheDocument();
   });
-  
+
   // プロップスのコールバックテスト
   it('選択可能な場合、クリック時にコールバックが呼ばれる', () => {
     const handleClick = jest.fn();
-    
+
     render(
-      <ProfileCard 
-        user={mockUser} 
+      <ProfileCard
+        user={mockUser}
         isSelectable={true}
         onCardClick={handleClick}
       />
     );
-    
+
     // カード全体をクリック
     fireEvent.click(screen.getByTestId('profile-card'));
-    
+
     // コールバックが正しく呼ばれたことを確認
     expect(handleClick).toHaveBeenCalledWith('user-123');
   });
-  
+
   // 条件付きレンダリングのテスト
   it('選択可能でない場合、クリックしてもコールバックは呼ばれない', () => {
     const handleClick = jest.fn();
-    
+
     render(
-      <ProfileCard 
-        user={mockUser} 
+      <ProfileCard
+        user={mockUser}
         isSelectable={false}
         onCardClick={handleClick}
       />
     );
-    
+
     // カード全体をクリック
     fireEvent.click(screen.getByTestId('profile-card'));
-    
+
     // コールバックが呼ばれないことを確認
     expect(handleClick).not.toHaveBeenCalled();
   });
@@ -879,66 +832,54 @@ export function TaskListItem({ task, onClick }: TaskListItemProps) {
   // ステータスに応じたバッジの色を決定
   const getBadgeVariant = (status: Task['status']) => {
     switch (status) {
-      case 'completed': return 'success';
-      case 'inProgress': return 'warning';
-      case 'todo': return 'secondary';
-      case 'cancelled': return 'destructive';
-      default: return 'outline';
+      case 'completed':
+        return 'success';
+      case 'inProgress':
+        return 'warning';
+      case 'todo':
+        return 'secondary';
+      case 'cancelled':
+        return 'destructive';
+      default:
+        return 'outline';
     }
   };
-  
+
   // 優先度に応じたクラス名を生成
-  const priorityClasses = {
-    high: 'border-l-4 border-red-500',
-    medium: 'border-l-4 border-yellow-500',
-    low: 'border-l-4 border-green-500',
-  }[task.priority] || '';
-  
+  const priorityClasses =
+    {
+      high: 'border-l-4 border-red-500',
+      medium: 'border-l-4 border-yellow-500',
+      low: 'border-l-4 border-green-500',
+    }[task.priority] || '';
+
   return (
     <Card
-      className={`
-        mb-3 
-        p-4 
-        transition-all 
-        hover:shadow-md 
-        focus:ring-2
-        focus:ring-primary
-        focus:outline-none
-        ${priorityClasses}
-        ${task.status === 'completed' ? 'opacity-70' : 'opacity-100'}
-      `}
+      className={`focus:ring-primary mb-3 p-4 transition-all hover:shadow-md focus:outline-none focus:ring-2 ${priorityClasses} ${task.status === 'completed' ? 'opacity-70' : 'opacity-100'} `}
       onClick={() => onClick(task.id)}
       tabIndex={0}
       data-testid={`task-item-${task.id}`}
     >
       <div className="flex items-center justify-between">
-        <h3 className={`
-          text-lg font-medium
-          ${task.status === 'completed' ? 'line-through text-gray-500' : ''}
-        `}>
+        <h3
+          className={`text-lg font-medium ${task.status === 'completed' ? 'text-gray-500 line-through' : ''} `}
+        >
           {task.title}
         </h3>
-        
-        <Badge variant={getBadgeVariant(task.status)}>
-          {task.status}
-        </Badge>
+
+        <Badge variant={getBadgeVariant(task.status)}>{task.status}</Badge>
       </div>
-      
-      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-        {task.description}
-      </p>
-      
+
+      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{task.description}</p>
+
       <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
         <span>
           期限: {task.dueDate ? new Date(task.dueDate).toLocaleDateString('ja-JP') : '未設定'}
         </span>
-        
+
         <div className="flex space-x-2">
           {task.tags.map((tag) => (
-            <span 
-              key={tag}
-              className="rounded-full bg-gray-200 px-2 py-1 dark:bg-gray-700"
-            >
+            <span key={tag} className="rounded-full bg-gray-200 px-2 py-1 dark:bg-gray-700">
               {tag}
             </span>
           ))}
@@ -960,16 +901,14 @@ export function TaskListItem({ task, onClick }: TaskListItemProps) {
 export function ProductGrid({ products }) {
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-8 text-2xl font-bold md:text-3xl lg:text-4xl">
-        商品一覧
-      </h1>
-      
+      <h1 className="mb-8 text-2xl font-bold md:text-3xl lg:text-4xl">商品一覧</h1>
+
       {/* レスポンシブグリッドレイアウト */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {products.map((product) => (
-          <div 
+          <div
             key={product.id}
-            className="rounded-lg border bg-white p-4 shadow-sm transition-transform hover:scale-105 dark:bg-gray-800 dark:border-gray-700"
+            className="rounded-lg border bg-white p-4 shadow-sm transition-transform hover:scale-105 dark:border-gray-700 dark:bg-gray-800"
           >
             {/* 商品画像 - 異なる画面サイズで異なるサイズを使用 */}
             <div className="aspect-square overflow-hidden rounded-md">
@@ -980,7 +919,7 @@ export function ProductGrid({ products }) {
                 loading="lazy"
               />
             </div>
-            
+
             {/* 商品情報 - モバイルでは縦方向、デスクトップでは横方向のレイアウト */}
             <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between">
               <h2 className="text-lg font-semibold">{product.name}</h2>
@@ -988,32 +927,28 @@ export function ProductGrid({ products }) {
                 ¥{product.price.toLocaleString()}
               </p>
             </div>
-            
+
             {/* モバイルでは省略表示、デスクトップでは通常表示 */}
             <p className="mt-2 line-clamp-2 text-sm text-gray-600 md:line-clamp-none dark:text-gray-300">
               {product.description}
             </p>
-            
+
             {/* モバイルでは縦並び、デスクトップでは横並びのボタン */}
-            <div className="mt-4 flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-              <button className="btn-primary flex-1">
-                カートに追加
-              </button>
-              <button className="btn-outline flex-1">
-                詳細を見る
-              </button>
+            <div className="mt-4 flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
+              <button className="btn-primary flex-1">カートに追加</button>
+              <button className="btn-outline flex-1">詳細を見る</button>
             </div>
           </div>
         ))}
       </div>
-      
+
       {/* 表示切り替えボタン - モバイルのみ表示 */}
       <div className="fixed bottom-4 right-4 sm:hidden">
         <button className="btn-circle btn-primary">
           <FilterIcon className="h-5 w-5" />
         </button>
       </div>
-      
+
       {/* フィルターパネル - デスクトップでは常に表示、モバイルでは非表示 */}
       <aside className="mt-8 hidden rounded-lg border p-4 lg:block dark:border-gray-700">
         <h2 className="text-xl font-semibold">フィルター</h2>
