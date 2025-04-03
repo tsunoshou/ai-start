@@ -27,13 +27,19 @@ jobs:
           cache: 'npm' # npm ci を使う場合
 
       - name: Install dependencies (including Supabase CLI)
-        # npm ci で package-lock.json に記録された最新版の supabase-cli がインストールされるはず
+        # npm ci で package-lock.json に記録されたバージョン (現在 1.162.4) の supabase がインストールされる
         run: npm ci
 
-      # グローバルインストールステップは不要になったため削除
-      # - name: Install latest Supabase CLI
-      #   run: npm install -g supabase@latest
+      - name: Temporarily move config.toml
+        # マイグレーション実行前に config.toml を一時的にリネーム
+        # ファイルが存在しなくてもエラーにならないように `|| true` を追加
+        run: mv supabase/config.toml supabase/config.toml.bak || true
 
       - name: Apply database migrations
-        # npx経由で実行 (npm ciでインストールされたバージョンが使われる)
+        # config.toml が存在しない状態で実行。DATABASE_URL が使われるはず。
         run: DATABASE_URL=${{ secrets.DATABASE_URL }} npx supabase migration up --debug
+
+      - name: Restore config.toml
+        # 成功・失敗に関わらず、config.toml を元の名前に戻す
+        if: always()
+        run: mv supabase/config.toml.bak supabase/config.toml || true
