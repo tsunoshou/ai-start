@@ -30,7 +30,5 @@ jobs:
         run: npm ci # package-lock.jsonに基づいて正確に依存関係をインストール
 
       - name: Apply database migrations
-        # DATABASE_URL があれば自動的にリモートDBに接続する
-        run: npx supabase migration up --debug
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        # DATABASE_URL を run コマンドの前に直接設定する
+        run: DATABASE_URL=${{ secrets.DATABASE_URL }} npx supabase migration up --debug
