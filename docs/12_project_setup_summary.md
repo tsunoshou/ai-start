@@ -1,6 +1,6 @@
 # プロジェクトセットアップ概要
 
-最終更新日: 2025-03-31
+最終更新日: 2025-04-03
 
 ## 目的
 
@@ -31,6 +31,9 @@
 *   **Database**: PostgreSQL (Supabase 提供)
 *   **Supabase JS Client**: `^2.44.2`
 *   **Supabase Auth Helpers**: `^0.9.0`
+*   **Vitest**: (バージョンは `package.json` を参照) (*`devDependencies`*)
+*   **Playwright**: (バージョンは `package.json` を参照) (*`devDependencies`*)
+*   **@testing-library/react**: (バージョンは `package.json` を参照) (*`devDependencies`*)
 
 ## セットアップリスト
 
@@ -113,9 +116,11 @@
     *   **ストレージ**: Supabase Storage を利用 (具体的なバケット設定等はプロジェクト進行に合わせて実装)。
 
 13. **テスト**:
-    *   **フレームワーク**: Jest を導入 (`jest.config.js`, `jest.setup.js` で設定)。
+    *   **フレームワーク**: **Vitest** (ユニット/統合テスト) と **Playwright** (E2Eテスト) を導入 (`vitest.config.ts`, `playwright.config.ts` で設定)。
     *   **ライブラリ**: React Testing Library を使用。
-    *   **カバレッジ**: ユニットテスト、統合テスト、E2E テストを実装予定 (詳細は `docs/09_testing_implementation.md` 参照)。
+    *   **テストセットアップ**: `tests/setupTests.ts` で Vitest のグローバル設定や `jest-dom` マッチャーの統合を行う。
+    *   **CI/CD連携**: GitHub Actions (`.github/workflows/ci.yml`) でユニット/統合テスト (`npm run test:unit`) と E2Eテスト (`npm run test:e2e`) を自動実行するよう設定済み。
+    *   **カバレッジ**: ユニットテスト、統合テスト、E2E テストを実装 (詳細は `docs/09_testing_implementation.md` 参照)。
 
 14. **ローカル開発環境**:
     *   **Supabase CLI**: ローカルでのマイグレーション管理、型生成、DB 操作に使用。

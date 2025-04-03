@@ -1,6 +1,6 @@
 # アーキテクチャ設計
 
-最終更新日: 2025-04-03
+最終更新日: 2025-04-04
 
 ## 本ドキュメントの目的
 
@@ -1665,3 +1665,37 @@ Drizzle Kitを使用して、データベースのバージョン管理とマイ
    - トレーニングと知識共有
 
 このアーキテクチャ設計を出発点として、実装フェーズでの学びを反映しながら継続的に進化させていきます。
+
+### 5.2. クライアントサイドアーキテクチャ
+
+クライアントサイドはNext.js (App Router) を基盤とし、React Server Components (RSC) と Client Components を活用します。
+
+- **フレームワーク**: Next.js (App Router)
+- **UI ライブラリ**: Shadcn/UI + Tailwind CSS
+- **状態管理**: TanStack Query (React Query) + Jotai/Zustand/Context API
+- **コンポーネント開発**: **Storybook** を導入し、UIコンポーネントの分離開発、テスト、ドキュメンテーションを効率化します。
+
+**主要な関心事:**
+
+1.  **UI Components (`src/components/ui`, `src/components/shared`)**: 再利用可能な基本的なUI要素（ボタン、入力フィールドなど）と、複数の箇所で利用される共有コンポーネント。
+2.  **Feature Components (`src/features`)**: 特定の機能に関連するコンポーネント群。ドメインロジックを含む場合がある。
+3.  **Layouts (`src/components/layouts`)**: ページの全体的な構造を定義するコンポーネント。
+4.  **Pages/Routes (`src/app`)**: Next.js の App Router に基づくルーティングとページコンポーネント。
+5.  **State Management (`src/store`, `src/hooks`)**: グローバルな状態管理、カスタムフック、API データフェッチとキャッシュ管理。
+6.  **Utilities (`src/lib`, `src/utils`)**: アプリケーション全体で使用されるヘルパー関数や定数。
+
+**コンポーネント設計原則:**
+
+-   **Presentational and Container Components**: 必要に応じて、表示ロジックとビジネスロジックを分離します。
+-   **Atomic Design**: コンポーネントを Atoms, Molecules, Organisms, Templates, Pages の粒度で設計し、再利用性と保守性を高めます。
+-   **Props Drilling の回避**: Context API, Zustand, Jotai などを適切に利用して、不要な Props のバケツリレーを避けます。
+-   **パフォーマンス**: RSC と Client Components を適切に使い分け、不要な再レンダリングを最小限に抑えます。
+
+**Storybook の活用:**
+
+Storybook は、UIコンポーネントの開発プロセスにおいて中心的な役割を果たします。
+
+-   **分離開発**: 各コンポーネントをアプリケーション全体から切り離して開発・テストできるため、開発サイクルが高速化します。
+-   **インタラクティブなカタログ**: 開発者やデザイナーが利用可能なコンポーネントとそのバリエーションを簡単に確認できます。
+-   **ビジュアルテスト**: Chromatic などのツールと連携し、コンポーネントの視覚的なリグレッションテストを自動化します。
+-   **ドキュメンテーション**: コンポーネントの使用方法や Props に関する「生きたドキュメント」として機能します。
