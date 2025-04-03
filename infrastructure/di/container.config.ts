@@ -1,12 +1,13 @@
 import 'reflect-metadata';
-// import { container, Lifecycle } from 'tsyringe'; // Lifecycle は未使用のため一時コメントアウト
-import { container } from 'tsyringe'; // container のみインポート
+import { container } from 'tsyringe'; // Lifecycle のインポートを削除
 
 // --- 基本的な依存関係の登録例 ---
 
-// DBクライアント (例: Drizzle Client) - シングルトン
-// import { db } from '@/infrastructure/database/db'; // db インスタンスをインポート
-// container.register('DrizzleClient', { useValue: db });
+// DBクライアント (Drizzle Client) - シングルトン性は db.ts の実装で担保
+import { DB } from '@/infrastructure/database/db'; // エクスポート名に合わせて DB をインポート
+container.register('DrizzleClient', {
+  useValue: DB, // インポートした DB を使用
+});
 
 // リポジトリインターフェースと実装の紐付け (トークン使用)
 // import { IUserRepository } from '@/domain/repositories/IUserRepository';
