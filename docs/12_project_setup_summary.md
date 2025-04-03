@@ -95,7 +95,7 @@
             *   サブドメイン (`www`, `staging`, `dev`): `CNAME` レコード, TTL `3600`, 値 `cname.vercel-dns.com.` (Vercel 指定 CNAME)
     *   **ブランチと環境・ドメインの対応**:
         *   `main` ブランチ -> Vercel **Production** 環境 -> `ai-start.net` (および `www.ai-start.net`)
-        *   `release/*` ブランチ -> Vercel **Staging** 環境 (カスタムドメイン) -> `staging.ai-start.net`
+        *   `release/*` ブランチ -> Vercel **staging** 環境 (カスタムドメイン) -> `staging.ai-start.net`
         *   `development` ブランチ -> Vercel **Preview** 環境 (カスタムドメイン) -> `dev.ai-start.net`
         *   その他 Feature ブランチ -> Vercel **Preview** 環境 (自動生成 URL)
     *   **ビルド設定**: Vercel の標準 Next.js ビルドプリセットを使用。
@@ -105,7 +105,7 @@
     *   PostgreSQL データベース、認証、ストレージなどのバックエンドサービスを提供。
     *   **環境ごとの Supabase プロジェクト設定**:
         *   `main` ブランチ用 (Production): `ai_start_prod`
-        *   `release/*` ブランチ用 (Staging): `ai_start_staging`
+        *   `release/*` ブランチ用 (staging): `ai_start_staging`
         *   `development` ブランチ用 (Development/Preview): `ai_start_dev`
     *   **環境変数**: Vercel 環境変数として設定 (詳細は上記参照)。
     *   **認証**: Supabase Auth を利用 (プロバイダー設定等はプロジェクト進行に合わせて実装)。
