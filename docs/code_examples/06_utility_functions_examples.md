@@ -1,6 +1,6 @@
 # 共通ユーティリティ関数のコード例
 
-最終更新日: 2025-03-26
+最終更新日: 2025-04-03
 
 ## 本ドキュメントの目的
 
@@ -45,59 +45,100 @@
 ### ドメインモデルとデータエンティティの双方向変換
 
 ```typescript
-// src/utils/conversion/userMapper.ts
+// shared/utils/conversion/user.mapper.ts (ファイルパス例)
 'use server';
 
-import { User } from '@/types/domain/User';
-import { UserEntity } from '@/types/entities/UserEntity';
+import { User } from '@/domain/models/user/user.entity';
+import { UserRole } from '@/domain/models/user/user-role.enum';
+import { type PersistenceUser } from '@/infrastructure/database/drizzle/schema'; // Drizzleの型をインポート
+import { Email } from '@/domain/models/user/value-objects/email.vo';
+import { Result, ok, err } from 'neverthrow';
+import { logger } from '@/infrastructure/logger/logger'; // ロガーのパス修正
 
 /**
- * ユーザーエンティティをドメインモデルに変換する
+ * 永続化ユーザーエンティティをドメインモデルに変換する
  *
- * @param entity - 変換するユーザーエンティティ
- * @returns ドメインモデルに変換されたユーザー
+ * @param entity - 変換する永続化ユーザーエンティティ (Drizzle型)
+ * @returns Result<User, Error> - ドメインモデルに変換されたユーザー、またはエラー
  * @example
- * const userEntity = await db.query.users.findFirst({ where: eq(users.id, userId) });
- * const user = userEntityToDomain(userEntity);
+ * const userEntityResult = await db.query.users.findFirst({ where: eq(users.id, userId) });
+ * if (userEntityResult) {
+ *   const userResult = persistenceUserToDomain(userEntityResult);
+ *   if (userResult.isOk()) {
+ *     const user = userResult.value;
+ *     // ...
+ *   }
+ * }
  */
-export function userEntityToDomain(entity: UserEntity): User {
-  return {
+export function persistenceUserToDomain(entity: PersistenceUser): Result<User, Error> {
+  const emailResult = Email.create(entity.email);
+  if (emailResult.isErr()) {
+    logger.error('Failed to create Email VO from persistence', { email: entity.email, error: emailResult.error });
+    return err(new Error(`Invalid email format in persistence layer: ${emailResult.error.message}`));
+  }
+
+  let roles: UserRole[] = [UserRole.USER]; // Default role
+  try {
+    // Drizzle スキーマの roles カラム名に合わせる (例: `roles`)
+    const parsedRoles = typeof entity.roles === 'string' ? JSON.parse(entity.roles) : entity.roles;
+    if (Array.isArray(parsedRoles) && parsedRoles.every(r => Object.values(UserRole).includes(r as UserRole))) {
+      roles = parsedRoles as UserRole[];
+    } else if (parsedRoles) {
+       logger.warn('Invalid roles format in persistence, using default', { entityId: entity.id, roles: entity.roles });
+    }
+  } catch (error) {
+    logger.error('Failed to parse roles from persistence, using default', { entityId: entity.id, error });
+  }
+
+  let preferences = {};
+  try {
+      preferences = typeof entity.preferences === 'string' ? JSON.parse(entity.preferences || '{}') : (entity.preferences || {});
+  } catch (error) {
+      logger.error('Failed to parse preferences from persistence', { entityId: entity.id, error });
+  }
+
+  // User エンティティのファクトリメソッドを使用 (Result を返す想定)
+  return User.create({
     id: entity.id,
-    email: entity.email,
-    displayName: entity.display_name,
-    role: entity.role,
-    preferences: JSON.parse(entity.preferences || '{}'),
-    createdAt: entity.created_at,
-    updatedAt: entity.updated_at,
-    // 機密情報はドメインモデルに含めない
-    hashedPassword: undefined,
-  };
+    email: emailResult.value,
+    // Drizzle スキーマのカラム名に合わせる (例: `displayName`)
+    displayName: entity.displayName ?? '',
+    roles: roles,
+    preferences: preferences,
+    // Drizzle スキーマのカラム名に合わせる
+    createdAt: entity.createdAt,
+    updatedAt: entity.updatedAt,
+    hashedPassword: entity.hashedPassword,
+    provider: entity.provider, // AuthProvider Enum への変換が必要な場合あり
+    providerId: entity.providerId,
+  });
 }
 
 /**
- * ドメインモデルをユーザーエンティティに変換する
+ * ドメインモデルを永続化ユーザーエンティティに変換する（DB挿入/更新用）
  *
  * @param user - 変換するユーザードメインモデル
- * @param preservePassword - 既存のパスワードハッシュを保持するかどうか
- * @returns エンティティに変換されたユーザー
+ * @returns Drizzleに渡すためのオブジェクト (ID, createdAt, updatedAtは除くことが多い)
  * @example
- * const updatedUserEntity = userDomainToEntity(user, true);
- * await db.update(users).set(updatedUserEntity).where(eq(users.id, user.id));
+ * const user = // ... ドメインモデル
+ * const persistenceData = userDomainToPersistence(user);
+ * await db.update(users).set(persistenceData).where(eq(users.id, user.id));
  */
-export function userDomainToEntity(
-  user: User,
-  preservePassword = false
-): Omit<UserEntity, 'hashed_password'> & { hashed_password?: string } {
+// Drizzle の insert/update 用の型に合わせて調整 (例: InferInsertModel)
+type InsertableUser = Omit<PersistenceUser, 'id' | 'createdAt' | 'updatedAt'>;
+
+export function userDomainToPersistence(user: User): InsertableUser {
+  const props = user.properties; // Userエンティティのプロパティにアクセス
   return {
-    id: user.id,
-    email: user.email,
-    display_name: user.displayName,
-    role: user.role,
-    preferences: JSON.stringify(user.preferences || {}),
-    created_at: user.createdAt,
-    updated_at: new Date(),
-    // パスワードはオプショナル
-    ...(preservePassword && user.hashedPassword ? { hashed_password: user.hashedPassword } : {}),
+    email: props.email.value,
+    displayName: props.displayName,
+    // Drizzle スキーマのカラム名に合わせる (例: `roles`)
+    roles: JSON.stringify(props.roles),
+    preferences: JSON.stringify(props.preferences || {}),
+    hashedPassword: props.hashedPassword,
+    provider: props.provider, // Enum から string への変換が必要な場合あり
+    providerId: props.providerId,
+    // id, createdAt, updatedAt は通常DB側で管理
   };
 }
 ```
@@ -105,62 +146,95 @@ export function userDomainToEntity(
 ### 複雑なオブジェクトグラフの変換
 
 ```typescript
-// src/utils/conversion/projectMapper.ts
+// shared/utils/conversion/project.mapper.ts (ファイルパス例)
 'use server';
 
-import { Project, Step } from '@/types/domain/Project';
-import { ProjectEntity, StepEntity } from '@/types/entities/ProjectEntity';
+import { Project } from '@/domain/models/project/project.entity';
+import { Step } from '@/domain/models/project/step.entity';
+import { type PersistenceProject, type PersistenceStep } from '@/infrastructure/database/drizzle/schema'; // Drizzle 型
+import { Result, ok, err } from 'neverthrow';
+import { logger } from '@/infrastructure/logger/logger';
 
 /**
- * プロジェクトエンティティとその関連ステップをドメインモデルに変換する
+ * 永続化プロジェクトエンティティとその関連ステップをドメインモデルに変換する
  *
- * @param entity - プロジェクトエンティティ
- * @param stepEntities - 関連するステップエンティティの配列
- * @returns ドメインモデルに変換されたプロジェクトとステップ
+ * @param entity - プロジェクトエンティティ (Drizzle型)
+ * @param stepEntities - 関連するステップエンティティの配列 (Drizzle型)
+ * @returns Result<Project, Error> - ドメインモデルに変換されたプロジェクト、またはエラー
  */
-export function projectWithStepsEntityToDomain(
-  entity: ProjectEntity,
-  stepEntities: StepEntity[]
-): Project {
-  // ステップを変換してからプロジェクトに適用
-  const steps = stepEntities
-    .filter((step) => step.project_id === entity.id)
-    .sort((a, b) => a.order - b.order)
-    .map(stepEntityToDomain);
+export function persistenceProjectWithStepsToDomain(
+  entity: PersistenceProject,
+  stepEntities: PersistenceStep[]
+): Result<Project, Error> {
 
-  return {
+  const stepResults = stepEntities
+    .filter(stepEntity => stepEntity.projectId === entity.id) // Drizzle スキーマのカラム名 `projectId`
+    .sort((a, b) => a.order - b.order)
+    .map(persistenceStepToDomain); // 各ステップを変換
+
+  // ステップ変換でエラーがあれば全体をエラーとする
+  const steps: Step[] = [];
+  for (const result of stepResults) {
+      if (result.isErr()) {
+          return err(new Error(`Failed to convert steps: ${result.error.message}`));
+      }
+      steps.push(result.value);
+  }
+
+  let settings = {};
+   try {
+       settings = typeof entity.settings === 'string' ? JSON.parse(entity.settings || '{}') : (entity.settings || {});
+   } catch (error) {
+       logger.error('Failed to parse project settings from persistence', { entityId: entity.id, error });
+       // エラーを返すか、デフォルト値を使うか検討
+       return err(new Error('Failed to parse project settings'));
+   }
+
+  // Project エンティティのファクトリメソッドを使用
+  return Project.create({
     id: entity.id,
     name: entity.name,
-    description: entity.description || '',
-    ownerId: entity.owner_id,
-    status: entity.status,
-    settings: JSON.parse(entity.settings || '{}'),
-    createdAt: entity.created_at,
-    updatedAt: entity.updated_at,
-    steps: steps,
-  };
+    description: entity.description ?? '',
+    ownerId: entity.ownerId, // Drizzle スキーマのカラム名 `ownerId`
+    status: entity.status, // Status Enum への変換が必要な場合あり
+    settings: settings,
+    createdAt: entity.createdAt,
+    updatedAt: entity.updatedAt,
+    steps: steps
+  });
 }
 
 /**
- * ステップエンティティをドメインモデルに変換する
+ * 永続化ステップエンティティをドメインモデルに変換する
  *
- * @param entity - ステップエンティティ
- * @returns ドメインモデルに変換されたステップ
+ * @param entity - ステップエンティティ (Drizzle型)
+ * @returns Result<Step, Error> - ドメインモデルに変換されたステップ、またはエラー
  */
-export function stepEntityToDomain(entity: StepEntity): Step {
-  return {
-    id: entity.id,
-    projectId: entity.project_id,
-    title: entity.title,
-    description: entity.description || '',
-    order: entity.order,
-    type: entity.type,
-    status: entity.status,
-    content: JSON.parse(entity.content || '{}'),
-    createdAt: entity.created_at,
-    updatedAt: entity.updated_at,
-  };
+export function persistenceStepToDomain(entity: PersistenceStep): Result<Step, Error> {
+    let content = {};
+    try {
+        content = typeof entity.content === 'string' ? JSON.parse(entity.content || '{}') : (entity.content || {});
+    } catch (error) {
+        logger.error('Failed to parse step content from persistence', { entityId: entity.id, error });
+        return err(new Error('Failed to parse step content'));
+    }
+
+    // Step エンティティのファクトリメソッドを使用
+    return Step.create({
+        id: entity.id,
+        projectId: entity.projectId, // Drizzle スキーマのカラム名 `projectId`
+        title: entity.title,
+        description: entity.description ?? '',
+        order: entity.order,
+        type: entity.type, // Type Enum への変換が必要な場合あり
+        status: entity.status, // Status Enum への変換が必要な場合あり
+        content: content,
+        createdAt: entity.createdAt,
+        updatedAt: entity.updatedAt,
+    });
 }
+
+// ドメイン -> 永続化 のマッパーも同様に修正 (省略)
 ```
 
 ## APIモデル変換
@@ -168,124 +242,132 @@ export function stepEntityToDomain(entity: StepEntity): Step {
 ### APIリクエスト変換
 
 ```typescript
-// src/utils/conversion/apiRequestConverter.ts
+// interfaces/http/rest/v1/projects/project.converter.ts (ファイルパス例)
 'use server';
 
-import { CreateProjectRequest } from '@/types/api/ProjectRequests';
-import { Project } from '@/types/domain/Project';
-import { validateCreateProject } from '@/utils/validation/projectValidation';
+import { CreateProjectRequestDto, CreateProjectRequestSchema } from '@/interfaces/http/rest/v1/dtos/project.dto'; // DTOとZodスキーマのパス修正
+import { Project } from '@/domain/models/project/project.entity';
+import { Result, ok, err } from 'neverthrow';
+import { ValidationError } from '@/shared/errors/api.error'; // エラーパス修正
+
+// Projectエンティティのプロパティ型 (IDなどを除く)
+type CreateProjectDomainProps = Omit<Project['properties'], 'id' | 'createdAt' | 'updatedAt' | 'steps' | 'ownerId' | 'status'> & { ownerId: string; status: string }; // 仮の型定義
 
 /**
- * プロジェクト作成リクエストをドメインモデルに変換する
- * バリデーションも同時に行い、無効な入力に対してはエラーをスローする
+ * プロジェクト作成リクエストDTOをドメイン層で使用するプロパティに変換する
+ * バリデーションも同時に行い、無効な入力に対してはエラーを返す
  *
- * @param request - API経由で受け取ったプロジェクト作成リクエスト
+ * @param requestDto - API経由で受け取ったプロジェクト作成リクエストDTO
  * @param userId - 現在認証されているユーザーID
- * @returns バリデーション済みのプロジェクトドメインモデル
- * @throws ValidationError - 入力が無効な場合
+ * @returns Result<CreateProjectDomainProps, ValidationError> - バリデーション済みドメインプロパティ、またはバリデーションエラー
  */
-export function createProjectRequestToDomain(
-  request: CreateProjectRequest,
+export function createProjectRequestDtoToDomainProps(
+  requestDto: unknown, // APIからは unknown で受け取るのが安全
   userId: string
-): Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'steps'> {
-  // まずリクエストの内容を検証
-  const validatedData = validateCreateProject(request);
+): Result<CreateProjectDomainProps, ValidationError> {
+  // Zodスキーマでバリデーション
+  const validationResult = CreateProjectRequestSchema.safeParse(requestDto);
 
-  // 検証済みデータでドメインモデルを構築
-  return {
+  if (!validationResult.success) {
+    const errorMessage = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ');
+    return err(new ValidationError(`Invalid request data: ${errorMessage}`, { cause: validationResult.error }));
+  }
+
+  const validatedData = validationResult.data;
+
+  // ドメイン層向けのプロパティオブジェクトを構築
+  const domainProps: CreateProjectDomainProps = {
     name: validatedData.name,
     description: validatedData.description || '',
-    ownerId: userId,
-    status: 'active',
+    ownerId: userId, // リクエストからではなく、認証情報から取得
+    status: 'active', // デフォルト値またはリクエストから設定
     settings: validatedData.settings || {},
   };
+
+  return ok(domainProps);
 }
 ```
 
 ### APIレスポンス変換
 
 ```typescript
-// src/utils/conversion/apiResponseConverter.ts
+// interfaces/http/rest/v1/projects/project.converter.ts (ファイルパス例)
 'use server';
 
-import { ProjectResponse, ProjectSummaryResponse } from '@/types/api/ProjectResponses';
-import { Project } from '@/types/domain/Project';
-import { PaginationMetadata } from '@/types/api/Common';
+import { ProjectResponseDto, ProjectSummaryResponseDto } from '@/interfaces/http/rest/v1/dtos/project.dto'; // DTO パス修正
+import { StepResponseDto } from '@/interfaces/http/rest/v1/dtos/step.dto'; // Step DTO パス修正
+import { Project } from '@/domain/models/project/project.entity';
+import { Step } from '@/domain/models/project/step.entity';
+import { PaginationMetadataDto } from '@/interfaces/http/rest/v1/dtos/common.dto'; // Common DTO パス修正
 
 /**
- * ドメインモデルからAPI応答形式に変換する
- * ユーザーの権限に基づいて表示するフィールドを調整する
+ * ドメインモデルからAPI応答DTO形式に変換する
  *
  * @param project - 変換するプロジェクトドメインモデル
- * @param isOwner - 閲覧者がプロジェクトの所有者かどうか
- * @returns API応答形式に変換されたプロジェクト
+ * @param isOwner - (任意) 閲覧者がプロジェクトの所有者かどうか (権限による情報の出し分け)
+ * @returns API応答形式のプロジェクトDTO
  */
-export function projectDomainToResponse(project: Project, isOwner: boolean): ProjectResponse {
+export function projectDomainToResponseDto(
+  project: Project,
+  isOwner?: boolean // 権限チェックはアプリケーション層で行う方が良い場合も
+): ProjectResponseDto {
+  const props = project.properties;
   return {
-    id: project.id,
-    name: project.name,
-    description: project.description,
-    status: project.status,
-    // 所有者のみに表示する情報
-    settings: isOwner ? project.settings : undefined,
-    ownerId: project.ownerId,
-    createdAt: project.createdAt.toISOString(),
-    updatedAt: project.updatedAt.toISOString(),
-    steps: project.steps.map((step) => ({
-      id: step.id,
-      title: step.title,
-      description: step.description,
-      order: step.order,
-      type: step.type,
-      status: step.status,
-      // コンテンツの詳細は所有者のみに表示
-      content: isOwner ? step.content : undefined,
-      createdAt: step.createdAt.toISOString(),
-      updatedAt: step.updatedAt.toISOString(),
-    })),
+    id: props.id,
+    name: props.name,
+    description: props.description,
+    ownerId: props.ownerId,
+    status: props.status,
+    // isOwner フラグに基づいて settings を含めるか決定 (例)
+    settings: isOwner ? props.settings : undefined,
+    createdAt: props.createdAt.toISOString(), // ISO 8601形式に変換
+    updatedAt: props.updatedAt.toISOString(),
+    steps: props.steps.map(stepDomainToResponseDto), // ステップもDTOに変換
   };
 }
 
 /**
- * プロジェクトリストをページネーション付きAPI応答形式に変換する
+ * ドメインモデルのステップをAPI応答DTO形式に変換する
  *
- * @param projects - プロジェクトのリスト
- * @param total - 合計レコード数
- * @param page - 現在のページ番号
- * @param pageSize - ページあたりのアイテム数
- * @returns ページネーション情報付きのプロジェクトサマリーレスポンス
+ * @param step - 変換するステップドメインモデル
+ * @returns API応答形式のステップDTO
  */
-export function projectsToPagedResponse(
-  projects: Project[],
-  total: number,
-  page: number,
-  pageSize: number
-): {
-  data: ProjectSummaryResponse[];
-  pagination: PaginationMetadata;
-} {
-  const projectSummaries = projects.map((p) => ({
-    id: p.id,
-    name: p.name,
-    description: p.description,
-    status: p.status,
-    stepCount: p.steps.length,
-    createdAt: p.createdAt.toISOString(),
-    updatedAt: p.updatedAt.toISOString(),
-  }));
-
-  return {
-    data: projectSummaries,
-    pagination: {
-      page,
-      pageSize,
-      totalItems: total,
-      totalPages: Math.ceil(total / pageSize),
-      hasNextPage: page * pageSize < total,
-      hasPreviousPage: page > 1,
-    },
-  };
+export function stepDomainToResponseDto(step: Step): StepResponseDto {
+    const props = step.properties;
+    return {
+        id: props.id,
+        projectId: props.projectId,
+        title: props.title,
+        description: props.description,
+        order: props.order,
+        type: props.type,
+        status: props.status,
+        content: props.content, // JSONとして返すか、シリアライズするかはAPI仕様次第
+        createdAt: props.createdAt.toISOString(),
+        updatedAt: props.updatedAt.toISOString(),
+    };
 }
+
+// ProjectSummaryResponseDto への変換関数も同様に作成 (省略)
+
+/**
+ * ページネーションメタデータをDTOに変換する
+ *
+ * @param metadata - ページネーションメタデータ (ドメイン層またはアプリ層で生成)
+ * @returns ページネーションメタデータDTO
+ */
+/* // PaginationMetadata がドメイン/アプリ層で定義されている前提
+export function paginationMetadataToDto(
+    metadata: PaginationMetadata
+): PaginationMetadataDto {
+    return {
+        currentPage: metadata.currentPage,
+        pageSize: metadata.pageSize,
+        totalItems: metadata.totalItems,
+        totalPages: metadata.totalPages,
+    };
+}
+*/
 ```
 
 ## 型安全な変換関数
@@ -293,14 +375,14 @@ export function projectsToPagedResponse(
 ### 型ガード関数
 
 ```typescript
-// src/utils/conversion/typeGuards.ts
+// utils/conversion/typeGuards.ts
 
 import { Message, MessageType } from '@/types/domain/Message';
 import { User, UserRole } from '@/types/domain/User';
 
 /**
  * 値がMessageTypeのいずれかであるかを検証する型ガード
- *
+ * 
  * @param value - 検証する値
  * @returns 値がMessageTypeのいずれかである場合はtrue
  * @example
@@ -314,15 +396,15 @@ export function isMessageType(value: unknown): value is MessageType {
 
 /**
  * 値がメッセージオブジェクトであるかを検証する型ガード
- *
+ * 
  * @param value - 検証する値
  * @returns 値がMessage型の条件を満たす場合はtrue
  */
 export function isMessage(value: unknown): value is Message {
   if (!value || typeof value !== 'object') return false;
-
+  
   const obj = value as Record<string, unknown>;
-
+  
   return (
     typeof obj.id === 'string' &&
     typeof obj.conversationId === 'string' &&
@@ -334,7 +416,7 @@ export function isMessage(value: unknown): value is Message {
 
 /**
  * 値が管理者ユーザーであるかを検証する型ガード
- *
+ * 
  * @param user - 検証するユーザーオブジェクト
  * @returns ユーザーが管理者ロールを持つ場合はtrue
  * @example
@@ -342,19 +424,19 @@ export function isMessage(value: unknown): value is Message {
  *   // 管理者権限が必要な処理
  * }
  */
-export function isAdminUser(user: User): user is User & { role: 'admin' } {
-  return user.role === 'admin';
+export function isAdminUser(user: User): user is User & { properties: { roles: UserRole[] } } {
+  return user.properties.roles.includes(UserRole.ADMIN);
 }
 ```
 
 ### 型変換ヘルパー
 
 ```typescript
-// src/utils/conversion/safeTypeConversion.ts
+// utils/conversion/safeTypeConversion.ts
 
 /**
  * nullまたはundefinedの可能性がある値を安全に処理する
- *
+ * 
  * @param value - 変換する値
  * @param defaultValue - 値がnullまたはundefinedの場合に使用するデフォルト値
  * @returns 値またはデフォルト値
@@ -367,7 +449,7 @@ export function nullable<T>(value: T | null | undefined, defaultValue: T): T {
 
 /**
  * オブジェクトから安全にプロパティ値を取得する
- *
+ * 
  * @param obj - 対象オブジェクト
  * @param path - ドット区切りのプロパティパス
  * @param defaultValue - プロパティが存在しない場合のデフォルト値
@@ -381,23 +463,23 @@ export function safeGet<T>(
   defaultValue: T
 ): T {
   if (!obj) return defaultValue;
-
+  
   const keys = path.split('.');
   let result: any = obj;
-
+  
   for (const key of keys) {
     if (result === null || result === undefined || typeof result !== 'object') {
       return defaultValue;
     }
     result = result[key];
   }
-
-  return result === null || result === undefined ? defaultValue : (result as T);
+  
+  return (result === null || result === undefined) ? defaultValue : result as T;
 }
 
 /**
  * 文字列型を数値型に安全に変換する
- *
+ * 
  * @param value - 変換する文字列
  * @param defaultValue - 変換できない場合のデフォルト値
  * @returns 変換された数値またはデフォルト値
@@ -406,7 +488,7 @@ export function safeGet<T>(
  */
 export function safeParseInt(value: string | null | undefined, defaultValue: number): number {
   if (value === null || value === undefined) return defaultValue;
-
+  
   const parsed = parseInt(value, 10);
   return isNaN(parsed) ? defaultValue : parsed;
 }
@@ -415,12 +497,12 @@ export function safeParseInt(value: string | null | undefined, defaultValue: num
 ### 型拡張・変換関数
 
 ```typescript
-// src/utils/conversion/typeTransformers.ts
+// utils/conversion/typeTransformers.ts
 
 /**
  * オブジェクトから指定されたプロパティのみを選択する
  * TypeScriptのPickユーティリティ型に相当する実行時関数
- *
+ * 
  * @param obj - 元のオブジェクト
  * @param keys - 選択するプロパティキーの配列
  * @returns 選択されたプロパティのみを含む新しいオブジェクト
@@ -431,21 +513,18 @@ export function pick<T extends Record<string, any>, K extends keyof T>(
   obj: T,
   keys: K[]
 ): Pick<T, K> {
-  return keys.reduce(
-    (result, key) => {
-      if (key in obj) {
-        result[key] = obj[key];
-      }
-      return result;
-    },
-    {} as Pick<T, K>
-  );
+  return keys.reduce((result, key) => {
+    if (key in obj) {
+      result[key] = obj[key];
+    }
+    return result;
+  }, {} as Pick<T, K>);
 }
 
 /**
  * オブジェクトから指定されたプロパティを除外する
  * TypeScriptのOmitユーティリティ型に相当する実行時関数
- *
+ * 
  * @param obj - 元のオブジェクト
  * @param keys - 除外するプロパティキーの配列
  * @returns 指定プロパティを除いた新しいオブジェクト
@@ -457,7 +536,7 @@ export function omit<T extends Record<string, any>, K extends keyof T>(
   keys: K[]
 ): Omit<T, K> {
   const result = { ...obj };
-  keys.forEach((key) => {
+  keys.forEach(key => {
     delete result[key];
   });
   return result as Omit<T, K>;
@@ -466,7 +545,7 @@ export function omit<T extends Record<string, any>, K extends keyof T>(
 /**
  * オブジェクトの全プロパティをオプショナルにする
  * TypeScriptのPartialユーティリティ型に相当する実行時関数
- *
+ * 
  * @param obj - 元のオブジェクト
  * @returns 全プロパティが存在する場合のみコピーされた新しいオブジェクト
  * @example
@@ -480,14 +559,14 @@ export function partial<T extends Record<string, any>>(obj: T): Partial<T> {
     return result;
   }, {} as Partial<T>);
 }
-```
+``` 
 
 ## 入力バリデーション
 
 ### Zodスキーマ定義
 
 ```typescript
-// src/utils/validation/projectValidation.ts
+// utils/validation/projectValidation.ts
 
 import { z } from 'zod';
 import { CreateProjectRequest, UpdateProjectRequest } from '@/types/api/ProjectRequests';
@@ -497,11 +576,12 @@ import { BaseError, ValidationError } from '@/utils/errors/AppErrors';
  * プロジェクト作成リクエストのバリデーションスキーマ
  */
 const createProjectSchema = z.object({
-  name: z
-    .string()
+  name: z.string()
     .min(3, '名前は3文字以上である必要があります')
     .max(100, '名前は100文字以下である必要があります'),
-  description: z.string().max(500, '説明は500文字以下である必要があります').optional(),
+  description: z.string()
+    .max(500, '説明は500文字以下である必要があります')
+    .optional(),
   settings: z.record(z.unknown()).optional(),
 });
 
@@ -509,31 +589,34 @@ const createProjectSchema = z.object({
  * プロジェクト更新リクエストのバリデーションスキーマ
  */
 const updateProjectSchema = z.object({
-  name: z
-    .string()
+  name: z.string()
     .min(3, '名前は3文字以上である必要があります')
     .max(100, '名前は100文字以下である必要があります')
     .optional(),
-  description: z.string().max(500, '説明は500文字以下である必要があります').optional(),
-  status: z.enum(['active', 'archived', 'completed']).optional(),
+  description: z.string()
+    .max(500, '説明は500文字以下である必要があります')
+    .optional(),
+  status: z.enum(['active', 'archived', 'completed'])
+    .optional(),
   settings: z.record(z.unknown()).optional(),
 });
 
 /**
  * プロジェクト作成リクエストを検証する
- *
+ * 
  * @param data - 検証するリクエストデータ
  * @returns 検証済みのデータ
  * @throws ValidationError - バリデーションエラー時
  */
-export function validateCreateProject(
-  data: CreateProjectRequest
-): z.infer<typeof createProjectSchema> {
+export function validateCreateProject(data: CreateProjectRequest): z.infer<typeof createProjectSchema> {
   try {
     return createProjectSchema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new ValidationError('プロジェクト作成リクエストが無効です', formatZodErrors(error));
+      throw new ValidationError(
+        'プロジェクト作成リクエストが無効です',
+        formatZodErrors(error)
+      );
     }
     throw new BaseError('予期せぬバリデーションエラーが発生しました');
   }
@@ -541,19 +624,20 @@ export function validateCreateProject(
 
 /**
  * プロジェクト更新リクエストを検証する
- *
+ * 
  * @param data - 検証するリクエストデータ
  * @returns 検証済みのデータ
  * @throws ValidationError - バリデーションエラー時
  */
-export function validateUpdateProject(
-  data: UpdateProjectRequest
-): z.infer<typeof updateProjectSchema> {
+export function validateUpdateProject(data: UpdateProjectRequest): z.infer<typeof updateProjectSchema> {
   try {
     return updateProjectSchema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new ValidationError('プロジェクト更新リクエストが無効です', formatZodErrors(error));
+      throw new ValidationError(
+        'プロジェクト更新リクエストが無効です',
+        formatZodErrors(error)
+      );
     }
     throw new BaseError('予期せぬバリデーションエラーが発生しました');
   }
@@ -561,19 +645,16 @@ export function validateUpdateProject(
 
 /**
  * Zodエラーを整形された形式に変換する
- *
+ * 
  * @param error - Zodエラーオブジェクト
  * @returns フィールド名をキーとするエラーメッセージマップ
  */
 function formatZodErrors(error: z.ZodError): Record<string, string> {
-  return error.errors.reduce(
-    (acc, err) => {
-      const path = err.path.join('.');
-      acc[path] = err.message;
-      return acc;
-    },
-    {} as Record<string, string>
-  );
+  return error.errors.reduce((acc, err) => {
+    const path = err.path.join('.');
+    acc[path] = err.message;
+    return acc;
+  }, {} as Record<string, string>);
 }
 ```
 
@@ -582,7 +663,7 @@ function formatZodErrors(error: z.ZodError): Record<string, string> {
 ### 共有バリデーションロジック
 
 ```typescript
-// src/utils/validation/shared/messageValidation.ts
+// utils/validation/shared/messageValidation.ts
 
 import { z } from 'zod';
 import { isServerSide } from '@/utils/common/environment';
@@ -593,55 +674,48 @@ import { isServerSide } from '@/utils/common/environment';
  */
 export const messageSendSchema = z.object({
   conversationId: z.string().uuid('会話IDは有効なUUID形式である必要があります'),
-  content: z
-    .string()
+  content: z.string()
     .min(1, 'メッセージ内容は必須です')
     .max(isServerSide() ? 32000 : 16000, 'メッセージが長すぎます'),
-  attachments: z
-    .array(
-      z.object({
-        type: z.enum(['image', 'file', 'link']),
-        name: z.string().min(1),
-        content: z.string().optional(),
-        url: z.string().url().optional(),
-      })
-    )
-    .optional(),
+  attachments: z.array(
+    z.object({
+      type: z.enum(['image', 'file', 'link']),
+      name: z.string().min(1),
+      content: z.string().optional(),
+      url: z.string().url().optional(),
+    })
+  ).optional(),
   metadata: z.record(z.unknown()).optional(),
 });
 
 /**
  * クライアント側での簡易バリデーション（実行環境に応じて動作調整）
- *
+ * 
  * @param data - 検証するデータ
  * @returns バリデーション結果（成功/エラーメッセージ）
  */
-export function validateMessageClientSide(
-  data: unknown
-):
-  | { success: true; data: z.infer<typeof messageSendSchema> }
-  | { success: false; errors: Record<string, string> } {
+export function validateMessageClientSide(data: unknown): 
+  { success: true; data: z.infer<typeof messageSendSchema> } | 
+  { success: false; errors: Record<string, string> } {
+  
   try {
     // クライアント側では基本的なバリデーションのみ実施
     const result = messageSendSchema.parse(data);
     return { success: true, data: result };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errors = error.errors.reduce(
-        (acc, err) => {
-          const path = err.path.join('.') || 'general';
-          acc[path] = err.message;
-          return acc;
-        },
-        {} as Record<string, string>
-      );
-
+      const errors = error.errors.reduce((acc, err) => {
+        const path = err.path.join('.') || 'general';
+        acc[path] = err.message;
+        return acc;
+      }, {} as Record<string, string>);
+      
       return { success: false, errors };
     }
-
-    return {
-      success: false,
-      errors: { general: '入力データの検証に失敗しました' },
+    
+    return { 
+      success: false, 
+      errors: { general: '入力データの検証に失敗しました' }
     };
   }
 }
@@ -650,11 +724,11 @@ export function validateMessageClientSide(
 ### 環境検出ユーティリティ
 
 ```typescript
-// src/utils/common/environment.ts
+// utils/common/environment.ts
 
 /**
  * 現在の実行環境がサーバーサイドかどうかを判定する
- *
+ * 
  * @returns サーバーサイドの場合はtrue、クライアントサイドの場合はfalse
  */
 export function isServerSide(): boolean {
@@ -663,7 +737,7 @@ export function isServerSide(): boolean {
 
 /**
  * 現在の実行環境が開発環境かどうかを判定する
- *
+ * 
  * @returns 開発環境の場合はtrue、本番環境の場合はfalse
  */
 export function isDevelopment(): boolean {
@@ -672,7 +746,7 @@ export function isDevelopment(): boolean {
 
 /**
  * 現在の実行環境がテスト環境かどうかを判定する
- *
+ * 
  * @returns テスト環境の場合はtrue、それ以外の場合はfalse
  */
 export function isTest(): boolean {
@@ -681,20 +755,24 @@ export function isTest(): boolean {
 
 /**
  * 環境変数を安全に取得する
- *
+ * 
  * @param key - 環境変数のキー
  * @param required - 必須かどうか。trueの場合、値が存在しないとエラーをスロー
  * @param defaultValue - デフォルト値（requiredがfalseの場合のみ使用）
  * @returns 環境変数の値
  * @throws Error - required=trueで値が存在しない場合
  */
-export function getEnv(key: string, required: boolean = false, defaultValue: string = ''): string {
+export function getEnv(
+  key: string,
+  required: boolean = false,
+  defaultValue: string = ''
+): string {
   const value = process.env[key];
-
+  
   if (required && !value) {
     throw new Error(`必須の環境変数 ${key} が設定されていません`);
   }
-
+  
   return value || defaultValue;
 }
 ```
@@ -704,14 +782,14 @@ export function getEnv(key: string, required: boolean = false, defaultValue: str
 ### プロジェクト固有ルール
 
 ```typescript
-// src/utils/validation/customRules.ts
+// utils/validation/customRules.ts
 
 import { z } from 'zod';
 
 /**
  * カスタムステップバリデーションルール
  * ステップタイプに応じた固有のバリデーションを行う
- *
+ * 
  * @param stepType - ステップのタイプ
  * @returns 特定のステップタイプに対応したスキーマ
  */
@@ -725,35 +803,33 @@ export function getStepContentSchemaByType(stepType: string): z.ZodTypeAny {
             label: z.string(),
             type: z.enum(['text', 'number', 'select', 'checkbox', 'textarea']),
             required: z.boolean().optional(),
-            options: z
-              .array(
-                z.object({
-                  value: z.string(),
-                  label: z.string(),
-                })
-              )
-              .optional(),
+            options: z.array(
+              z.object({
+                value: z.string(),
+                label: z.string()
+              })
+            ).optional()
           })
         ),
-        submitLabel: z.string().optional(),
+        submitLabel: z.string().optional()
       });
-
+      
     case 'ai_prompt':
       return z.object({
         system: z.string().min(1, 'システムプロンプトは必須です'),
         template: z.string().min(1, 'テンプレートは必須です'),
         variables: z.array(z.string()).optional(),
         model: z.string().min(1, 'モデルは必須です'),
-        maxTokens: z.number().int().positive().optional(),
+        maxTokens: z.number().int().positive().optional()
       });
-
+      
     case 'code_execution':
       return z.object({
         language: z.enum(['javascript', 'python', 'bash']),
         code: z.string().min(1, 'コードは必須です'),
-        timeout: z.number().int().positive().optional(),
+        timeout: z.number().int().positive().optional()
       });
-
+      
     default:
       // デフォルトは汎用的なスキーマ
       return z.record(z.unknown());
@@ -763,34 +839,37 @@ export function getStepContentSchemaByType(stepType: string): z.ZodTypeAny {
 /**
  * 日付範囲のバリデーション
  * 開始日と終了日の整合性を検証する
- *
+ * 
  * @param startDate - 開始日
  * @param endDate - 終了日
  * @returns 検証エラーがある場合はエラーメッセージ、なければnull
  */
-export function validateDateRange(startDate: Date | string, endDate: Date | string): string | null {
+export function validateDateRange(
+  startDate: Date | string,
+  endDate: Date | string
+): string | null {
   const start = startDate instanceof Date ? startDate : new Date(startDate);
   const end = endDate instanceof Date ? endDate : new Date(endDate);
-
+  
   if (isNaN(start.getTime())) {
     return '開始日が無効です';
   }
-
+  
   if (isNaN(end.getTime())) {
     return '終了日が無効です';
   }
-
+  
   if (start > end) {
     return '開始日は終了日より前である必要があります';
   }
-
+  
   return null;
 }
 
 /**
  * プロジェクトとステップの関連検証
  * ステップがプロジェクトに属しているかを検証する
- *
+ * 
  * @param projectId - プロジェクトID
  * @param stepIds - 検証するステップIDの配列
  * @param availableStepIds - 該当プロジェクトに実際に属するステップIDの配列
@@ -801,12 +880,12 @@ export function validateStepsBelongToProject(
   stepIds: string[],
   availableStepIds: string[]
 ): string | null {
-  const invalidStepIds = stepIds.filter((id) => !availableStepIds.includes(id));
-
+  const invalidStepIds = stepIds.filter(id => !availableStepIds.includes(id));
+  
   if (invalidStepIds.length > 0) {
     return `以下のステップIDはプロジェクト(${projectId})に属していません: ${invalidStepIds.join(', ')}`;
   }
-
+  
   return null;
 }
 ```
@@ -816,11 +895,11 @@ export function validateStepsBelongToProject(
 ### 日付計算
 
 ```typescript
-// src/utils/date/dateCalculations.ts
+// utils/date/dateCalculations.ts
 
 /**
  * 指定された日数を日付に加算する
- *
+ * 
  * @param date - 基準となる日付
  * @param days - 加算する日数（負の値も可）
  * @returns 新しい日付オブジェクト
@@ -835,7 +914,7 @@ export function addDays(date: Date, days: number): Date {
 
 /**
  * 指定された月数を日付に加算する
- *
+ * 
  * @param date - 基準となる日付
  * @param months - 加算する月数（負の値も可）
  * @returns 新しい日付オブジェクト
@@ -850,7 +929,7 @@ export function addMonths(date: Date, months: number): Date {
 
 /**
  * 2つの日付間の日数差を計算する
- *
+ * 
  * @param date1 - 1つ目の日付
  * @param date2 - 2つ目の日付
  * @returns 日数差（date1 - date2、小数点以下は切り捨て）
@@ -861,17 +940,17 @@ export function daysBetween(date1: Date, date2: Date): number {
   const oneDay = 24 * 60 * 60 * 1000; // 1日のミリ秒数
   const time1 = date1.getTime();
   const time2 = date2.getTime();
-
+  
   // 日付部分のみを比較するために時刻をリセット
   const utcDate1 = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
   const utcDate2 = Date.UTC(date2.getFullYear(), date2.getMonth(), date2.getDate());
-
+  
   return Math.floor((utcDate1 - utcDate2) / oneDay);
 }
 
 /**
  * 指定された日付が2つの日付の間にあるかを検証する
- *
+ * 
  * @param date - 検証する日付
  * @param startDate - 範囲の開始日
  * @param endDate - 範囲の終了日
@@ -885,7 +964,7 @@ export function isDateBetween(
   inclusive: boolean = true
 ): boolean {
   const time = date.getTime();
-
+  
   return inclusive
     ? time >= startDate.getTime() && time <= endDate.getTime()
     : time > startDate.getTime() && time < endDate.getTime();
@@ -894,7 +973,7 @@ export function isDateBetween(
 /**
  * 日本の祝日かどうかを判定する
  * 注: 実際の実装では日本の祝日データベースが必要
- *
+ * 
  * @param date - 検証する日付
  * @returns 祝日の場合はtrue、そうでない場合はfalse
  */
@@ -906,23 +985,23 @@ export function isJapaneseHoliday(date: Date): boolean {
 
 /**
  * 営業日（平日）かどうかを判定する
- *
+ * 
  * @param date - 検証する日付
  * @returns 営業日の場合はtrue、そうでない場合はfalse
  */
 export function isBusinessDay(date: Date): boolean {
   const day = date.getDay();
-
+  
   // 土曜日(6)または日曜日(0)は営業日ではない
   if (day === 0 || day === 6) {
     return false;
   }
-
+  
   // 祝日も営業日ではない
   if (isJapaneseHoliday(date)) {
     return false;
   }
-
+  
   return true;
 }
 ```
@@ -932,11 +1011,11 @@ export function isBusinessDay(date: Date): boolean {
 ### タイムゾーン変換
 
 ```typescript
-// src/utils/date/timezone.ts
+// utils/date/timezone.ts
 
 /**
  * UTC日時をターゲットタイムゾーンに変換する
- *
+ * 
  * @param date - 変換する日付（UTC）
  * @param targetTimezone - ターゲットタイムゾーン（IANA形式、例: 'Asia/Tokyo'）
  * @returns 指定タイムゾーンでフォーマットされた日時文字列
@@ -952,21 +1031,21 @@ export function convertToTimezone(date: Date, targetTimezone: string): string {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: false,
+    hour12: false
   }).format(date);
 }
 
 /**
  * 現在のブラウザのタイムゾーンを取得する
  * クライアントサイドでのみ動作
- *
+ * 
  * @returns 現在のタイムゾーン（IANA形式、例: 'Asia/Tokyo'）またはUTC
  */
 export function detectBrowserTimezone(): string {
   if (typeof Intl === 'undefined' || typeof Intl.DateTimeFormat !== 'function') {
     return 'UTC';
   }
-
+  
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   } catch (error) {
@@ -977,7 +1056,7 @@ export function detectBrowserTimezone(): string {
 
 /**
  * ISOフォーマットの日時文字列を特定のタイムゾーンに変換する
- *
+ * 
  * @param isoString - ISO形式の日時文字列
  * @param timezone - タイムゾーン（IANA形式）
  * @returns 変換された日時を含むDateオブジェクト
@@ -985,7 +1064,7 @@ export function detectBrowserTimezone(): string {
 export function parseISOInTimezone(isoString: string, timezone: string): Date {
   // タイムゾーン情報付きの日時文字列を解析
   const date = new Date(isoString);
-
+  
   // DateオブジェクトをUTCとしてフォーマット
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
@@ -996,19 +1075,19 @@ export function parseISOInTimezone(isoString: string, timezone: string): Date {
     minute: 'numeric',
     second: 'numeric',
     hour12: false,
-    timeZoneName: 'short',
+    timeZoneName: 'short'
   });
-
+  
   // タイムゾーン調整済みの文字列を取得して再度Dateに変換
   const parts = formatter.formatToParts(date);
   const values: Record<string, string> = {};
-
-  parts.forEach((part) => {
+  
+  parts.forEach(part => {
     if (part.type !== 'literal') {
       values[part.type] = part.value;
     }
   });
-
+  
   // 新しいDateオブジェクトを作成
   return new Date(
     parseInt(values.year),
@@ -1026,11 +1105,11 @@ export function parseISOInTimezone(isoString: string, timezone: string): Date {
 ### 標準化されたフォーマット
 
 ```typescript
-// src/utils/date/formatters.ts
+// utils/date/formatters.ts
 
 /**
  * 日付を標準的なフォーマットで文字列に変換する
- *
+ * 
  * @param date - フォーマットする日付
  * @param format - フォーマットタイプ
  * @returns フォーマットされた日付文字列
@@ -1045,24 +1124,24 @@ export function formatDate(
   if (!date || isNaN(date.getTime())) {
     return '';
   }
-
+  
   switch (format) {
     case 'iso-date':
       // YYYY-MM-DD
       return date.toISOString().split('T')[0];
-
+      
     case 'iso-datetime':
       // YYYY-MM-DDThh:mm:ss.sssZ
       return date.toISOString();
-
+      
     case 'ja-date':
       // YYYY年MM月DD日
       return `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, '0')}月${String(date.getDate()).padStart(2, '0')}日`;
-
+      
     case 'ja-datetime':
       // YYYY年MM月DD日 hh:mm
       return `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, '0')}月${String(date.getDate()).padStart(2, '0')}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-
+      
     default:
       return date.toISOString();
   }
@@ -1070,7 +1149,7 @@ export function formatDate(
 
 /**
  * 相対的な時間表現に変換する
- *
+ * 
  * @param date - 変換する日時
  * @param referenceDate - 基準となる日時（デフォルト: 現在時刻）
  * @returns 相対時間の文字列表現
@@ -1078,13 +1157,16 @@ export function formatDate(
  * // '3日前'
  * const relativeTime = formatRelativeTime(threeDaysAgo);
  */
-export function formatRelativeTime(date: Date, referenceDate: Date = new Date()): string {
+export function formatRelativeTime(
+  date: Date,
+  referenceDate: Date = new Date()
+): string {
   const diffInMilliseconds = referenceDate.getTime() - date.getTime();
   const diffInSeconds = Math.floor(diffInMilliseconds / 1000);
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   const diffInHours = Math.floor(diffInMinutes / 60);
   const diffInDays = Math.floor(diffInHours / 24);
-
+  
   if (diffInSeconds < 0) {
     // 未来の日時
     return formatDate(date, 'ja-datetime');
@@ -1103,7 +1185,7 @@ export function formatRelativeTime(date: Date, referenceDate: Date = new Date())
 
 /**
  * 期間（ミリ秒）を人間が読みやすい形式に変換する
- *
+ * 
  * @param durationMs - ミリ秒単位の期間
  * @param detailed - 詳細表示の有無（デフォルト: false）
  * @returns フォーマットされた期間文字列
@@ -1115,30 +1197,30 @@ export function formatDuration(durationMs: number, detailed: boolean = false): s
   if (durationMs < 0) {
     return '0秒';
   }
-
+  
   const seconds = Math.floor(durationMs / 1000) % 60;
   const minutes = Math.floor(durationMs / (1000 * 60)) % 60;
   const hours = Math.floor(durationMs / (1000 * 60 * 60)) % 24;
   const days = Math.floor(durationMs / (1000 * 60 * 60 * 24));
-
+  
   const parts: string[] = [];
-
+  
   if (days > 0) {
     parts.push(`${days}日`);
   }
-
+  
   if (hours > 0 || (detailed && days > 0)) {
     parts.push(`${hours}時間`);
   }
-
+  
   if (minutes > 0 || (detailed && (hours > 0 || days > 0))) {
     parts.push(`${minutes}分`);
   }
-
+  
   if (seconds > 0 || (detailed && parts.length === 0)) {
     parts.push(`${seconds}秒`);
   }
-
+  
   return parts.length > 0 ? parts.join(detailed ? ' ' : '') : '0秒';
 }
 ```
@@ -1148,7 +1230,7 @@ export function formatDuration(durationMs: number, detailed: boolean = false): s
 ### 構造化ロギング
 
 ```typescript
-// src/utils/logging/logger.ts
+// utils/logging/logger.ts
 'use server';
 
 import { getEnv, isDevelopment } from '@/utils/common/environment';
@@ -1161,7 +1243,7 @@ export enum LogLevel {
   WARN = 1,
   INFO = 2,
   DEBUG = 3,
-  TRACE = 4,
+  TRACE = 4
 }
 
 /**
@@ -1187,10 +1269,10 @@ interface LogEntry {
 export class AppLogger {
   private currentLogLevel: LogLevel;
   private contextData: Record<string, unknown>;
-
+  
   /**
    * ロガーを初期化する
-   *
+   * 
    * @param serviceName - サービス名（ログ識別用）
    * @param initialContext - 初期コンテキストデータ
    */
@@ -1201,17 +1283,17 @@ export class AppLogger {
     // 環境変数からログレベルを取得（デフォルトは開発環境ではDEBUG、本番環境ではINFO）
     const logLevelString = getEnv('LOG_LEVEL', false, isDevelopment() ? 'DEBUG' : 'INFO');
     this.currentLogLevel = this.parseLogLevel(logLevelString);
-
+    
     // 初期コンテキストを設定
     this.contextData = {
       service: this.serviceName,
-      ...initialContext,
+      ...initialContext
     };
   }
-
+  
   /**
    * エラーレベルのログを出力する
-   *
+   * 
    * @param message - ログメッセージ
    * @param error - エラーオブジェクト（オプション）
    * @param context - 追加コンテキスト（オプション）
@@ -1224,16 +1306,16 @@ export class AppLogger {
           error: {
             name: error.name,
             message: error.message,
-            stack: isDevelopment() ? error.stack : undefined,
-          },
-        }),
+            stack: isDevelopment() ? error.stack : undefined
+          }
+        })
       });
     }
   }
-
+  
   /**
    * 警告レベルのログを出力する
-   *
+   * 
    * @param message - ログメッセージ
    * @param context - 追加コンテキスト（オプション）
    */
@@ -1242,10 +1324,10 @@ export class AppLogger {
       this.log('WARN', message, context);
     }
   }
-
+  
   /**
    * 情報レベルのログを出力する
-   *
+   * 
    * @param message - ログメッセージ
    * @param context - 追加コンテキスト（オプション）
    */
@@ -1254,10 +1336,10 @@ export class AppLogger {
       this.log('INFO', message, context);
     }
   }
-
+  
   /**
    * デバッグレベルのログを出力する
-   *
+   * 
    * @param message - ログメッセージ
    * @param context - 追加コンテキスト（オプション）
    */
@@ -1266,10 +1348,10 @@ export class AppLogger {
       this.log('DEBUG', message, context);
     }
   }
-
+  
   /**
    * トレースレベルのログを出力する
-   *
+   * 
    * @param message - ログメッセージ
    * @param context - 追加コンテキスト（オプション）
    */
@@ -1278,11 +1360,11 @@ export class AppLogger {
       this.log('TRACE', message, context);
     }
   }
-
+  
   /**
    * 子ロガーを作成する
    * 親ロガーからコンテキストを継承する
-   *
+   * 
    * @param childName - 子ロガーの名前
    * @param additionalContext - 追加コンテキスト
    * @returns 新しいロガーインスタンス
@@ -1292,103 +1374,97 @@ export class AppLogger {
     childLogger.currentLogLevel = this.currentLogLevel;
     childLogger.contextData = {
       ...this.contextData,
-      ...additionalContext,
+      ...additionalContext
     };
-
+    
     return childLogger;
   }
-
+  
   /**
    * 相関IDを設定する
    * 複数のログエントリを関連付けるために使用
-   *
+   * 
    * @param correlationId - 相関ID
    */
   setCorrelationId(correlationId: string): void {
     this.contextData.correlationId = correlationId;
   }
-
+  
   /**
    * ログエントリを作成して出力する
-   *
+   * 
    * @param level - ログレベル文字列
    * @param message - ログメッセージ
    * @param context - 追加コンテキスト
    */
   private log(level: string, message: string, context?: Record<string, unknown>): void {
     const timestamp = new Date().toISOString();
-
+    
     const logEntry: LogEntry = {
       timestamp,
       level,
       message,
       ...this.contextData,
-      ...(context && { context }),
+      ...(context && { context })
     };
-
+    
     // 本番環境では機密情報をマスキング
     if (!isDevelopment()) {
       this.maskSensitiveData(logEntry);
     }
-
+    
     // 構造化ログをJSON形式で出力
     console.log(JSON.stringify(logEntry));
   }
-
+  
   /**
    * 機密情報をマスキングする
-   *
+   * 
    * @param obj - マスキング対象オブジェクト
    */
   private maskSensitiveData(obj: Record<string, any>): void {
     const sensitiveKeys = ['password', 'token', 'secret', 'apiKey', 'authorization'];
-
+    
     for (const key in obj) {
       if (typeof obj[key] === 'object' && obj[key] !== null) {
         this.maskSensitiveData(obj[key]);
       } else if (
-        typeof obj[key] === 'string' &&
-        sensitiveKeys.some((sensitive) => key.toLowerCase().includes(sensitive.toLowerCase()))
+        typeof obj[key] === 'string' && 
+        sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive.toLowerCase()))
       ) {
         obj[key] = '***masked***';
       }
     }
   }
-
+  
   /**
    * ログレベル文字列をenumに変換する
-   *
+   * 
    * @param level - ログレベル文字列
    * @returns ログレベルenum
    */
   private parseLogLevel(level: string): LogLevel {
     switch (level.toUpperCase()) {
-      case 'ERROR':
-        return LogLevel.ERROR;
-      case 'WARN':
-        return LogLevel.WARN;
-      case 'INFO':
-        return LogLevel.INFO;
-      case 'DEBUG':
-        return LogLevel.DEBUG;
-      case 'TRACE':
-        return LogLevel.TRACE;
-      default:
-        return LogLevel.INFO;
+      case 'ERROR': return LogLevel.ERROR;
+      case 'WARN': return LogLevel.WARN;
+      case 'INFO': return LogLevel.INFO;
+      case 'DEBUG': return LogLevel.DEBUG;
+      case 'TRACE': return LogLevel.TRACE;
+      default: return LogLevel.INFO;
     }
   }
 }
 
 // デフォルトロガーのインスタンスをエクスポート
 export const logger = new AppLogger('AiStart');
-```
+``` 
 
 ## エラー型定義
 
 ### 基底エラークラス
 
 ```typescript
-// src/utils/errors/AppErrors.ts
+// utils/errors/AppErrors.ts
 
 /**
  * アプリケーションの基底エラークラス
@@ -1399,17 +1475,17 @@ export class BaseError extends Error {
    * エラーコード
    */
   readonly code: string;
-
+  
   /**
    * HTTP状態コード
    */
   readonly statusCode: number;
-
+  
   /**
    * エラーの詳細情報
    */
   readonly details?: Record<string, unknown>;
-
+  
   /**
    * ユーザー向けエラーメッセージ
    * 多言語化対応のためのキーとパラメータ
@@ -1418,10 +1494,10 @@ export class BaseError extends Error {
     key: string;
     params?: Record<string, string>;
   };
-
+  
   /**
    * 基底エラーを初期化する
-   *
+   * 
    * @param message - エラーメッセージ
    * @param code - エラーコード（デフォルト：'INTERNAL_ERROR'）
    * @param statusCode - HTTP状態コード（デフォルト：500）
@@ -1440,26 +1516,30 @@ export class BaseError extends Error {
     this.details = details;
     this.userMessage = {
       key: `errors.${code.toLowerCase()}`,
-      params: details
-        ? Object.entries(details).reduce(
-            (acc, [key, value]) => {
-              if (typeof value === 'string') {
-                acc[key] = value;
-              }
-              return acc;
-            },
-            {} as Record<string, string>
-          )
-        : undefined,
+      params: details ? Object.entries(details).reduce((acc, [key, value]) => {
+        // 値を安全に文字列に変換
+        if (value !== null && value !== undefined) {
+          try {
+            acc[key] = typeof value === 'string' 
+              ? value 
+              : typeof value === 'object' 
+                ? JSON.stringify(value) 
+                : String(value);
+          } catch (error) {
+            acc[key] = `[Unable to stringify: ${typeof value}]`;
+          }
+        }
+        return acc;
+      }, {} as Record<string, string>) : undefined
     };
-
+    
     // Error継承時のプロトタイプチェーン修正（TypeScriptのためのハック）
     Object.setPrototypeOf(this, new.target.prototype);
   }
-
+  
   /**
    * エラーをJSON形式に変換する
-   *
+   * 
    * @returns JSONシリアライズ可能なオブジェクト
    */
   toJSON(): Record<string, unknown> {
@@ -1469,7 +1549,7 @@ export class BaseError extends Error {
       code: this.code,
       statusCode: this.statusCode,
       ...(this.details && { details: this.details }),
-      userMessage: this.userMessage,
+      userMessage: this.userMessage
     };
   }
 }
@@ -1481,12 +1561,20 @@ export class BaseError extends Error {
 export class ValidationError extends BaseError {
   /**
    * バリデーションエラーを初期化する
-   *
+   * 
    * @param message - エラーメッセージ
    * @param validationErrors - バリデーションエラーの詳細
    */
-  constructor(message: string, validationErrors: Record<string, string>) {
-    super(message, 'VALIDATION_ERROR', 400, { validationErrors });
+  constructor(
+    message: string,
+    validationErrors: Record<string, string>
+  ) {
+    super(
+      message,
+      'VALIDATION_ERROR',
+      400,
+      { validationErrors }
+    );
   }
 }
 
@@ -1517,15 +1605,17 @@ export class AuthorizationError extends BaseError {
 export class NotFoundError extends BaseError {
   /**
    * リソース未検出エラーを初期化する
-   *
+   * 
    * @param resourceType - リソースの種類（例：'user', 'project'）
    * @param resourceId - リソースのID
    */
   constructor(resourceType: string, resourceId: string) {
-    super(`${resourceType} with id ${resourceId} not found`, 'RESOURCE_NOT_FOUND', 404, {
-      resourceType,
-      resourceId,
-    });
+    super(
+      `${resourceType} with id ${resourceId} not found`,
+      'RESOURCE_NOT_FOUND',
+      404,
+      { resourceType, resourceId }
+    );
   }
 }
 
@@ -1536,7 +1626,7 @@ export class NotFoundError extends BaseError {
 export class ExternalServiceError extends BaseError {
   /**
    * 外部サービスエラーを初期化する
-   *
+   * 
    * @param serviceName - サービス名
    * @param message - エラーメッセージ
    * @param originalError - 元のエラー
@@ -1546,11 +1636,16 @@ export class ExternalServiceError extends BaseError {
     message: string = `${serviceName}との通信中にエラーが発生しました`,
     originalError?: Error
   ) {
-    super(message, 'EXTERNAL_SERVICE_ERROR', 502, {
-      serviceName,
-      originalMessage: originalError?.message,
-      originalStack: originalError?.stack,
-    });
+    super(
+      message,
+      'EXTERNAL_SERVICE_ERROR',
+      502,
+      {
+        serviceName,
+        originalMessage: originalError?.message,
+        originalStack: originalError?.stack
+      }
+    );
   }
 }
 ```
@@ -1560,7 +1655,7 @@ export class ExternalServiceError extends BaseError {
 ### エラー変換
 
 ```typescript
-// src/utils/errors/errorHandlers.ts
+// utils/errors/errorHandlers.ts
 
 import { z } from 'zod';
 import { BaseError, ExternalServiceError, ValidationError } from './AppErrors';
@@ -1582,7 +1677,7 @@ export interface ApiErrorResponse {
 
 /**
  * エラーをAPIエラーレスポンスに変換する
- *
+ * 
  * @param error - 変換するエラー
  * @returns API形式のエラーレスポンス
  */
@@ -1594,8 +1689,8 @@ export function convertErrorToApiResponse(error: unknown): ApiErrorResponse {
         code: error.code,
         message: error.message,
         details: error.details,
-        userMessage: error.userMessage,
-      },
+        userMessage: error.userMessage
+      }
     };
   } else if (error instanceof z.ZodError) {
     // Zodエラーをバリデーションエラーに変換
@@ -1603,7 +1698,7 @@ export function convertErrorToApiResponse(error: unknown): ApiErrorResponse {
       'バリデーションエラーが発生しました',
       formatZodErrors(error)
     );
-
+    
     return convertErrorToApiResponse(validationError);
   } else if (error instanceof Error) {
     // 一般的なエラーはBaseErrorにラップ
@@ -1613,38 +1708,38 @@ export function convertErrorToApiResponse(error: unknown): ApiErrorResponse {
       500,
       { originalError: error.name, stack: error.stack }
     );
-
+    
     return convertErrorToApiResponse(baseError);
   } else {
     // エラーオブジェクトでない場合は汎用エラー
-    const baseError = new BaseError('不明なエラーが発生しました', 'UNKNOWN_ERROR', 500, {
-      originalError: String(error),
-    });
-
+    const baseError = new BaseError(
+      '不明なエラーが発生しました',
+      'UNKNOWN_ERROR',
+      500,
+      { originalError: String(error) }
+    );
+    
     return convertErrorToApiResponse(baseError);
   }
 }
 
 /**
  * Zodエラーをフィールド名をキーとするエラーメッセージマップに変換する
- *
+ * 
  * @param error - Zodエラー
  * @returns フィールド名をキーとするエラーメッセージマップ
  */
 function formatZodErrors(error: z.ZodError): Record<string, string> {
-  return error.errors.reduce(
-    (acc, err) => {
-      const path = err.path.join('.') || 'general';
-      acc[path] = err.message;
-      return acc;
-    },
-    {} as Record<string, string>
-  );
+  return error.errors.reduce((acc, err) => {
+    const path = err.path.join('.') || 'general';
+    acc[path] = err.message;
+    return acc;
+  }, {} as Record<string, string>);
 }
 
 /**
  * 外部APIのエラーレスポンスをアプリケーションエラーに変換する
- *
+ * 
  * @param response - 外部APIのレスポンス
  * @param serviceName - 外部サービス名
  * @returns 変換されたアプリケーションエラー
@@ -1654,7 +1749,7 @@ export async function handleExternalApiError(
   serviceName: string
 ): Promise<BaseError> {
   let errorData;
-
+  
   try {
     errorData = await response.json();
   } catch (e) {
@@ -1665,7 +1760,7 @@ export async function handleExternalApiError(
       e instanceof Error ? e : new Error(String(e))
     );
   }
-
+  
   // エラーデータに基づいて適切なエラーを生成
   return new ExternalServiceError(
     serviceName,
@@ -1677,7 +1772,7 @@ export async function handleExternalApiError(
 /**
  * AI APIエラーを処理する特殊ハンドラー
  * AIサービス固有のエラーパターンを処理する
- *
+ * 
  * @param error - エラーオブジェクト
  * @param modelName - AIモデル名
  * @returns 処理済みのエラー
@@ -1685,7 +1780,7 @@ export async function handleExternalApiError(
 export function handleAiApiError(error: unknown, modelName: string): BaseError {
   if (error instanceof Error) {
     const errorMessage = error.message.toLowerCase();
-
+    
     // レート制限エラー
     if (errorMessage.includes('rate limit') || errorMessage.includes('too many requests')) {
       return new ExternalServiceError(
@@ -1694,14 +1789,24 @@ export function handleAiApiError(error: unknown, modelName: string): BaseError {
         error
       );
     }
-
+    
     // コンテキスト長超過エラー
-    if (errorMessage.includes('maximum context length') || errorMessage.includes('token limit')) {
-      return new ExternalServiceError('AI API', `コンテキストが長すぎます (${modelName})`, error);
+    if (
+      errorMessage.includes('maximum context length') ||
+      errorMessage.includes('token limit')
+    ) {
+      return new ExternalServiceError(
+        'AI API',
+        `コンテキストが長すぎます (${modelName})`,
+        error
+      );
     }
-
+    
     // モデル利用不可エラー
-    if (errorMessage.includes('model not found') || errorMessage.includes('model unavailable')) {
+    if (
+      errorMessage.includes('model not found') ||
+      errorMessage.includes('model unavailable')
+    ) {
       return new ExternalServiceError(
         'AI API',
         `指定されたAIモデル (${modelName}) は現在利用できません`,
@@ -1709,7 +1814,7 @@ export function handleAiApiError(error: unknown, modelName: string): BaseError {
       );
     }
   }
-
+  
   // その他のエラー
   return new ExternalServiceError(
     'AI API',
@@ -1722,179 +1827,192 @@ export function handleAiApiError(error: unknown, modelName: string): BaseError {
 ### リトライロジック
 
 ```typescript
-// src/utils/errors/retryLogic.ts
+// utils/api/retryLogic.ts
 
 import { logger } from '@/utils/logging/logger';
 
 /**
- * リトライ設定オプション
+ * 指数バックオフを使用したリトライオプション
  */
-interface RetryOptions {
+interface RetryWithExponentialBackoffOptions {
   /**
    * 最大リトライ回数
+   * @default 3
    */
   maxRetries: number;
-
+  
   /**
    * 初期遅延時間（ミリ秒）
+   * @default 1000
    */
   initialDelayMs: number;
-
+  
   /**
-   * 遅延倍率（バックオフ係数）
+   * 最大遅延時間（ミリ秒）- これ以上は遅延が増加しない
+   * @default 30000
    */
-  delayFactor: number;
-
+  maxDelayMs: number;
+  
   /**
-   * リトライ対象のエラーを判定する関数
+   * バックオフ係数 - 各リトライ後に遅延時間に掛ける値
+   * @default 2
    */
-  isRetryable?: (error: unknown) => boolean;
-
+  backoffFactor: number;
+  
   /**
-   * エラー発生時のコールバック
+   * ジッター係数 - 0～この値の範囲でランダムな変動を追加（負荷分散のため）
+   * @default 0.25
    */
-  onError?: (error: unknown, attempt: number) => void;
+  jitterFactor: number;
+  
+  /**
+   * リトライ実行時のコールバック関数
+   * @param error - 発生したエラー
+   * @param attempt - 現在のリトライ回数
+   * @param delayMs - 次回リトライまでの遅延時間
+   */
+  onRetry?: (error: unknown, attempt: number, delayMs: number) => void;
 }
 
 /**
- * 指数バックオフ付きのリトライロジックを実装する
- *
- * @param operation - リトライする非同期操作
+ * 指定された操作を指数バックオフとジッターを使用してリトライする
+ * 
+ * @param operation - 実行する非同期操作
+ * @param isRetryable - エラーがリトライ可能かを判定する関数
  * @param options - リトライオプション
  * @returns 操作の結果
- * @throws 最大リトライ回数を超えた場合、最後のエラーをスロー
+ * @throws 最大リトライ回数を超えた場合、または非リトライ可能なエラーの場合は例外をスロー
+ * 
  * @example
- * const result = await withRetry(
- *   () => fetchDataFromApi(),
- *   { maxRetries: 3, initialDelayMs: 500, delayFactor: 2 }
+ * // AIサービス呼び出しをリトライロジックで実行
+ * const response = await retryWithExponentialBackoff(
+ *   () => openai.createChatCompletion({ model: "gpt-4", messages }),
+ *   (error) => error instanceof Error && error.message.includes('rate_limit_exceeded'),
+ *   { maxRetries: 5, initialDelayMs: 2000 }
  * );
  */
-export async function withRetry<T>(
+export async function retryWithExponentialBackoff<T>(
   operation: () => Promise<T>,
-  options: Partial<RetryOptions> = {}
+  isRetryable: (error: unknown) => boolean,
+  options: Partial<RetryWithExponentialBackoffOptions> = {}
 ): Promise<T> {
-  // デフォルトオプションとマージ
-  const config: RetryOptions = {
+  // デフォルト値を使用してオプションを構築
+  const config: RetryWithExponentialBackoffOptions = {
     maxRetries: 3,
-    initialDelayMs: 500,
-    delayFactor: 2,
-    isRetryable: () => true,
-    onError: (error, attempt) => {
-      logger.warn(`操作に失敗しました（リトライ ${attempt}/${config.maxRetries}）`, {
-        error: error instanceof Error ? error.message : String(error),
-        attempt,
-        maxRetries: config.maxRetries,
-      });
-    },
-    ...options,
+    initialDelayMs: 1000,
+    maxDelayMs: 30000,
+    backoffFactor: 2,
+    jitterFactor: 0.25,
+    ...options
   };
 
-  let lastError: unknown;
-  let delayMs = config.initialDelayMs;
-
-  for (let attempt = 1; attempt <= config.maxRetries + 1; attempt++) {
+  let currentAttempt = 0;
+  
+  // 最大試行回数まで実行（初回の実行 + maxRetries回のリトライ）
+  while (currentAttempt <= config.maxRetries) {
     try {
+      // 操作を実行して結果を返す
       return await operation();
     } catch (error) {
-      lastError = error;
-
-      // 最後の試行だった場合、またはリトライ不可のエラーの場合はエラーをスロー
-      if (attempt > config.maxRetries || (config.isRetryable && !config.isRetryable(error))) {
+      currentAttempt++;
+      
+      // 最大リトライ回数に達した場合、または非リトライ可能なエラーの場合はエラーをスロー
+      if (currentAttempt > config.maxRetries || !isRetryable(error)) {
         throw error;
       }
-
-      // エラーコールバックを実行
-      if (config.onError) {
-        config.onError(error, attempt);
+      
+      // 指数バックオフで遅延時間を計算
+      let delayMs = Math.min(
+        config.initialDelayMs * Math.pow(config.backoffFactor, currentAttempt - 1),
+        config.maxDelayMs
+      );
+      
+      // ジッターを追加して負荷を分散（±jitterFactor%のランダム変動）
+      if (config.jitterFactor > 0) {
+        const jitterRange = delayMs * config.jitterFactor;
+        // -jitterRange/2 から +jitterRange/2 の範囲でランダムな値を生成
+        const jitter = (Math.random() - 0.5) * jitterRange;
+        delayMs = Math.max(0, delayMs + jitter);
       }
-
-      // 遅延を実装
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-
-      // 次回の遅延を計算（指数バックオフ）
-      delayMs *= config.delayFactor;
+      
+      // リトライについてログ出力
+      logger.info(`操作が失敗しました。${delayMs}ms後にリトライします (${currentAttempt}/${config.maxRetries})`, {
+        error: error instanceof Error ? error.message : String(error),
+        attempt: currentAttempt,
+        maxRetries: config.maxRetries,
+        delayMs
+      });
+      
+      // リトライコールバックを実行
+      if (config.onRetry) {
+        config.onRetry(error, currentAttempt, delayMs);
+      }
+      
+      // 次のリトライまで待機
+      await new Promise(resolve => setTimeout(resolve, delayMs));
     }
   }
-
-  // ここには到達しないはずだが、型安全のため
-  throw lastError;
+  
+  // TypeScriptの型安全のため（ここには到達しないはず）
+  throw new Error('予期せぬエラー：リトライロジックが異常終了しました');
 }
 
 /**
- * ネットワークエラーがリトライ可能かを判定する
- *
- * @param error - 評価するエラー
- * @returns リトライ可能な場合はtrue
+ * リトライロジックの使用例 - AIサービス呼び出し
+ * 
+ * @param prompt - AIモデルに送信するプロンプト
+ * @returns AIの応答
  */
-export function isNetworkErrorRetryable(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const errorMessage = error.message.toLowerCase();
-
-  // 一時的なネットワークエラー
-  const temporaryNetworkErrors = [
-    'etimedout',
-    'econnreset',
-    'econnrefused',
-    'socket hang up',
-    'network error',
-    'network request failed',
-    'failed to fetch',
-    '5', // 5xxエラーの簡易チェック
-    'timeout',
-    'request timed out',
-  ];
-
-  return temporaryNetworkErrors.some((term) => errorMessage.includes(term));
-}
-
-/**
- * AIサービスのエラーがリトライ可能かを判定する
- *
- * @param error - 評価するエラー
- * @returns リトライ可能な場合はtrue
- */
-export function isAiServiceErrorRetryable(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const errorMessage = error.message.toLowerCase();
-
-  // リトライ可能なAIサービスエラー
-  const retryableAiErrors = [
-    'rate limit',
-    'too many requests',
-    'server overloaded',
-    'service unavailable',
-    'timeout',
-    'internal server error',
-    'bad gateway',
-    'gateway timeout',
-  ];
-
-  // リトライ不可能なAIサービスエラー
-  const nonRetryableAiErrors = [
-    'authentication',
-    'unauthorized',
-    'invalid api key',
-    'permission denied',
-    'content policy violation',
-    'invalid input',
-    'not found',
-    'unsupported model',
-  ];
-
-  // 非リトライ可能なエラーが含まれる場合はfalse
-  if (nonRetryableAiErrors.some((term) => errorMessage.includes(term))) {
-    return false;
-  }
-
-  // リトライ可能なエラーまたは一般的なネットワークエラーの場合はtrue
-  return (
-    retryableAiErrors.some((term) => errorMessage.includes(term)) || isNetworkErrorRetryable(error)
+export async function callAiServiceWithRetry(prompt: string): Promise<string> {
+  return retryWithExponentialBackoff(
+    // AIサービスを呼び出す非同期操作
+    async () => {
+      const response = await fetch('https://api.ai-service.com/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      
+      if (!response.ok) {
+        const error = new Error(`AIサービスエラー: ${response.status} ${response.statusText}`);
+        // エラーにステータスを追加（リトライ判定で使用）
+        Object.assign(error, { status: response.status });
+        throw error;
+      }
+      
+      const data = await response.json();
+      return data.text;
+    },
+    
+    // リトライ可能なエラーかどうかを判定
+    (error) => {
+      if (!(error instanceof Error)) return false;
+      
+      // レート制限エラー（429）と一時的なサーバーエラー（5xx）はリトライ
+      const status = (error as any).status;
+      if (status === 429 || (status >= 500 && status < 600)) {
+        return true;
+      }
+      
+      // エラーメッセージに基づいてリトライ判定
+      const message = error.message.toLowerCase();
+      return message.includes('timeout') || 
+             message.includes('rate limit') || 
+             message.includes('too many requests') ||
+             message.includes('server overloaded');
+    },
+    
+    // カスタムリトライオプション
+    {
+      maxRetries: 5,
+      initialDelayMs: 2000,
+      maxDelayMs: 60000,
+      backoffFactor: 2.5,
+      jitterFactor: 0.3,
+      onRetry: (error, attempt, delayMs) => {
+        console.warn(`AIサービス呼び出しに失敗しました(${attempt}/5)。${delayMs}ms後にリトライします。`, error);
+      }
+    }
   );
 }
 ```
@@ -1904,7 +2022,7 @@ export function isAiServiceErrorRetryable(error: unknown): boolean {
 ### データ暗号化
 
 ```typescript
-// src/utils/security/encryption.ts
+// utils/security/encryption.ts
 'use server';
 
 import crypto from 'crypto';
@@ -1918,7 +2036,7 @@ const ENCRYPTION_CONFIG = {
    * 使用するアルゴリズム
    */
   algorithm: 'aes-256-gcm',
-
+  
   /**
    * キー取得関数
    */
@@ -1926,16 +2044,16 @@ const ENCRYPTION_CONFIG = {
     const key = getEnv('ENCRYPTION_KEY', true);
     return crypto.scryptSync(key, 'salt', 32); // 256ビットキー
   },
-
+  
   /**
    * 初期化ベクトル（IV）の長さ
    */
   ivLength: 16,
-
+  
   /**
    * 認証タグの長さ
    */
-  authTagLength: 16,
+  authTagLength: 16
 };
 
 /**
@@ -1946,12 +2064,12 @@ interface EncryptedData {
    * 初期化ベクトル（IV）
    */
   iv: string;
-
+  
   /**
    * 暗号文
    */
   encryptedData: string;
-
+  
   /**
    * 認証タグ
    */
@@ -1960,7 +2078,7 @@ interface EncryptedData {
 
 /**
  * データを暗号化する
- *
+ * 
  * @param data - 暗号化する平文データ
  * @returns 暗号化されたデータ（IV、暗号文、認証タグを含む）
  * @throws Error - 暗号化に失敗した場合
@@ -1973,39 +2091,37 @@ export function encryptData(data: string): string {
   try {
     // ランダムなIVを生成
     const iv = crypto.randomBytes(ENCRYPTION_CONFIG.ivLength);
-
+    
     // 暗号化器を作成
     const cipher = crypto.createCipheriv(
       ENCRYPTION_CONFIG.algorithm,
       ENCRYPTION_CONFIG.getKey(),
       iv
     );
-
+    
     // データを暗号化
     let encryptedData = cipher.update(data, 'utf8', 'hex');
     encryptedData += cipher.final('hex');
-
+    
     // 認証タグを取得
     const authTag = cipher.getAuthTag();
-
+    
     // 結果をJSONとして返す
     const result: EncryptedData = {
       iv: iv.toString('hex'),
       encryptedData,
-      authTag: authTag.toString('hex'),
+      authTag: authTag.toString('hex')
     };
-
+    
     return JSON.stringify(result);
   } catch (error) {
-    throw new Error(
-      `データの暗号化に失敗しました: ${error instanceof Error ? error.message : String(error)}`
-    );
+    throw new Error(`データの暗号化に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
 /**
  * 暗号化されたデータを復号する
- *
+ * 
  * @param encryptedString - 暗号化されたデータの文字列表現
  * @returns 復号された平文
  * @throws Error - 復号に失敗した場合
@@ -2018,32 +2134,30 @@ export function decryptData(encryptedString: string): string {
   try {
     // JSON文字列をパース
     const { iv, encryptedData, authTag } = JSON.parse(encryptedString) as EncryptedData;
-
+    
     // 復号器を作成
     const decipher = crypto.createDecipheriv(
       ENCRYPTION_CONFIG.algorithm,
       ENCRYPTION_CONFIG.getKey(),
       Buffer.from(iv, 'hex')
     );
-
+    
     // 認証タグを設定
     decipher.setAuthTag(Buffer.from(authTag, 'hex'));
-
+    
     // データを復号
     let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-
+    
     return decrypted;
   } catch (error) {
-    throw new Error(
-      `データの復号に失敗しました: ${error instanceof Error ? error.message : String(error)}`
-    );
+    throw new Error(`データの復号に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
 /**
  * ファイルのハッシュ値を計算する
- *
+ * 
  * @param data - ハッシュを計算するデータ
  * @param algorithm - 使用するハッシュアルゴリズム（デフォルト: 'sha256'）
  * @returns ハッシュ値（16進数文字列）
@@ -2051,7 +2165,10 @@ export function decryptData(encryptedString: string): string {
  * const fileHash = calculateHash(fileBuffer);
  * // ファイルの整合性検証に使用
  */
-export function calculateHash(data: Buffer | string, algorithm: string = 'sha256'): string {
+export function calculateHash(
+  data: Buffer | string,
+  algorithm: string = 'sha256'
+): string {
   const hash = crypto.createHash(algorithm);
   hash.update(data);
   return hash.digest('hex');
@@ -2059,7 +2176,7 @@ export function calculateHash(data: Buffer | string, algorithm: string = 'sha256
 
 /**
  * タイミング攻撃に耐性のある文字列比較を行う
- *
+ * 
  * @param a - 比較する文字列1
  * @param b - 比較する文字列2
  * @returns 文字列が等しい場合はtrue
@@ -2071,7 +2188,10 @@ export function calculateHash(data: Buffer | string, algorithm: string = 'sha256
  */
 export function safeCompare(a: string, b: string): boolean {
   try {
-    return crypto.timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
+    return crypto.timingSafeEqual(
+      Buffer.from(a, 'utf8'),
+      Buffer.from(b, 'utf8')
+    );
   } catch (error) {
     // 長さが異なる場合などに例外が発生するが、
     // 単にfalseを返して長さの違いを漏らさない
@@ -2085,7 +2205,7 @@ export function safeCompare(a: string, b: string): boolean {
 ### パスワードハッシュ
 
 ```typescript
-// src/utils/security/password.ts
+// utils/security/password.ts
 'use server';
 
 import argon2 from 'argon2';
@@ -2098,26 +2218,26 @@ import { logger } from '@/utils/logging/logger';
 const ARGON2_CONFIG = {
   // コスト係数（メモリ使用量）
   memoryCost: parseInt(getEnv('ARGON2_MEMORY_COST', false, '65536')),
-
+  
   // 並列度
   parallelism: parseInt(getEnv('ARGON2_PARALLELISM', false, '4')),
-
+  
   // イテレーション回数
   timeCost: parseInt(getEnv('ARGON2_TIME_COST', false, '3')),
-
+  
   // ハッシュタイプ（password = Argon2id）
   type: argon2.argon2id,
-
+  
   // ハッシュ長（バイト）
   hashLength: 32,
-
+  
   // ソルト長（バイト）
-  saltLength: 16,
+  saltLength: 16
 };
 
 /**
  * パスワードをハッシュ化する
- *
+ * 
  * @param password - ハッシュ化する平文パスワード
  * @returns ハッシュ化されたパスワード
  * @throws Error - ハッシュ化に失敗した場合
@@ -2132,21 +2252,18 @@ export async function hashPassword(password: string): Promise<string> {
       // 開発環境では低速な設定を避ける
       ...(isDevelopment() && {
         memoryCost: 4096,
-        timeCost: 2,
-      }),
+        timeCost: 2
+      })
     });
   } catch (error) {
-    logger.error(
-      'パスワードのハッシュ化に失敗しました',
-      error instanceof Error ? error : new Error(String(error))
-    );
+    logger.error('パスワードのハッシュ化に失敗しました', error instanceof Error ? error : new Error(String(error)));
     throw new Error('パスワードの処理中にエラーが発生しました');
   }
 }
 
 /**
  * パスワードが正しいかを検証する
- *
+ * 
  * @param password - 検証する平文パスワード
  * @param hashedPassword - 保存されているハッシュパスワード
  * @returns パスワードが一致する場合はtrue
@@ -2156,21 +2273,21 @@ export async function hashPassword(password: string): Promise<string> {
  *   // 認証成功
  * }
  */
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+export async function verifyPassword(
+  password: string,
+  hashedPassword: string
+): Promise<boolean> {
   try {
     return await argon2.verify(hashedPassword, password);
   } catch (error) {
-    logger.error(
-      'パスワード検証に失敗しました',
-      error instanceof Error ? error : new Error(String(error))
-    );
+    logger.error('パスワード検証に失敗しました', error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 }
 
 /**
  * パスワードの強度を評価する
- *
+ * 
  * @param password - 評価するパスワード
  * @returns 強度評価（weak, medium, strong, very-strong）と理由
  * @example
@@ -2184,16 +2301,16 @@ export function evaluatePasswordStrength(password: string): {
   reasons: string[];
 } {
   const reasons: string[] = [];
-
+  
   // 基本チェック
   if (!password || password.length < 8) {
     reasons.push('パスワードは8文字以上である必要があります');
     return { strength: 'weak', reasons };
   }
-
+  
   // 複雑さの評価
   let score = 0;
-
+  
   // 長さボーナス
   if (password.length >= 12) {
     score += 1;
@@ -2201,54 +2318,44 @@ export function evaluatePasswordStrength(password: string): {
   if (password.length >= 16) {
     score += 1;
   }
-
+  
   // 文字種類のチェック
   if (/[A-Z]/.test(password)) {
     score += 1;
   } else {
     reasons.push('大文字を含めることで強度が向上します');
   }
-
+  
   if (/[a-z]/.test(password)) {
     score += 1;
   } else {
     reasons.push('小文字を含めることで強度が向上します');
   }
-
+  
   if (/[0-9]/.test(password)) {
     score += 1;
   } else {
     reasons.push('数字を含めることで強度が向上します');
   }
-
+  
   if (/[^A-Za-z0-9]/.test(password)) {
     score += 1;
   } else {
     reasons.push('特殊文字を含めることで強度が向上します');
   }
-
+  
   // 共通パターンチェック
   const commonPatterns = [
-    'password',
-    'qwerty',
-    '123456',
-    'admin',
-    'welcome',
-    'letmein',
-    'monkey',
-    'dragon',
-    'baseball',
-    'football',
-    'superman',
-    'batman',
-    'trustno1',
+    'password', 'qwerty', '123456', 'admin', 'welcome',
+    'letmein', 'monkey', 'dragon', 'baseball', 'football',
+    'superman', 'batman', 'trustno1'
   ];
-
-  if (commonPatterns.some((pattern) => password.toLowerCase().includes(pattern))) {
+  
+  if (commonPatterns.some(pattern => password.toLowerCase().includes(pattern))) {
     score -= 2;
     reasons.push('よく使われるパターンが含まれています');
   }
-
+  
   // 強度評価
   if (score <= 2) {
     return { strength: 'weak', reasons };
@@ -2263,7 +2370,7 @@ export function evaluatePasswordStrength(password: string): {
 
 /**
  * 安全なパスワードリセットトークンを生成する
- *
+ * 
  * @returns ランダムなトークン（16進数文字列）
  * @example
  * const resetToken = generatePasswordResetToken();
@@ -2280,7 +2387,7 @@ export function generatePasswordResetToken(): string {
 ### JWT関連
 
 ```typescript
-// src/utils/security/jwt.ts
+// utils/security/jwt.ts
 'use server';
 
 import jwt from 'jsonwebtoken';
@@ -2296,32 +2403,32 @@ interface JwtPayload {
    * サブジェクト（通常はユーザーID）
    */
   sub: string;
-
+  
   /**
    * ユーザーロール
    */
   role: UserRole;
-
+  
   /**
    * 発行者
    */
   iss: string;
-
+  
   /**
    * 発行時刻（UNIXタイムスタンプ）
    */
   iat: number;
-
+  
   /**
    * 有効期限（UNIXタイムスタンプ）
    */
   exp: number;
-
+  
   /**
    * トークンID（一意）
    */
   jti: string;
-
+  
   /**
    * 追加のカスタムクレーム
    */
@@ -2330,7 +2437,7 @@ interface JwtPayload {
 
 /**
  * JWTトークンを生成する
- *
+ * 
  * @param userId - ユーザーID
  * @param role - ユーザーロール
  * @param expiresIn - 有効期間（秒）
@@ -2348,7 +2455,7 @@ export function generateJwtToken(
 ): string {
   try {
     const now = Math.floor(Date.now() / 1000);
-
+    
     const payload: JwtPayload = {
       sub: userId,
       role,
@@ -2356,24 +2463,25 @@ export function generateJwtToken(
       iat: now,
       exp: now + expiresIn,
       jti: require('crypto').randomBytes(16).toString('hex'),
-      ...additionalClaims,
+      ...additionalClaims
     };
-
-    return jwt.sign(payload, getEnv('JWT_SECRET', true), {
-      algorithm: 'HS256',
-    });
-  } catch (error) {
-    logger.error(
-      'JWTトークン生成に失敗しました',
-      error instanceof Error ? error : new Error(String(error))
+    
+    return jwt.sign(
+      payload,
+      getEnv('JWT_SECRET', true),
+      {
+        algorithm: 'HS256'
+      }
     );
+  } catch (error) {
+    logger.error('JWTトークン生成に失敗しました', error instanceof Error ? error : new Error(String(error)));
     throw new Error('認証トークンの生成に失敗しました');
   }
 }
 
 /**
  * JWTトークンを検証して解析する
- *
+ * 
  * @param token - 検証するJWTトークン
  * @returns 検証済みのペイロード
  * @throws Error - トークンが無効または有効期限切れの場合
@@ -2387,10 +2495,14 @@ export function generateJwtToken(
  */
 export function verifyJwtToken(token: string): JwtPayload {
   try {
-    const payload = jwt.verify(token, getEnv('JWT_SECRET', true), {
-      algorithms: ['HS256'],
-    });
-
+    const payload = jwt.verify(
+      token,
+      getEnv('JWT_SECRET', true),
+      {
+        algorithms: ['HS256']
+      }
+    );
+    
     return payload as JwtPayload;
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
@@ -2398,10 +2510,7 @@ export function verifyJwtToken(token: string): JwtPayload {
     } else if (error instanceof jwt.JsonWebTokenError) {
       throw new Error('無効な認証トークンです');
     } else {
-      logger.error(
-        'JWTトークン検証に失敗しました',
-        error instanceof Error ? error : new Error(String(error))
-      );
+      logger.error('JWTトークン検証に失敗しました', error instanceof Error ? error : new Error(String(error)));
       throw new Error('認証トークンの検証に失敗しました');
     }
   }
@@ -2409,7 +2518,7 @@ export function verifyJwtToken(token: string): JwtPayload {
 
 /**
  * アクセストークンとリフレッシュトークンのペアを生成する
- *
+ * 
  * @param userId - ユーザーID
  * @param role - ユーザーロール
  * @returns アクセストークンとリフレッシュトークンのペア
@@ -2430,7 +2539,7 @@ export function generateTokenPair(
     role,
     60 * 60 // 1時間
   );
-
+  
   // リフレッシュトークン（長命）
   const refreshToken = generateJwtToken(
     userId,
@@ -2438,13 +2547,13 @@ export function generateTokenPair(
     60 * 60 * 24 * 30, // 30日
     { tokenType: 'refresh' }
   );
-
+  
   return { accessToken, refreshToken };
 }
 
 /**
  * リフレッシュトークンを使用して新しいアクセストークンを生成する
- *
+ * 
  * @param refreshToken - リフレッシュトークン
  * @returns 新しいアクセストークン
  * @throws Error - リフレッシュトークンが無効な場合
@@ -2459,12 +2568,12 @@ export function generateTokenPair(
 export function refreshAccessToken(refreshToken: string): string {
   try {
     const payload = verifyJwtToken(refreshToken);
-
+    
     // リフレッシュトークンであることを確認
     if (payload.tokenType !== 'refresh') {
       throw new Error('無効なリフレッシュトークンです');
     }
-
+    
     // 新しいアクセストークンを生成
     return generateJwtToken(
       payload.sub,
@@ -2472,10 +2581,7 @@ export function refreshAccessToken(refreshToken: string): string {
       60 * 60 // 1時間
     );
   } catch (error) {
-    logger.error(
-      'アクセストークンのリフレッシュに失敗しました',
-      error instanceof Error ? error : new Error(String(error))
-    );
+    logger.error('アクセストークンのリフレッシュに失敗しました', error instanceof Error ? error : new Error(String(error)));
     throw new Error('アクセストークンのリフレッシュに失敗しました');
   }
 }
@@ -2486,7 +2592,7 @@ export function refreshAccessToken(refreshToken: string): string {
 ### ファクトリ関数
 
 ```typescript
-// src/utils/testing/factories.ts
+// utils/testing/factories.ts
 
 import { User, UserRole } from '@/types/domain/User';
 import { Project, Step, StepStatus, StepType } from '@/types/domain/Project';
@@ -2494,7 +2600,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 /**
  * ユーザーオブジェクトを生成するファクトリ関数
- *
+ * 
  * @param overrides - デフォルト値を上書きするプロパティ
  * @returns ユーザーオブジェクト
  * @example
@@ -2508,15 +2614,15 @@ export function createUser(overrides: Partial<User> = {}): User {
     role: 'user' as UserRole,
     preferences: {},
     createdAt: new Date(),
-    updatedAt: new Date(),
+    updatedAt: new Date()
   };
-
+  
   return { ...defaultUser, ...overrides };
 }
 
 /**
  * プロジェクトオブジェクトを生成するファクトリ関数
- *
+ * 
  * @param overrides - デフォルト値を上書きするプロパティ
  * @returns プロジェクトオブジェクト
  * @example
@@ -2524,7 +2630,7 @@ export function createUser(overrides: Partial<User> = {}): User {
  */
 export function createProject(overrides: Partial<Project> = {}): Project {
   const id = overrides.id || uuidv4();
-
+  
   const defaultProject: Project = {
     id,
     name: `Test Project ${Math.floor(Math.random() * 100)}`,
@@ -2534,28 +2640,31 @@ export function createProject(overrides: Partial<Project> = {}): Project {
     settings: {},
     createdAt: new Date(),
     updatedAt: new Date(),
-    steps: [],
+    steps: []
   };
-
+  
   // stepsがある場合はそのまま使用し、ない場合はデフォルト値を設定
   const steps = overrides.steps || [];
-
+  
   return { ...defaultProject, ...overrides, steps };
 }
 
 /**
  * ステップオブジェクトを生成するファクトリ関数
- *
+ * 
  * @param projectId - ステップが属するプロジェクトID
  * @param overrides - デフォルト値を上書きするプロパティ
  * @returns ステップオブジェクト
  * @example
  * const testStep = createStep(projectId, { type: 'form' });
  */
-export function createStep(projectId: string = uuidv4(), overrides: Partial<Step> = {}): Step {
+export function createStep(
+  projectId: string = uuidv4(),
+  overrides: Partial<Step> = {}
+): Step {
   const stepTypes: StepType[] = ['form', 'ai_prompt', 'code_execution', 'file_upload'];
   const randomType = stepTypes[Math.floor(Math.random() * stepTypes.length)];
-
+  
   const defaultStep: Step = {
     id: uuidv4(),
     projectId,
@@ -2566,15 +2675,15 @@ export function createStep(projectId: string = uuidv4(), overrides: Partial<Step
     status: 'not_started' as StepStatus,
     content: {},
     createdAt: new Date(),
-    updatedAt: new Date(),
+    updatedAt: new Date()
   };
-
+  
   return { ...defaultStep, ...overrides };
 }
 
 /**
  * 複数のステップを持つプロジェクトを生成する
- *
+ * 
  * @param stepCount - 生成するステップ数
  * @param projectOverrides - プロジェクトのデフォルト値上書き
  * @param stepOverrides - ステップのデフォルト値上書き
@@ -2589,25 +2698,25 @@ export function createProjectWithSteps(
 ): { project: Project; steps: Step[] } {
   const project = createProject(projectOverrides);
   const steps: Step[] = [];
-
+  
   for (let i = 0; i < stepCount; i++) {
     steps.push(
       createStep(project.id, {
         order: i,
-        ...stepOverrides,
+        ...stepOverrides
       })
     );
   }
-
+  
   project.steps = steps;
-
+  
   return { project, steps };
 }
 
 /**
  * プロジェクト用のモックデータセットを作成する
  * 複数のユーザーとプロジェクトを含む
- *
+ * 
  * @param userCount - ユーザー数
  * @param projectsPerUser - ユーザーあたりのプロジェクト数
  * @param maxStepsPerProject - プロジェクトあたりの最大ステップ数
@@ -2625,28 +2734,29 @@ export function createTestDataset(
   const users: User[] = [];
   const projects: Project[] = [];
   let steps: Step[] = [];
-
+  
   // 管理者ユーザーを作成
   users.push(createUser({ role: 'admin' }));
-
+  
   // 一般ユーザーを作成
   for (let i = 1; i < userCount; i++) {
     users.push(createUser());
   }
-
+  
   // ユーザーごとにプロジェクトを作成
   for (const user of users) {
     for (let i = 0; i < projectsPerUser; i++) {
       const stepCount = Math.floor(Math.random() * maxStepsPerProject) + 1;
-      const { project, steps: projectSteps } = createProjectWithSteps(stepCount, {
-        ownerId: user.id,
-      });
-
+      const { project, steps: projectSteps } = createProjectWithSteps(
+        stepCount,
+        { ownerId: user.id }
+      );
+      
       projects.push(project);
       steps = [...steps, ...projectSteps];
     }
   }
-
+  
   return { users, projects, steps };
 }
 ```
@@ -2654,7 +2764,7 @@ export function createTestDataset(
 ### モックデータ
 
 ```typescript
-// src/utils/testing/mocks.ts
+// utils/testing/mocks.ts
 
 import { vi } from 'vitest';
 import type { User } from '@/types/domain/User';
@@ -2663,7 +2773,7 @@ import type { Message } from '@/types/domain/Message';
 
 /**
  * APIレスポンスをモックするヘルパー関数
- *
+ * 
  * @param status - HTTPステータスコード
  * @param data - レスポンスデータ
  * @param headers - レスポンスヘッダー
@@ -2680,16 +2790,16 @@ export function mockApiResponse<T>(
     status,
     headers: {
       'Content-Type': 'application/json',
-      ...headers,
-    },
+      ...headers
+    }
   };
-
+  
   return new Response(JSON.stringify(data), responseInit);
 }
 
 /**
  * APIエラーレスポンスをモックするヘルパー関数
- *
+ * 
  * @param status - HTTPステータスコード
  * @param errorCode - エラーコード
  * @param message - エラーメッセージ
@@ -2702,21 +2812,24 @@ export function mockApiErrorResponse(
   errorCode: string = 'BAD_REQUEST',
   message: string = 'Bad request'
 ): Response {
-  return mockApiResponse(status, {
-    error: {
-      code: errorCode,
-      message,
-      userMessage: {
-        key: `errors.${errorCode.toLowerCase()}`,
-        params: {},
-      },
-    },
-  });
+  return mockApiResponse(
+    status,
+    {
+      error: {
+        code: errorCode,
+        message,
+        userMessage: {
+          key: `errors.${errorCode.toLowerCase()}`,
+          params: {}
+        }
+      }
+    }
+  );
 }
 
 /**
  * 認証済みユーザーをモックする
- *
+ * 
  * @param user - モックするユーザー情報
  * @returns モック関数のセットアップとクリーンアップ
  * @example
@@ -2733,32 +2846,32 @@ export function mockAuthenticatedUser(user: Partial<User> = {}): {
     email: 'test@example.com',
     displayName: 'Test User',
     role: 'user',
-    ...user,
+    ...user
   };
-
+  
   // auth.tsのgetCurrentUserをモック
   const originalModule = vi.importActual('@/utils/auth');
-
+  
   const getCurrentUserMock = vi.fn().mockResolvedValue(mockUser);
   const isAuthenticatedMock = vi.fn().mockResolvedValue(true);
-
+  
   vi.mock('@/utils/auth', () => ({
     ...(originalModule as object),
     getCurrentUser: getCurrentUserMock,
-    isAuthenticated: isAuthenticatedMock,
+    isAuthenticated: isAuthenticatedMock
   }));
-
+  
   return {
     cleanup: () => {
       vi.clearAllMocks();
       vi.resetModules();
-    },
+    }
   };
 }
 
 /**
  * データベースクエリ結果をモックする
- *
+ * 
  * @param entity - エンティティ名（例: 'users', 'projects'）
  * @param method - モックするメソッド
  * @param result - モック結果
@@ -2774,20 +2887,20 @@ export function mockDbQuery<T>(
   result: T
 ): () => void {
   const dbModule = vi.importActual('@/lib/db');
-
+  
   const queryMock = {
     [entity]: {
-      [method]: vi.fn().mockResolvedValue(result),
-    },
+      [method]: vi.fn().mockResolvedValue(result)
+    }
   };
-
+  
   vi.mock('@/lib/db', () => ({
     ...(dbModule as object),
     db: {
-      query: queryMock,
-    },
+      query: queryMock
+    }
   }));
-
+  
   return () => {
     vi.clearAllMocks();
     vi.resetModules();
@@ -2796,7 +2909,7 @@ export function mockDbQuery<T>(
 
 /**
  * AIサービスレスポンスをモックする
- *
+ * 
  * @param responseContent - AIの応答内容
  * @param options - オプション設定
  * @returns モックのクリーンアップ関数
@@ -2814,46 +2927,46 @@ export function mockAiResponse(
   } = {}
 ): () => void {
   const aiModule = vi.importActual('@/lib/ai');
-
+  
   const aiServiceMock = {
     generateCompletion: vi.fn().mockImplementation(async () => {
       if (options.error) {
         throw options.error;
       }
-
+      
       if (options.delay) {
-        await new Promise((resolve) => setTimeout(resolve, options.delay));
+        await new Promise(resolve => setTimeout(resolve, options.delay));
       }
-
+      
       return responseContent;
     }),
     generateCompletionStream: vi.fn().mockImplementation(async function* () {
       if (options.error) {
         throw options.error;
       }
-
+      
       if (options.streamMode) {
         const chunks = responseContent.split(' ');
         for (const chunk of chunks) {
           if (options.delay) {
-            await new Promise((resolve) => setTimeout(resolve, options.delay / chunks.length));
+            await new Promise(resolve => setTimeout(resolve, options.delay / chunks.length));
           }
           yield chunk + ' ';
         }
       } else {
         if (options.delay) {
-          await new Promise((resolve) => setTimeout(resolve, options.delay));
+          await new Promise(resolve => setTimeout(resolve, options.delay));
         }
         yield responseContent;
       }
-    }),
+    })
   };
-
+  
   vi.mock('@/lib/ai', () => ({
     ...(aiModule as object),
-    aiService: aiServiceMock,
+    aiService: aiServiceMock
   }));
-
+  
   return () => {
     vi.clearAllMocks();
     vi.resetModules();
@@ -2866,13 +2979,13 @@ export function mockAiResponse(
 ### アサーション拡張
 
 ```typescript
-// src/utils/testing/assertions.ts
+// utils/testing/assertions.ts
 
 import { expect } from 'vitest';
 
 /**
  * オブジェクトが特定のプロパティと値を含むことを検証する
- *
+ * 
  * @param actual - 検証対象オブジェクト
  * @param expected - 期待するプロパティと値
  * @example
@@ -2893,7 +3006,7 @@ export function expectToContainValues<T extends Record<string, any>>(
 
 /**
  * オブジェクト配列が特定の条件を満たすアイテムを含むことを検証する
- *
+ * 
  * @param array - 検証対象の配列
  * @param predicate - 条件関数
  * @param expectedCount - 期待する一致数（デフォルト: 少なくとも1つ）
@@ -2910,7 +3023,7 @@ export function expectArrayToContain<T>(
   expectedCount?: number
 ): void {
   const matchingItems = array.filter(predicate);
-
+  
   if (expectedCount !== undefined) {
     expect(matchingItems).toHaveLength(expectedCount);
   } else {
@@ -2920,7 +3033,7 @@ export function expectArrayToContain<T>(
 
 /**
  * 日付文字列が有効な形式であることを検証する
- *
+ * 
  * @param dateString - 検証する日付文字列
  * @param format - 検証する形式（'iso' | 'iso-date' | 'timestamp'）
  * @example
@@ -2933,20 +3046,22 @@ export function expectValidDateString(
   switch (format) {
     case 'iso':
       // ISO 8601形式（2023-01-01T12:00:00.000Z）
-      expect(dateString).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/);
+      expect(dateString).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/
+      );
       break;
-
+      
     case 'iso-date':
       // ISO日付形式（2023-01-01）
       expect(dateString).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       break;
-
+      
     case 'timestamp':
       // UNIXタイムスタンプ（数値文字列）
       expect(dateString).toMatch(/^\d+$/);
       break;
   }
-
+  
   // 実際にDateオブジェクトに変換できることを確認
   const date = new Date(dateString);
   expect(date.toString()).not.toBe('Invalid Date');
@@ -2954,7 +3069,7 @@ export function expectValidDateString(
 
 /**
  * プロジェクトオブジェクトが有効な構造を持つことを検証する
- *
+ * 
  * @param project - 検証するプロジェクトオブジェクト
  * @example
  * expectValidProject(responseBody.project);
@@ -2966,23 +3081,23 @@ export function expectValidProject(project: any): void {
     ownerId: expect.any(String),
     status: expect.stringMatching(/^(active|archived|completed)$/),
     createdAt: expect.any(String),
-    updatedAt: expect.any(String),
+    updatedAt: expect.any(String)
   });
-
+  
   // 日付の検証
   expectValidDateString(project.createdAt);
   expectValidDateString(project.updatedAt);
-
+  
   // ステップの配列がある場合は各ステップを検証
   if (project.steps) {
     expect(Array.isArray(project.steps)).toBe(true);
-
+    
     project.steps.forEach((step: any) => {
       expect(step).toMatchObject({
         id: expect.any(String),
         projectId: project.id,
         title: expect.any(String),
-        order: expect.any(Number),
+        order: expect.any(Number)
       });
     });
   }
@@ -2990,7 +3105,7 @@ export function expectValidProject(project: any): void {
 
 /**
  * 非同期関数が特定の時間内に完了することを検証する
- *
+ * 
  * @param asyncFn - 検証する非同期関数
  * @param maxTime - 最大許容時間（ミリ秒）
  * @returns asyncFnの戻り値
@@ -3000,12 +3115,15 @@ export function expectValidProject(project: any): void {
  *   100
  * );
  */
-export async function expectTimeUnder<T>(asyncFn: () => Promise<T>, maxTime: number): Promise<T> {
+export async function expectTimeUnder<T>(
+  asyncFn: () => Promise<T>,
+  maxTime: number
+): Promise<T> {
   const startTime = performance.now();
   const result = await asyncFn();
   const endTime = performance.now();
   const duration = endTime - startTime;
-
+  
   expect(duration).toBeLessThan(maxTime);
   return result;
 }
@@ -3014,7 +3132,7 @@ export async function expectTimeUnder<T>(asyncFn: () => Promise<T>, maxTime: num
 ### テスト環境設定
 
 ```typescript
-// src/utils/testing/setup.ts
+// utils/testing/setup.ts
 
 import { db } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
@@ -3022,7 +3140,7 @@ import { v4 as uuidv4 } from 'uuid';
 /**
  * テスト用のデータベースを初期化する
  * テストごとにユニークなスキーマを使用して分離を確保
- *
+ * 
  * @returns クリーンアップ関数
  * @example
  * const cleanupDb = await setupTestDatabase();
@@ -3033,13 +3151,13 @@ export async function setupTestDatabase(): Promise<() => Promise<void>> {
   // テスト分離のためのユニークなスキーマ名
   const schemaId = uuidv4().replace(/-/g, '');
   const schemaName = `test_${schemaId}`;
-
+  
   // 新しいスキーマを作成
   await db.execute(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
-
+  
   // スキーマ内にテーブルを作成
   await db.execute(`SET search_path TO "${schemaName}"`);
-
+  
   // マイグレーションを実行
   await db.execute(`
     -- ユーザーテーブル
@@ -3080,7 +3198,7 @@ export async function setupTestDatabase(): Promise<() => Promise<void>> {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `);
-
+  
   // クリーンアップ関数
   return async () => {
     // テスト後にスキーマを削除
@@ -3090,7 +3208,7 @@ export async function setupTestDatabase(): Promise<() => Promise<void>> {
 
 /**
  * テスト用のモックストレージを初期化する
- *
+ * 
  * @returns モックストレージと関連メソッド
  * @example
  * const storage = setupTestStorage();
@@ -3106,16 +3224,16 @@ export function setupTestStorage(): {
 } {
   // インメモリストレージ
   const files = new Map<string, Buffer>();
-
+  
   return {
     files,
-
+    
     // ファイルをアップロード
     upload: async (path: string, data: Buffer): Promise<string> => {
       files.set(path, data);
       return `https://storage.example.com/${path}`;
     },
-
+    
     // ファイルをダウンロード
     download: async (path: string): Promise<Buffer> => {
       const file = files.get(path);
@@ -3124,22 +3242,22 @@ export function setupTestStorage(): {
       }
       return file;
     },
-
+    
     // ファイルを削除
     delete: async (path: string): Promise<void> => {
       files.delete(path);
     },
-
+    
     // ファイルの存在確認
     exists: async (path: string): Promise<boolean> => {
       return files.has(path);
-    },
+    }
   };
 }
 
 /**
  * テスト用のダミーリクエストを作成する
- *
+ * 
  * @param method - HTTPメソッド
  * @param url - リクエストURL
  * @param body - リクエストボディ
@@ -3162,14 +3280,14 @@ export function createTestRequest(
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...headers,
-    },
+      ...headers
+    }
   };
-
+  
   if (body) {
     requestInit.body = JSON.stringify(body);
   }
-
+  
   return new Request(`http://localhost${url}`, requestInit);
 }
 ```
@@ -3179,13 +3297,13 @@ export function createTestRequest(
 ### 処理時間計測
 
 ```typescript
-// src/utils/performance/timing.ts
+// utils/performance/timing.ts
 
 import { logger } from '@/utils/logging/logger';
 
 /**
  * 関数の実行時間を測定する
- *
+ * 
  * @param fn - 測定する関数
  * @param name - 測定名（ログ出力用）
  * @param logThreshold - ログ出力する閾値（ミリ秒）
@@ -3202,40 +3320,37 @@ export async function measureExecutionTime<T>(
   logThreshold?: number
 ): Promise<{ result: T; duration: number }> {
   const startTime = performance.now();
-
+  
   try {
     const result = await fn();
     const endTime = performance.now();
     const duration = endTime - startTime;
-
+    
     // 閾値を超えた場合のみログ出力
     if (logThreshold !== undefined && duration > logThreshold) {
-      logger.warn(
-        `[Performance] ${name} took ${duration.toFixed(2)}ms (threshold: ${logThreshold}ms)`,
-        {
-          operation: name,
-          durationMs: duration,
-          threshold: logThreshold,
-        }
-      );
+      logger.warn(`[Performance] ${name} took ${duration.toFixed(2)}ms (threshold: ${logThreshold}ms)`, {
+        operation: name,
+        durationMs: duration,
+        threshold: logThreshold
+      });
     } else {
       logger.debug(`[Performance] ${name} took ${duration.toFixed(2)}ms`, {
         operation: name,
-        durationMs: duration,
+        durationMs: duration
       });
     }
-
+    
     return { result, duration };
   } catch (error) {
     const endTime = performance.now();
     const duration = endTime - startTime;
-
+    
     logger.error(`[Performance] ${name} failed after ${duration.toFixed(2)}ms`, {
       operation: name,
       durationMs: duration,
-      error: error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error.message : String(error)
     });
-
+    
     throw error;
   }
 }
@@ -3243,7 +3358,7 @@ export async function measureExecutionTime<T>(
 /**
  * 関数の実行時間を測定するデコレータ
  * クラスメソッドに使用する
- *
+ * 
  * @param name - 測定名（省略時はメソッド名を使用）
  * @param logThreshold - ログ出力する閾値（ミリ秒）
  * @returns メソッドデコレータ
@@ -3255,21 +3370,28 @@ export async function measureExecutionTime<T>(
  *   }
  * }
  */
-export function measureTime(name?: string, logThreshold?: number): MethodDecorator {
-  return function (target: Object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
+export function measureTime(
+  name?: string,
+  logThreshold?: number
+): MethodDecorator {
+  return function(
+    target: Object,
+    propertyKey: string | symbol,
+    descriptor: PropertyDescriptor
+  ) {
     const originalMethod = descriptor.value;
     const methodName = name || propertyKey.toString();
-
-    descriptor.value = async function (...args: any[]) {
+    
+    descriptor.value = async function(...args: any[]) {
       const { result } = await measureExecutionTime(
         () => originalMethod.apply(this, args),
         methodName,
         logThreshold
       );
-
+      
       return result;
     };
-
+    
     return descriptor;
   };
 }
@@ -3277,28 +3399,31 @@ export function measureTime(name?: string, logThreshold?: number): MethodDecorat
 /**
  * Web Vitalsのパフォーマンスマークを記録する
  * クライアントサイドでのみ動作
- *
+ * 
  * @param markName - マーク名
  * @param details - 追加の詳細情報
  * @example
  * // ページロード開始時
  * markPerformance('app-load-start');
- *
+ * 
  * // ページロード完了時
- * markPerformance('app-load-complete', {
+ * markPerformance('app-load-complete', { 
  *   dataLoaded: true,
  *   componentCount: 5
  * });
  */
-export function markPerformance(markName: string, details: Record<string, any> = {}): void {
+export function markPerformance(
+  markName: string,
+  details: Record<string, any> = {}
+): void {
   if (typeof window === 'undefined' || !window.performance || !window.performance.mark) {
     return;
   }
-
+  
   try {
     // パフォーマンスマークを記録
     window.performance.mark(markName, { detail: details });
-
+    
     // 開発環境ではコンソールにも出力
     if (process.env.NODE_ENV === 'development') {
       console.log(`[Performance Mark] ${markName}`, details);
@@ -3310,7 +3435,7 @@ export function markPerformance(markName: string, details: Record<string, any> =
 
 /**
  * 2つのパフォーマンスマーク間の測定を行う
- *
+ * 
  * @param measureName - 測定名
  * @param startMark - 開始マーク名
  * @param endMark - 終了マーク名
@@ -3320,7 +3445,7 @@ export function markPerformance(markName: string, details: Record<string, any> =
  * markPerformance('render-start');
  * // ... コンポーネントレンダリング ...
  * markPerformance('render-end');
- *
+ * 
  * // マーク間の測定
  * measurePerformance(
  *   'component-render-time',
@@ -3335,19 +3460,23 @@ export function measurePerformance(
   endMark: string,
   reportCallback?: (duration: number) => void
 ): void {
-  if (typeof window === 'undefined' || !window.performance || !window.performance.measure) {
+  if (
+    typeof window === 'undefined' ||
+    !window.performance ||
+    !window.performance.measure
+  ) {
     return;
   }
-
+  
   try {
     // マーク間の測定を作成
     const measure = window.performance.measure(measureName, startMark, endMark);
-
+    
     // 測定結果をコールバックで処理
     if (reportCallback && measure && 'duration' in measure) {
       reportCallback(measure.duration);
     }
-
+    
     // 開発環境ではコンソールにも出力
     if (process.env.NODE_ENV === 'development') {
       console.log(`[Performance Measure] ${measureName}: ${measure?.duration ?? 'unknown'}ms`);
@@ -3363,7 +3492,7 @@ export function measurePerformance(
 ### メモリ使用量
 
 ```typescript
-// src/utils/performance/resources.ts
+// utils/performance/resources.ts
 'use server';
 
 import { logger } from '@/utils/logging/logger';
@@ -3371,19 +3500,19 @@ import { logger } from '@/utils/logging/logger';
 /**
  * 現在のサーバーメモリ使用状況を監視する
  * サーバーサイドでのみ動作
- *
+ * 
  * @returns メモリ使用統計
  * @example
  * const memoryStats = getMemoryUsage();
  * console.log(`Using ${memoryStats.usedMb}MB of ${memoryStats.totalMb}MB`);
  */
 export function getMemoryUsage(): {
-  rss: number; // Resident Set Size（実メモリ使用量）
+  rss: number;       // Resident Set Size（実メモリ使用量）
   heapTotal: number; // V8によって割り当てられた合計メモリ
-  heapUsed: number; // V8によって使用されているメモリ
-  external: number; // V8が管理するJavaScriptオブジェクトに関連付けられた外部メモリ
+  heapUsed: number;  // V8によって使用されているメモリ
+  external: number;  // V8が管理するJavaScriptオブジェクトに関連付けられた外部メモリ
   arrayBuffers: number; // ArrayBufferとSharedArrayBufferによって割り当てられたメモリ
-
+  
   // 便宜上のMB単位の値
   rssMb: number;
   heapTotalMb: number;
@@ -3393,38 +3522,38 @@ export function getMemoryUsage(): {
   if (typeof process === 'undefined') {
     throw new Error('getMemoryUsage can only be called on the server side');
   }
-
+  
   // メモリ使用量を取得
   const memoryUsage = process.memoryUsage();
-
+  
   // MB単位の値を計算
   const mbFactor = 1024 * 1024;
-  const rssMb = Math.round((memoryUsage.rss / mbFactor) * 100) / 100;
-  const heapTotalMb = Math.round((memoryUsage.heapTotal / mbFactor) * 100) / 100;
-  const heapUsedMb = Math.round((memoryUsage.heapUsed / mbFactor) * 100) / 100;
-
+  const rssMb = Math.round(memoryUsage.rss / mbFactor * 100) / 100;
+  const heapTotalMb = Math.round(memoryUsage.heapTotal / mbFactor * 100) / 100;
+  const heapUsedMb = Math.round(memoryUsage.heapUsed / mbFactor * 100) / 100;
+  
   // ヒープ使用率を計算
-  const usagePercent = Math.round((memoryUsage.heapUsed / memoryUsage.heapTotal) * 10000) / 100;
-
+  const usagePercent = Math.round(memoryUsage.heapUsed / memoryUsage.heapTotal * 10000) / 100;
+  
   return {
     ...memoryUsage,
     rssMb,
     heapTotalMb,
     heapUsedMb,
-    usagePercent,
+    usagePercent
   };
 }
 
 /**
  * メモリリークの可能性を検出する
  * 定期的に呼び出して使用パターンを監視する
- *
+ * 
  * @param threshold - 警告する使用率の閾値（パーセント）
  * @param prev - 前回の測定値（オプション）
  * @returns 現在のメモリ使用統計
  * @example
  * let prevStats;
- *
+ * 
  * // 1分ごとにメモリ使用状況をチェック
  * setInterval(() => {
  *   prevStats = detectMemoryLeak(85, prevStats);
@@ -3435,38 +3564,38 @@ export function detectMemoryLeak(
   prev?: ReturnType<typeof getMemoryUsage>
 ): ReturnType<typeof getMemoryUsage> {
   const current = getMemoryUsage();
-
+  
   // 閾値を超えている場合は警告
   if (current.usagePercent > threshold) {
     logger.warn(`高メモリ使用量を検出しました: ${current.usagePercent}%`, {
       memoryUsage: current,
-      threshold,
+      threshold
     });
   }
-
+  
   // 前回の測定値がある場合は増加率を計算
   if (prev) {
     const heapIncrease = current.heapUsed - prev.heapUsed;
     const increasePercent = (heapIncrease / prev.heapUsed) * 100;
-
+    
     // 10%以上の急激な増加がある場合は警告
     if (increasePercent > 10) {
       logger.warn(`メモリ使用量の急増を検出しました: ${increasePercent.toFixed(2)}%増加`, {
         previousHeapUsed: prev.heapUsed,
         currentHeapUsed: current.heapUsed,
         increaseBytes: heapIncrease,
-        increasePercent,
+        increasePercent
       });
     }
   }
-
+  
   return current;
 }
 
 /**
  * 大規模データ処理中のメモリ使用量を監視する
  * 処理の各ステップでメモリ使用状況をログに記録
- *
+ * 
  * @param operationName - 操作の名前
  * @param stepName - 現在のステップ名
  * @returns 現在のメモリ使用統計
@@ -3474,15 +3603,15 @@ export function detectMemoryLeak(
  * // データ処理の各ステップでメモリを監視
  * async function processLargeData() {
  *   monitorMemoryUsage('dataProcessing', 'start');
- *
+ *   
  *   // データロード
  *   const data = await loadData();
  *   monitorMemoryUsage('dataProcessing', 'dataLoaded');
- *
+ *   
  *   // 処理
  *   const results = processData(data);
  *   monitorMemoryUsage('dataProcessing', 'processed');
- *
+ *   
  *   // 保存
  *   await saveResults(results);
  *   monitorMemoryUsage('dataProcessing', 'complete');
@@ -3493,15 +3622,15 @@ export function monitorMemoryUsage(
   stepName: string
 ): ReturnType<typeof getMemoryUsage> {
   const stats = getMemoryUsage();
-
+  
   logger.info(`[メモリ監視] ${operationName} - ${stepName}`, {
     operation: operationName,
     step: stepName,
     heapUsedMb: stats.heapUsedMb,
     rssMb: stats.rssMb,
-    usagePercent: stats.usagePercent,
+    usagePercent: stats.usagePercent
   });
-
+  
   return stats;
 }
 ```
@@ -3511,11 +3640,11 @@ export function monitorMemoryUsage(
 ### テンプレート処理
 
 ```typescript
-// src/utils/ai/promptTemplates.ts
+// utils/ai/promptTemplates.ts
 
 /**
  * プロンプトテンプレートの変数を置換する
- *
+ * 
  * @param template - 変数を含むテンプレート文字列
  * @param variables - 置換変数のマップ
  * @returns 変数が置換されたプロンプト
@@ -3530,19 +3659,22 @@ export function renderPromptTemplate(
   template: string,
   variables: Record<string, string | number | boolean>
 ): string {
-  return template.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-    const trimmedKey = key.trim();
-    if (trimmedKey in variables) {
-      return String(variables[trimmedKey]);
+  return template.replace(
+    /\{\{([^}]+)\}\}/g,
+    (match, key) => {
+      const trimmedKey = key.trim();
+      if (trimmedKey in variables) {
+        return String(variables[trimmedKey]);
+      }
+      // 変数が見つからない場合は元のプレースホルダーを残す
+      return match;
     }
-    // 変数が見つからない場合は元のプレースホルダーを残す
-    return match;
-  });
+  );
 }
 
 /**
  * 複数パートからなるプロンプトを構築する
- *
+ * 
  * @param parts - プロンプトの各パート
  * @returns 結合されたプロンプト
  * @example
@@ -3554,7 +3686,9 @@ export function renderPromptTemplate(
  * ]);
  */
 export function buildPrompt(parts: string[]): string {
-  return parts.filter((part) => part !== undefined && part !== null && part !== '').join('\n\n');
+  return parts
+    .filter(part => part !== undefined && part !== null && part !== '')
+    .join('\n\n');
 }
 
 /**
@@ -3562,20 +3696,20 @@ export function buildPrompt(parts: string[]): string {
  */
 export class PromptTemplateManager {
   private templates: Map<string, string> = new Map();
-
+  
   /**
    * テンプレートを登録する
-   *
+   * 
    * @param key - テンプレートのキー
    * @param template - テンプレート文字列
    */
   registerTemplate(key: string, template: string): void {
     this.templates.set(key, template);
   }
-
+  
   /**
    * 複数のテンプレートを一括登録する
-   *
+   * 
    * @param templates - キーとテンプレートのマップ
    */
   registerTemplates(templates: Record<string, string>): void {
@@ -3583,10 +3717,10 @@ export class PromptTemplateManager {
       this.registerTemplate(key, template);
     }
   }
-
+  
   /**
    * テンプレートを取得する
-   *
+   * 
    * @param key - テンプレートのキー
    * @returns テンプレート文字列
    * @throws Error - テンプレートが見つからない場合
@@ -3598,15 +3732,18 @@ export class PromptTemplateManager {
     }
     return template;
   }
-
+  
   /**
    * テンプレートを変数で埋めて完成したプロンプトを返す
-   *
+   * 
    * @param key - テンプレートのキー
    * @param variables - 置換変数
    * @returns 完成したプロンプト
    */
-  renderTemplate(key: string, variables: Record<string, string | number | boolean>): string {
+  renderTemplate(
+    key: string,
+    variables: Record<string, string | number | boolean>
+  ): string {
     const template = this.getTemplate(key);
     return renderPromptTemplate(template, variables);
   }
@@ -3618,9 +3755,9 @@ export const promptTemplates = new PromptTemplateManager();
 // 初期テンプレートを登録
 promptTemplates.registerTemplates({
   'system:default': `あなたは役立つAIアシスタントです。ユーザーの質問に対して、簡潔かつ正確に回答してください。`,
-
+  
   'system:code-assistant': `あなたはプログラミングのエキスパートです。コードの質問に対して、明確で実践的な回答を提供してください。例を示すときは、簡潔かつ効果的なコードスニペットを提供してください。`,
-
+  
   'system:project-assistant': `あなたはプロジェクト管理のエキスパートです。以下のプロジェクト情報に基づいて、ユーザーのプロジェクト関連の質問に答えてください。
 
 プロジェクト情報:
@@ -3628,25 +3765,25 @@ promptTemplates.registerTemplates({
 説明: {{projectDescription}}
 ステータス: {{projectStatus}}
 進捗率: {{progressPercentage}}%`,
-
+  
   'user:code-review': `以下のコードをレビューして、改善点があれば指摘してください。
 
 \`\`\`{{language}}
 {{code}}
 \`\`\``,
-
+  
   'user:step-instructions': `このステップでは「{{stepTitle}}」について作業します。
 
 詳細: {{stepDescription}}
 
-このステップを完了するために必要なことを教えてください。`,
+このステップを完了するために必要なことを教えてください。`
 });
 ```
 
 ### コンテキスト管理
 
 ```typescript
-// src/utils/ai/contextManager.ts
+// utils/ai/contextManager.ts
 
 import { Message } from '@/types/domain/Message';
 
@@ -3658,10 +3795,10 @@ export class ConversationContext {
   private messages: Message[] = [];
   private maxTokenEstimate: number;
   private tokenCountEstimator: (text: string) => number;
-
+  
   /**
    * コンテキストマネージャーを初期化
-   *
+   * 
    * @param maxTokens - 最大トークン数の目安
    * @param tokenEstimator - テキストのトークン数を推定する関数
    */
@@ -3672,10 +3809,10 @@ export class ConversationContext {
     this.maxTokenEstimate = maxTokens;
     this.tokenCountEstimator = tokenEstimator;
   }
-
+  
   /**
    * メッセージをコンテキストに追加
-   *
+   * 
    * @param message - 追加するメッセージ
    * @returns 追加後の全メッセージ
    */
@@ -3684,10 +3821,10 @@ export class ConversationContext {
     this.pruneToFitTokenLimit();
     return this.getMessages();
   }
-
+  
   /**
    * 複数のメッセージをコンテキストに追加
-   *
+   * 
    * @param messages - 追加するメッセージの配列
    * @returns 追加後の全メッセージ
    */
@@ -3696,47 +3833,47 @@ export class ConversationContext {
     this.pruneToFitTokenLimit();
     return this.getMessages();
   }
-
+  
   /**
    * 現在のコンテキスト内のメッセージを取得
-   *
+   * 
    * @returns 現在のメッセージ配列
    */
   getMessages(): Message[] {
     return [...this.messages];
   }
-
+  
   /**
    * 現在のコンテキストをクリア
    */
   clearContext(): void {
     this.messages = [];
   }
-
+  
   /**
    * 特定のメッセージを保持し、それ以外を削除
-   *
+   * 
    * @param messageIds - 保持するメッセージのID配列
    * @returns 保持後のメッセージ配列
    */
   keepOnlyMessages(messageIds: string[]): Message[] {
-    this.messages = this.messages.filter((msg) => messageIds.includes(msg.id));
+    this.messages = this.messages.filter(msg => messageIds.includes(msg.id));
     return this.getMessages();
   }
-
+  
   /**
    * 特定のタイプのメッセージのみ取得
-   *
+   * 
    * @param types - 取得するメッセージタイプの配列
    * @returns 指定タイプのメッセージ配列
    */
   getMessagesByType(types: Array<Message['type']>): Message[] {
-    return this.messages.filter((msg) => types.includes(msg.type));
+    return this.messages.filter(msg => types.includes(msg.type));
   }
-
+  
   /**
    * コンテキストの現在のトークン数を推定
-   *
+   * 
    * @returns 推定トークン数
    */
   estimateTokenCount(): number {
@@ -3744,36 +3881,36 @@ export class ConversationContext {
       return total + this.tokenCountEstimator(msg.content);
     }, 0);
   }
-
+  
   /**
    * トークン制限内に収まるようにコンテキストを調整
    * 古いメッセージから削除していく
    */
   private pruneToFitTokenLimit(): void {
     let currentTokens = this.estimateTokenCount();
-
+    
     // システムメッセージを識別（通常は保持したい）
-    const systemMessages = this.messages.filter((msg) => msg.type === 'system');
-    const nonSystemMessages = this.messages.filter((msg) => msg.type !== 'system');
-
+    const systemMessages = this.messages.filter(msg => msg.type === 'system');
+    const nonSystemMessages = this.messages.filter(msg => msg.type !== 'system');
+    
     // トークン制限を超えている場合、古い非システムメッセージから削除
     while (currentTokens > this.maxTokenEstimate && nonSystemMessages.length > 0) {
       // 最も古いメッセージを削除
       const oldestMessage = nonSystemMessages.shift();
       if (oldestMessage) {
         // 実際のメッセージリストからも削除
-        this.messages = this.messages.filter((msg) => msg.id !== oldestMessage.id);
+        this.messages = this.messages.filter(msg => msg.id !== oldestMessage.id);
         // トークン数を再計算
         currentTokens = this.estimateTokenCount();
       }
     }
-
+    
     // 非システムメッセージを全て削除しても収まらない場合は
     // システムメッセージも削除対象に
     while (currentTokens > this.maxTokenEstimate && systemMessages.length > 0) {
       const oldestSystemMessage = systemMessages.shift();
       if (oldestSystemMessage) {
-        this.messages = this.messages.filter((msg) => msg.id !== oldestSystemMessage.id);
+        this.messages = this.messages.filter(msg => msg.id !== oldestSystemMessage.id);
         currentTokens = this.estimateTokenCount();
       }
     }
@@ -3784,18 +3921,16 @@ export class ConversationContext {
  * 簡易なトークン数推定関数
  * 英語の場合、単語の約3/4がトークンになる傾向
  * 日本語の場合、文字あたり約1.3トークン
- *
+ * 
  * @param text - 推定するテキスト
  * @returns 推定トークン数
  */
 function defaultTokenEstimator(text: string): number {
   if (!text) return 0;
-
+  
   // 日本語文字を含むかチェック
-  const hasJapanese = /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf]/.test(
-    text
-  );
-
+  const hasJapanese = /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf]/.test(text);
+  
   if (hasJapanese) {
     // 日本語テキストの場合、文字あたり約1.3トークン
     return Math.ceil(text.length * 1.3);
@@ -3809,7 +3944,7 @@ function defaultTokenEstimator(text: string): number {
 /**
  * 会話の要約を生成する
  * 長い会話履歴をAIモデルのトークン制限内に収めるために使用
- *
+ * 
  * @param messages - 要約する会話履歴
  * @param maxSummaryLength - 要約の最大長
  * @returns 要約されたメッセージ
@@ -3830,38 +3965,37 @@ export function summarizeConversation(
   if (messages.length === 0) {
     return '';
   }
-
+  
   // システムメッセージを除外して会話だけを要約
-  const conversationMessages = messages.filter((msg) => msg.type !== 'system');
-
+  const conversationMessages = messages.filter(msg => msg.type !== 'system');
+  
   if (conversationMessages.length === 0) {
     return '';
   }
-
+  
   // 会話の流れを構築
-  const conversation = conversationMessages
-    .map((msg) => {
-      const role = msg.type === 'user' ? 'ユーザー' : 'アシスタント';
-      // 長いメッセージは省略
-      const content =
-        msg.content.length > 100 ? `${msg.content.substring(0, 100)}...` : msg.content;
-
-      return `${role}: ${content}`;
-    })
-    .join('\n\n');
-
+  const conversation = conversationMessages.map(msg => {
+    const role = msg.type === 'user' ? 'ユーザー' : 'アシスタント';
+    // 長いメッセージは省略
+    const content = msg.content.length > 100
+      ? `${msg.content.substring(0, 100)}...`
+      : msg.content;
+      
+    return `${role}: ${content}`;
+  }).join('\n\n');
+  
   // 会話が既に制限内ならそのまま返す
   if (conversation.length <= maxSummaryLength) {
     return `以下は今までの会話の要約です:\n\n${conversation}`;
   }
-
+  
   // 長すぎる場合は先頭と末尾の重要な部分を保持
   const headCount = Math.floor(maxSummaryLength * 0.3);
   const tailCount = Math.floor(maxSummaryLength * 0.7);
-
+  
   const head = conversation.substring(0, headCount);
   const tail = conversation.substring(conversation.length - tailCount);
-
+  
   return `以下は今までの会話の要約です:
 
 # 会話の始まり
@@ -3879,7 +4013,7 @@ ${tail}`;
 ### プロバイダー抽象化
 
 ```typescript
-// src/utils/ai/aiService.ts
+// utils/ai/aiService.ts
 'use server';
 
 import { getEnv } from '@/utils/common/environment';
@@ -3901,23 +4035,23 @@ export interface AIModelConfig {
    * モデル名
    */
   model: string;
-
+  
   /**
    * プロバイダー
    */
   provider: AIProvider;
-
+  
   /**
    * 最大出力トークン数
    */
   maxOutputTokens?: number;
-
+  
   /**
    * 温度パラメータ（0.0-1.0）
    * 高いほどランダム性が増す
    */
   temperature?: number;
-
+  
   /**
    * 使用する関数の定義
    */
@@ -3926,7 +4060,7 @@ export interface AIModelConfig {
     description?: string;
     parameters: Record<string, any>;
   }>;
-
+  
   /**
    * モデル固有のパラメータ
    */
@@ -3941,26 +4075,26 @@ const MODEL_CONFIGS: Record<string, AIModelConfig> = {
     model: 'gpt-4o',
     provider: 'openai',
     maxOutputTokens: 4096,
-    temperature: 0.7,
+    temperature: 0.7
   },
   'claude-3-haiku': {
     model: 'claude-3-haiku-20240307',
     provider: 'anthropic',
     maxOutputTokens: 4096,
-    temperature: 0.7,
+    temperature: 0.7
   },
   'gemini-pro': {
     model: 'gemini-pro',
     provider: 'google',
     maxOutputTokens: 2048,
-    temperature: 0.7,
+    temperature: 0.7
   },
-  development: {
+  'development': {
     model: 'development',
     provider: 'mock',
     maxOutputTokens: 1024,
-    temperature: 0.7,
-  },
+    temperature: 0.7
+  }
 };
 
 /**
@@ -3971,22 +4105,22 @@ export interface AIServiceOptions {
    * 使用するモデル
    */
   modelName: string;
-
+  
   /**
    * 温度パラメータ（0.0-1.0）
    */
   temperature?: number;
-
+  
   /**
    * 最大出力トークン数
    */
   maxOutputTokens?: number;
-
+  
   /**
    * 使用する関数の定義
    */
   functions?: AIModelConfig['functions'];
-
+  
   /**
    * プロバイダー固有のパラメータ
    */
@@ -3999,19 +4133,19 @@ export interface AIServiceOptions {
  */
 export class AIService {
   private config: AIModelConfig;
-
+  
   /**
    * AIサービスを初期化
-   *
+   * 
    * @param options - AIサービスオプション
    */
   constructor(options: AIServiceOptions) {
     const baseConfig = MODEL_CONFIGS[options.modelName];
-
+    
     if (!baseConfig) {
       throw new Error(`Unsupported model: ${options.modelName}`);
     }
-
+    
     this.config = {
       ...baseConfig,
       temperature: options.temperature ?? baseConfig.temperature,
@@ -4019,14 +4153,14 @@ export class AIService {
       functions: options.functions,
       providerParams: {
         ...baseConfig.providerParams,
-        ...options.providerParams,
-      },
+        ...options.providerParams
+      }
     };
   }
-
+  
   /**
    * テキスト生成リクエストを実行
-   *
+   * 
    * @param messages - 会話履歴
    * @returns 生成されたテキスト
    * @throws ExternalServiceError - AIサービスとの通信に失敗した場合
@@ -4057,19 +4191,15 @@ export class AIService {
           maxRetries: 2,
           initialDelayMs: 1000,
           delayFactor: 2,
-          isRetryable: isAiServiceErrorRetryable,
+          isRetryable: isAiServiceErrorRetryable
         }
       );
     } catch (error) {
-      logger.error(
-        'AIサービスとの通信に失敗しました',
-        error instanceof Error ? error : new Error(String(error)),
-        {
-          provider: this.config.provider,
-          model: this.config.model,
-        }
-      );
-
+      logger.error('AIサービスとの通信に失敗しました', error instanceof Error ? error : new Error(String(error)), {
+        provider: this.config.provider,
+        model: this.config.model
+      });
+      
       throw new ExternalServiceError(
         'AI API',
         `AIサービス(${this.config.provider})との通信に失敗しました`,
@@ -4077,10 +4207,10 @@ export class AIService {
       );
     }
   }
-
+  
   /**
    * ストリーミング形式でテキスト生成リクエストを実行
-   *
+   * 
    * @param messages - 会話履歴
    * @returns テキストチャンクを生成するAsyncGenerator
    * @example
@@ -4108,15 +4238,11 @@ export class AIService {
           throw new Error(`Unsupported provider: ${this.config.provider}`);
       }
     } catch (error) {
-      logger.error(
-        'AIストリーミングサービスとの通信に失敗しました',
-        error instanceof Error ? error : new Error(String(error)),
-        {
-          provider: this.config.provider,
-          model: this.config.model,
-        }
-      );
-
+      logger.error('AIストリーミングサービスとの通信に失敗しました', error instanceof Error ? error : new Error(String(error)), {
+        provider: this.config.provider,
+        model: this.config.model
+      });
+      
       throw new ExternalServiceError(
         'AI API',
         `AIストリーミングサービス(${this.config.provider})との通信に失敗しました`,
@@ -4124,10 +4250,10 @@ export class AIService {
       );
     }
   }
-
+  
   /**
    * OpenAI APIを呼び出す
-   *
+   * 
    * @param messages - 会話履歴
    * @returns 生成されたテキスト
    * @private
@@ -4135,19 +4261,19 @@ export class AIService {
   private async callOpenAI(messages: Message[]): Promise<string> {
     // OpenAI API実装
     // 実際の実装では、OpenAI SDKを使用
-
-    const formattedMessages = messages.map((msg) => ({
+    
+    const formattedMessages = messages.map(msg => ({
       role: msg.type === 'user' ? 'user' : msg.type === 'assistant' ? 'assistant' : 'system',
-      content: msg.content,
+      content: msg.content
     }));
-
+    
     const apiKey = getEnv('OPENAI_API_KEY', true);
-
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: this.config.model,
@@ -4156,23 +4282,23 @@ export class AIService {
         max_tokens: this.config.maxOutputTokens,
         ...(this.config.functions && {
           functions: this.config.functions,
-          function_call: 'auto',
+          function_call: 'auto'
         }),
-        ...this.config.providerParams,
-      }),
+        ...this.config.providerParams
+      })
     });
-
+    
     if (!response.ok) {
       throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
     }
-
+    
     const data = await response.json();
     return data.choices[0].message.content || '';
   }
-
+  
   /**
    * OpenAI APIをストリーミングモードで呼び出す
-   *
+   * 
    * @param messages - 会話履歴
    * @yields 生成されたテキストチャンク
    * @private
@@ -4182,10 +4308,10 @@ export class AIService {
     // 省略
     yield 'OpenAI streaming not implemented in this example';
   }
-
+  
   /**
    * Anthropic APIを呼び出す
-   *
+   * 
    * @param messages - 会話履歴
    * @returns 生成されたテキスト
    * @private
@@ -4195,10 +4321,10 @@ export class AIService {
     // 省略
     return 'Anthropic API not implemented in this example';
   }
-
+  
   /**
    * Anthropic APIをストリーミングモードで呼び出す
-   *
+   * 
    * @param messages - 会話履歴
    * @yields 生成されたテキストチャンク
    * @private
@@ -4208,10 +4334,10 @@ export class AIService {
     // 省略
     yield 'Anthropic streaming not implemented in this example';
   }
-
+  
   /**
    * Google AI APIを呼び出す
-   *
+   * 
    * @param messages - 会話履歴
    * @returns 生成されたテキスト
    * @private
@@ -4221,10 +4347,10 @@ export class AIService {
     // 省略
     return 'Google AI API not implemented in this example';
   }
-
+  
   /**
    * Google AI APIをストリーミングモードで呼び出す
-   *
+   * 
    * @param messages - 会話履歴
    * @yields 生成されたテキストチャンク
    * @private
@@ -4234,25 +4360,25 @@ export class AIService {
     // 省略
     yield 'Google AI streaming not implemented in this example';
   }
-
+  
   /**
    * 開発用のモックサービスを呼び出す
-   *
+   * 
    * @param messages - 会話履歴
    * @returns 生成されたテキスト
    * @private
    */
   private async callMockService(messages: Message[]): Promise<string> {
     // 開発用のモックレスポンス
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    const lastMessage = messages.filter((m) => m.type === 'user').pop();
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const lastMessage = messages.filter(m => m.type === 'user').pop();
     if (!lastMessage) {
       return 'すみません、ご質問を理解できませんでした。';
     }
-
+    
     const userMessage = lastMessage.content.toLowerCase();
-
+    
     if (userMessage.includes('こんにちは') || userMessage.includes('hello')) {
       return 'こんにちは！お手伝いできることがあれば、お気軽にお尋ねください。';
     } else if (userMessage.includes('天気')) {
@@ -4260,13 +4386,13 @@ export class AIService {
     } else if (userMessage.includes('help') || userMessage.includes('ヘルプ')) {
       return '現在モック環境で実行中です。このAIアシスタントは開発環境用のシミュレーションです。';
     }
-
+    
     return 'ご質問ありがとうございます。現在開発環境で実行中のため、限定的な応答しかできません。本番環境では実際のAIモデルが応答します。';
   }
-
+  
   /**
    * 開発用のモックサービスをストリーミングモードで呼び出す
-   *
+   * 
    * @param messages - 会話履歴
    * @yields 生成されたテキストチャンク
    * @private
@@ -4274,9 +4400,9 @@ export class AIService {
   private async *streamMockService(messages: Message[]): AsyncGenerator<string> {
     const response = await this.callMockService(messages);
     const chunks = response.split(' ');
-
+    
     for (const chunk of chunks) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
       yield chunk + ' ';
     }
   }
@@ -4284,17 +4410,16 @@ export class AIService {
 
 /**
  * デフォルトのAIサービスインスタンスを作成
- *
+ * 
  * @returns 設定済みのAIサービスインスタンス
  */
 export function createDefaultAIService(): AIService {
   const defaultModel = getEnv('AI_DEFAULT_MODEL', false, 'development');
-
+  
   return new AIService({
-    modelName: defaultModel,
+    modelName: defaultModel
   });
 }
 
 // デフォルトのAIサービスをエクスポート
 export const aiService = createDefaultAIService();
-```
