@@ -1,30 +1,26 @@
-import path from 'path';
-
 import * as dotenv from 'dotenv';
-import { defineConfig } from 'drizzle-kit';
+// import type { Config } from 'drizzle-kit'; // Remove unused import again
 
-// 環境変数をロード
-// 開発環境では.env.localファイルを使用
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
-
-// DATABASE_URL環境変数が設定されていることを確認
-// 注意: 実行時の環境変数が優先されます
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-  throw new Error(
-    'DATABASE_URL環境変数が設定されていません。.env.localファイルまたは環境変数を確認してください。'
-  );
+// .env.local ファイルが存在する場合に読み込む (CI環境では不要な場合もある)
+// パスはプロジェクト構造に合わせて調整してください
+try {
+  dotenv.config({ path: '.env.local' });
+} catch (e) {
+  console.warn('.env.local not found, proceeding without it.');
 }
 
-// Drizzle Kit設定をエクスポート
-export default defineConfig({
-  schema: './infrastructure/database/schema/*', // スキーマの場所
-  out: './infrastructure/database/migrations', // マイグレーションの出力先
-  dialect: 'postgresql', // データベースの種類
+// Define the configuration object
+const config = {
+  schema: './infrastructure/database/schema/index.ts', // スキーマ定義ファイルのパス
+  out: './infrastructure/database/migrations', // マイグレーションファイルの出力先
+  dialect: 'postgresql', // Specify the dialect
   dbCredentials: {
-    url: DATABASE_URL, // 環境変数から接続文字列を取得
+    // 環境変数 DATABASE_URL を優先的に使用
+    connectionString: process.env.DATABASE_URL!,
   },
-  // マイグレーションの設定
-  verbose: true, // 詳細なログを出力
-  strict: true, // 厳格モードを有効化
-});
+  verbose: true,
+  strict: true,
+};
+
+// Export the configuration object as the default
+export default config;
