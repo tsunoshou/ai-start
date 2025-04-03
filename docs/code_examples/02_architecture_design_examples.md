@@ -1,6 +1,6 @@
 # 02_architecture_design_examples.md
 
-最終更新日: 2025-04-03
+最終更新日: 2025-03-26
 
 ## 本ドキュメントの目的
 
@@ -11,7 +11,7 @@
 ### クリーンアーキテクチャの実装
 
 ```typescript
-// domain/models/User.ts
+// src/domain/models/User.ts
 /**
  * ユーザードメインモデル
  * @description ビジネスロジックに関わるユーザーの中心的なデータモデル
@@ -20,8 +20,7 @@ export interface User {
   id: string;
   email: string;
   displayName: string;
-  role: string[];
-  isActive: boolean;
+  role: UserRole;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,12 +28,12 @@ export interface User {
 export enum UserRole {
   ADMIN = 'ADMIN',
   USER = 'USER',
-  GUEST = 'GUEST'
+  GUEST = 'GUEST',
 }
 ```
 
 ```typescript
-// application/services/UserService.ts
+// src/application/services/UserService.ts
 import { User } from '@/domain/models/User';
 import { UserRepository } from '@/domain/repositories/UserRepository';
 import { injectable, inject } from 'tsyringe';
@@ -59,18 +58,18 @@ export class UserService {
   async getUserById(userId: string): Promise<User> {
     this.logger.info(`ユーザー情報取得 ID: ${userId}`);
     const user = await this.userRepository.findById(userId);
-    
+
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
-    
+
     return user;
   }
 }
 ```
 
 ```typescript
-// infrastructure/repositories/UserRepositoryImpl.ts
+// src/infrastructure/repositories/UserRepositoryImpl.ts
 import { User } from '@/domain/models/User';
 import { UserRepository } from '@/domain/repositories/UserRepository';
 import { db } from '@/db';
@@ -89,36 +88,34 @@ export class SupabaseUserRepository implements UserRepository {
 
   async findByEmail(email: string): Promise<User | null> {
     const result = await db.query.users.findFirst({
-      where: eq(users.email, email)
+      where: eq(users.email, email),
     });
-    
+
     if (!result) return null;
-    
+
     return UserMapper.toDomain(result);
   }
 
   async findById(id: string): Promise<User | null> {
     const result = await db.query.users.findFirst({
-      where: eq(users.id, id)
+      where: eq(users.id, id),
     });
-    
+
     if (!result) return null;
-    
+
     return UserMapper.toDomain(result);
   }
 
   async create(user: User): Promise<void> {
     const data = UserMapper.toPersistence(user);
-    
+
     await db.insert(users).values(data);
   }
 
   async update(user: User): Promise<void> {
     const data = UserMapper.toPersistence(user);
-    
-    await db.update(users)
-      .set(data)
-      .where(eq(users.id, user.id));
+
+    await db.update(users).set(data).where(eq(users.id, user.id));
   }
 }
 ```
@@ -126,7 +123,7 @@ export class SupabaseUserRepository implements UserRepository {
 ### ディレクトリ構造例と各レイヤーの実装
 
 ```typescript
-// domain/repositories/UserRepository.ts
+// src/domain/repositories/UserRepository.ts
 import { User } from '@/domain/models/User';
 
 /**
@@ -142,7 +139,7 @@ export interface UserRepository {
 ```
 
 ```typescript
-// infrastructure/mappers/UserMapper.ts
+// src/infrastructure/mappers/UserMapper.ts
 import { User, UserRole } from '@/domain/models/User';
 import { User as UserEntity } from '@prisma/client';
 import { injectable } from 'tsyringe';
@@ -164,7 +161,7 @@ export class UserMapper {
       displayName: entity.displayName || '',
       role: entity.role as UserRole,
       createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt
+      updatedAt: entity.updatedAt,
     };
   }
 
@@ -180,7 +177,7 @@ export class UserMapper {
       displayName: domain.displayName,
       role: domain.role,
       createdAt: domain.createdAt,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
   }
 }
@@ -191,7 +188,7 @@ export class UserMapper {
 ### DIコンテナの実装
 
 ```typescript
-// infrastructure/di/container.ts
+// src/infrastructure/di/container.ts
 import { container } from 'tsyringe';
 import { db } from '@/db';
 import { eq } from 'drizzle-orm';
@@ -210,13 +207,13 @@ import { LoggerImpl } from '@/infrastructure/services/LoggerImpl';
 export function setupContainer(): void {
   // シングルトンインスタンス
   container.registerSingleton<Logger>('Logger', LoggerImpl);
-  
+
   // マッパー
   container.registerSingleton<UserMapper>('UserMapper', UserMapper);
-  
+
   // リポジトリ
   container.registerSingleton<UserRepository>('UserRepository', SupabaseUserRepository);
-  
+
   // サービス
   container.registerSingleton<UserService>(UserService);
 }
@@ -225,7 +222,7 @@ export function setupContainer(): void {
 ### モジュール間依存関係の実装
 
 ```typescript
-// application/usecases/CreateUserUseCase.ts
+// src/application/usecases/CreateUserUseCase.ts
 import { User, UserRole } from '@/domain/models/User';
 import { UserRepository } from '@/domain/repositories/UserRepository';
 import { IdGenerator } from '@/domain/services/IdGenerator';
@@ -259,7 +256,7 @@ export class CreateUserUseCase {
     if (existingUser) {
       throw new DuplicateEmailException(dto.email);
     }
-    
+
     // 新規ユーザー作成
     const newUser: User = {
       id: this.idGenerator.generate(),
@@ -267,16 +264,16 @@ export class CreateUserUseCase {
       displayName: dto.displayName,
       role: UserRole.USER,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     // パスワードハッシュ化とユーザー保存は別のサービスに委譲
     const hashedPassword = await this.passwordHasher.hash(dto.password);
-    const createdUser = await this.userRepository.save({...newUser, password: hashedPassword});
-    
+    const createdUser = await this.userRepository.save({ ...newUser, password: hashedPassword });
+
     // ウェルカムメール送信はドメインサービスに委譲
     await this.emailService.sendWelcomeEmail(createdUser.email, createdUser.displayName);
-    
+
     return createdUser;
   }
 }
@@ -287,7 +284,7 @@ export class CreateUserUseCase {
 ### サーバーアクションの実装
 
 ```typescript
-// app/api/users/[id]/route.ts
+// src/app/api/users/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { container } from 'tsyringe';
 import { UserService } from '@/application/services/UserService';
@@ -297,17 +294,14 @@ import { ApiErrorHandler } from '@/infrastructure/api/ApiErrorHandler';
  * ユーザー情報取得API
  * @description 指定されたIDのユーザー情報を取得する
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const userService = container.resolve(UserService);
     const user = await userService.getUserById(params.id);
-    
+
     return NextResponse.json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (error) {
     return ApiErrorHandler.handle(error);
@@ -318,19 +312,16 @@ export async function GET(
  * ユーザー情報更新API
  * @description 指定されたIDのユーザー情報を更新する
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const userService = container.resolve(UserService);
     const updateData = await request.json();
-    
+
     const updatedUser = await userService.updateUser(params.id, updateData);
-    
+
     return NextResponse.json({
       success: true,
-      data: updatedUser
+      data: updatedUser,
     });
   } catch (error) {
     return ApiErrorHandler.handle(error);
@@ -341,7 +332,7 @@ export async function PUT(
 ### クライアントデータフェッチの実装
 
 ```typescript
-// app/users/[id]/page.tsx
+// src/app/users/[id]/page.tsx
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { UserProfile } from '@/components/users/UserProfile';
@@ -358,13 +349,13 @@ interface UserPageProps {
  */
 export async function generateMetadata({ params }: UserPageProps): Promise<Metadata> {
   const user = await getUserById(params.id).catch(() => null);
-  
+
   if (!user) {
     return {
       title: 'ユーザーが見つかりません'
     };
   }
-  
+
   return {
     title: `${user.displayName}のプロフィール | AiStart`,
     description: `${user.displayName}のユーザープロフィールページです。`
@@ -376,11 +367,11 @@ export async function generateMetadata({ params }: UserPageProps): Promise<Metad
  */
 export default async function UserPage({ params }: UserPageProps) {
   const user = await getUserById(params.id).catch(() => null);
-  
+
   if (!user) {
     notFound();
   }
-  
+
   return (
     <main className="container mx-auto py-8">
       <UserProfile user={user} />
@@ -390,7 +381,7 @@ export default async function UserPage({ params }: UserPageProps) {
 ```
 
 ```typescript
-// app/_actions/user-actions.ts
+// src/app/_actions/user-actions.ts
 'use server';
 
 import { container } from 'tsyringe';
@@ -444,7 +435,7 @@ model User {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   profile     Profile?
   sessions    Session[]
-  
+
   @@map("users")
 }
 
@@ -457,7 +448,7 @@ model Profile {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("profiles")
 }
 
@@ -469,7 +460,7 @@ model Session {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([token])
   @@map("sessions")
 }
@@ -491,18 +482,18 @@ const execAsync = promisify(exec);
  */
 async function migrate() {
   console.log('🚀 マイグレーションを開始します...');
-  
+
   try {
     // マイグレーション実行
     await execAsync('npx prisma migrate deploy');
     console.log('✅ マイグレーションが完了しました');
-    
+
     // 接続テスト
     const prisma = new PrismaClient();
     await prisma.$connect();
     console.log('✅ データベース接続テスト成功');
     await prisma.$disconnect();
-    
+
     console.log('🎉 すべての操作が完了しました');
   } catch (error) {
     console.error('❌ マイグレーション中にエラーが発生しました:', error);
@@ -532,24 +523,24 @@ export async function middleware(request: NextRequest) {
   if (isPublicPath(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
-  
+
   try {
     const sessionToken = request.cookies.get('session_token')?.value;
-    
+
     // トークンがない場合はログインページにリダイレクト
     if (!sessionToken) {
       return redirectToLogin(request);
     }
-    
+
     // セッショントークンの検証
     const authService = container.resolve(AuthService);
     const session = await authService.validateSession(sessionToken);
-    
+
     // 無効なセッションの場合はログインページにリダイレクト
     if (!session) {
       return redirectToLogin(request);
     }
-    
+
     // ユーザー情報をヘッダーに追加
     const response = NextResponse.next();
     response.headers.set('x-user-id', session.userId);
@@ -565,7 +556,7 @@ export async function middleware(request: NextRequest) {
  */
 function isPublicPath(path: string): boolean {
   const publicPaths = ['/login', '/register', '/api/auth', '/about'];
-  return publicPaths.some(publicPath => path.startsWith(publicPath));
+  return publicPaths.some((publicPath) => path.startsWith(publicPath));
 }
 
 /**
@@ -579,9 +570,7 @@ function redirectToLogin(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|public/).*)'],
 };
 ```
 
@@ -608,18 +597,18 @@ interface RequireAuthProps {
  */
 export function RequireAuth({ children, roles }: RequireAuthProps) {
   const { user, isLoading, error } = useAuth();
-  
+
   // 読み込み中
   if (isLoading) {
     return <LoadingSpinner />;
   }
-  
+
   // 認証エラー
   if (error || !user) {
     redirect('/login');
     return null;
   }
-  
+
   // 権限チェック
   if (roles && !roles.includes(user.role)) {
     return (
@@ -631,7 +620,7 @@ export function RequireAuth({ children, roles }: RequireAuthProps) {
       </div>
     );
   }
-  
+
   // 認証・権限OK
   return <>{children}</>;
 }
@@ -662,66 +651,84 @@ export class ApiErrorHandler {
    */
   static handle(error: any): NextResponse {
     console.error('APIエラー:', error);
-    
+
     if (error instanceof ValidationException) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: error.message,
-          details: error.errors
-        }
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: error.message,
+            details: error.errors,
+          },
+        },
+        { status: 400 }
+      );
     }
-    
+
     if (error instanceof NotFoundException) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: error.message
-        }
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: error.message,
+          },
+        },
+        { status: 404 }
+      );
     }
-    
+
     if (error instanceof UnauthorizedException) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: error.message
-        }
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: error.message,
+          },
+        },
+        { status: 401 }
+      );
     }
-    
+
     if (error instanceof ForbiddenException) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: error.message
-        }
-      }, { status: 403 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: error.message,
+          },
+        },
+        { status: 403 }
+      );
     }
-    
+
     if (error instanceof DomainException) {
-      return NextResponse.json({
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'DOMAIN_ERROR',
+            message: error.message,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 未知のエラー
+    return NextResponse.json(
+      {
         success: false,
         error: {
-          code: 'DOMAIN_ERROR',
-          message: error.message
-        }
-      }, { status: 400 });
-    }
-    
-    // 未知のエラー
-    return NextResponse.json({
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: '内部サーバーエラーが発生しました'
-      }
-    }, { status: 500 });
+          code: 'INTERNAL_ERROR',
+          message: '内部サーバーエラーが発生しました',
+        },
+      },
+      { status: 500 }
+    );
   }
 }
 ```
@@ -794,11 +801,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header className="lg:pl-64" />
-      
+
       <div className="flex flex-1">
         {/* サイドバー - モバイルではオフキャンバス */}
         <Sidebar className="fixed inset-y-0 z-50 lg:relative lg:z-auto" />
-        
+
         {/* メインコンテンツ */}
         <main className="flex-1 p-4 lg:p-8 w-full lg:pl-64 transition-all">
           <div className="max-w-7xl mx-auto">
@@ -811,136 +818,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 }
 ```
 
-## データアクセス層の実装例 (Repository Pattern with Drizzle)
-
-```typescript
-// src/domain/repositories/user.repository.ts (Domain Layer Interface)
-import { User } from '@/domain/models/entities/user';
-import { Email } from '@/domain/models/value-objects/email';
-import { UserId } from '@/domain/models/value-objects/user-id';
-import { Result } from 'neverthrow';
-
-export interface UserRepository {
-  findById(id: UserId): Promise<Result<User | null, Error>>;
-  findByEmail(email: Email): Promise<Result<User | null, Error>>;
-  save(user: User): Promise<Result<User, Error>>;
-  delete(id: UserId): Promise<Result<void, Error>>;
-}
-
-// src/infrastructure/repositories/drizzle-user.repository.ts (Infrastructure Layer Implementation)
-import { injectable, inject } from 'tsyringe';
-import { eq } from 'drizzle-orm';
-import { db } from '@/infrastructure/database/drizzle/db'; // Drizzle DBインスタンス
-import { users } from '@/infrastructure/database/drizzle/schema'; // Drizzle スキーマ
-import { User } from '@/domain/models/entities/user';
-import { Email } from '@/domain/models/value-objects/email';
-import { UserId, createUserId } from '@/domain/models/value-objects/user-id';
-import { UserRepository } from '@/domain/repositories/user.repository';
-import { UserMapper } from '@/infrastructure/mappers/user.mapper'; // データマッパー
-import { Result, ok, err } from 'neverthrow';
-import { DatabaseError } from '@/shared/errors/database.error';
-
-@injectable()
-export class DrizzleUserRepository implements UserRepository {
-  constructor(@inject(UserMapper) private userMapper: UserMapper) {}
-
-  async findById(id: UserId): Promise<Result<User | null, Error>> {
-    try {
-      const result = await db.select().from(users).where(eq(users.id, id.value)).limit(1);
-      if (result.length === 0) {
-        return ok(null);
-      }
-      const domainUser = this.userMapper.toDomain(result[0]);
-      return ok(domainUser);
-    } catch (error) {
-      return err(new DatabaseError('Failed to find user by ID', { cause: error, context: { userId: id.value } }));
-    }
-  }
-
-  async findByEmail(email: Email): Promise<Result<User | null, Error>> {
-    try {
-      const result = await db.select().from(users).where(eq(users.email, email.value)).limit(1);
-      if (result.length === 0) {
-        return ok(null);
-      }
-      const domainUser = this.userMapper.toDomain(result[0]);
-      return ok(domainUser);
-    } catch (error) {
-      return err(new DatabaseError('Failed to find user by email', { cause: error, context: { email: email.value } }));
-    }
-  }
-
-  async save(user: User): Promise<Result<User, Error>> {
-    try {
-      const persistenceUser = this.userMapper.toPersistence(user);
-      // Drizzleでのupsert (存在すれば更新、なければ挿入)
-      const result = await db.insert(users)
-        .values(persistenceUser)
-        .onConflictDoUpdate({ target: users.id, set: persistenceUser })
-        .returning();
-
-      if (result.length === 0) {
-         return err(new DatabaseError('Failed to save user, no returning record', { context: { userId: user.id.value }}));
-      }
-      // 保存後のデータをドメインオブジェクトに再マッピングして返すのが一般的だが、
-      // Drizzleのreturningが完全なオブジェクトを返すため、入力のuserをそのまま返すか、
-      // result[0] をマッピングするかは設計による。
-      // ここでは簡単のため入力されたuserを返す。
-      return ok(user);
-    } catch (error) {
-      return err(new DatabaseError('Failed to save user', { cause: error, context: { userId: user.id.value } }));
-    }
-  }
-
-  async delete(id: UserId): Promise<Result<void, Error>> {
-    try {
-      await db.delete(users).where(eq(users.id, id.value));
-      return ok(undefined);
-    } catch (error) {
-      return err(new DatabaseError('Failed to delete user', { cause: error, context: { userId: id.value } }));
-    }
-  }
-}
-
-// src/infrastructure/mappers/user.mapper.ts (Data Mapper Example)
-import { injectable } from 'tsyringe';
-import { User as PersistenceUser } from '@/infrastructure/database/drizzle/schema'; // Drizzle スキーマから生成された型
-import { User as DomainUser } from '@/domain/models/entities/user';
-import { createUserId } from '@/domain/models/value-objects/user-id';
-import { Email } from '@/domain/models/value-objects/email';
-
-@injectable()
-export class UserMapper {
-  toDomain(persistence: PersistenceUser): DomainUser {
-    // 永続化モデルからドメインモデルへの変換ロジック
-    return DomainUser.reconstitute({
-      id: createUserId(persistence.id),
-      email: Email.create(persistence.email),
-      name: persistence.name,
-      // ... 他のプロパティ
-      createdAt: persistence.createdAt,
-      updatedAt: persistence.updatedAt,
-    });
-  }
-
-  toPersistence(domain: DomainUser): Omit<PersistenceUser, 'createdAt' | 'updatedAt'> {
-    // ドメインモデルから永続化モデルへの変換ロジック
-    return {
-      id: domain.id.value,
-      email: domain.email.value,
-      name: domain.name,
-      // ... 他のプロパティ
-      passwordHash: domain.passwordHash, // passwordHashがドメインモデルにある場合
-    };
-  }
-}
-```
-
 ## 相互参照リンク
 
 このコードサンプルドキュメントは、[02_architecture_design.md](02_architecture_design.md)の設計方針に基づいています。
 
 アーキテクチャとの対応関係:
+
 - [アーキテクチャスタイル選定](#アーキテクチャスタイル実装例) ⇔ 02_architecture_design.md#アーキテクチャスタイルの選定と理由
 - [ディレクトリ構造例](#ディレクトリ構造例と各レイヤーの実装) ⇔ 02_architecture_design.md#ディレクトリ構造と各レイヤーの責務
 - [モジュール分割と依存関係](#モジュール分割と依存関係の設計) ⇔ 02_architecture_design.md#モジュール分割と依存関係の設計
