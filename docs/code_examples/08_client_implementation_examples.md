@@ -1,6 +1,6 @@
 # クライアント実装コード例 (08_client_implementation.md 対応)
 
-最終更新日: 2024-07-27
+最終更新日: 2025-04-03
 
 このドキュメントは、[08_client_implementation.md](/docs/restructuring/08_client_implementation.md) で説明されているクライアントサイドの実装方針に関する具体的なコード例を提供します。先行するドキュメント (01-07) およびコードサンプルとの整合性を保っています。
 

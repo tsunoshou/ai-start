@@ -1,6 +1,6 @@
 # テスト実装コード例集 (09_testing_implementation.md 対応)
 
-最終更新日: 2024-07-27
+最終更新日: 2025-04-03
 
 このドキュメントは、[09_testing_implementation.md](/docs/restructuring/09_testing_implementation.md) で説明されているテスト実装方針に関する具体的なコード例を提供します。先行するドキュメント (01-08) との整合性を保っています。
 
