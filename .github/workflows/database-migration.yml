@@ -5,16 +5,15 @@ on:
     branches:
       - main
       - development
-      - 'release/*' # release/vX.Y.Z のようなブランチにマッチ
-    # paths:
-    #   - 'infrastructure/database/migrations/**' # 一時的にコメントアウトして常に実行
+      - 'release/*'
+    paths: # Only run when migration files or this workflow changes
+      - 'infrastructure/database/migrations/**'
+      - '.github/workflows/database-migration.yml'
 
 jobs:
   migrate-database:
-    name: Supabase DB Migration
-    # ブランチ名に応じて実行環境を決定
+    name: Database Migration
     runs-on: ubuntu-latest
-    # Vercelの環境名に合わせる
     environment: ${{ (github.ref == 'refs/heads/main' && 'Production') || (startsWith(github.ref, 'refs/heads/release/') && 'staging') || 'Preview' }}
 
     steps:
@@ -23,34 +22,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-          cache: 'npm' # npm ci を使う場合
+          node-version: '22' # Use Node.js v22
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Install PostgreSQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+      # - name: Install PostgreSQL client # Removed, node-pg-migrate handles connection
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y postgresql-client
 
-      - name: Apply database migrations using psql
+      - name: Apply database migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          MIGRATION_DIR="infrastructure/database/migrations"
-          # Check if migration directory exists
-          if [ ! -d "$MIGRATION_DIR" ]; then
-            echo "Migration directory $MIGRATION_DIR not found. Skipping migration."
-            exit 0
-          fi
-          # Apply SQL files in alphabetical order
-          for file in $(ls "$MIGRATION_DIR"/*.sql | sort); do
-            echo "Applying migration: $file"
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$file"
-            if [ $? -ne 0 ]; then
-              echo "Error applying migration: $file"
-              exit 1
-            fi
-          done
-          echo "Database migrations applied successfully."
+          # node-pg-migrate uses DATABASE_URL or standard PG* env vars
+        run: npm run db:migrate # Use the npm script defined in package.json
