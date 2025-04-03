@@ -6,9 +6,9 @@ on:
       - main
       - development
       - 'release/*'
-    # paths: # Temporarily commented out to force execution
-    #   - 'infrastructure/database/migrations/**'
-    #   - '.github/workflows/database-migration.yml'
+    paths: # Only run when migration files or this workflow changes
+      - 'infrastructure/database/migrations/**'
+      - '.github/workflows/database-migration.yml'
 
 jobs:
   migrate-database:
@@ -28,13 +28,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # - name: Install PostgreSQL client # Removed, node-pg-migrate handles connection
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y postgresql-client
-
       - name: Apply database migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          # node-pg-migrate uses DATABASE_URL or standard PG* env vars
-        run: npm run db:migrate # Use the npm script defined in package.json
+        run: npm run db:migrate
