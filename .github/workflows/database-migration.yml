@@ -26,20 +26,31 @@ jobs:
           node-version: '20.x'
           cache: 'npm' # npm ci を使う場合
 
-      - name: Install dependencies (including Supabase CLI)
-        # npm ci で package-lock.json に記録されたバージョン (現在 1.162.4) の supabase がインストールされる
+      - name: Install dependencies
         run: npm ci
 
-      - name: Temporarily move config.toml
-        # マイグレーション実行前に config.toml を一時的にリネーム
-        # ファイルが存在しなくてもエラーにならないように `|| true` を追加
-        run: mv supabase/config.toml supabase/config.toml.bak || true
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
 
-      - name: Apply database migrations
-        # config.toml が存在しない状態で実行。DATABASE_URL が使われるはず。
-        run: DATABASE_URL=${{ secrets.DATABASE_URL }} npx supabase migration up --debug
-
-      - name: Restore config.toml
-        # 成功・失敗に関わらず、config.toml を元の名前に戻す
-        if: always()
-        run: mv supabase/config.toml.bak supabase/config.toml || true
+      - name: Apply database migrations using psql
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          MIGRATION_DIR="infrastructure/database/migrations"
+          # Check if migration directory exists
+          if [ ! -d "$MIGRATION_DIR" ]; then
+            echo "Migration directory $MIGRATION_DIR not found. Skipping migration."
+            exit 0
+          fi
+          # Apply SQL files in alphabetical order
+          for file in $(ls "$MIGRATION_DIR"/*.sql | sort); do
+            echo "Applying migration: $file"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$file"
+            if [ $? -ne 0 ]; then
+              echo "Error applying migration: $file"
+              exit 1
+            fi
+          done
+          echo "Database migrations applied successfully."
