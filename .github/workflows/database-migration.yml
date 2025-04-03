@@ -36,6 +36,6 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }} # DB password needed for linking and migrations
 
       - name: Apply database migrations
-        run: npx supabase migration up
+        run: npx supabase migration up --debug
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }} # migration up also needs the password
