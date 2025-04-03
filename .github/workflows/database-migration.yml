@@ -1,0 +1,41 @@
+name: Database Migration
+
+on:
+  push:
+    branches:
+      - main
+      - development
+      - 'release/*' # release/vX.Y.Z のようなブランチにマッチ
+    paths:
+      - 'infrastructure/database/migrations/**' # migrationsディレクトリに変更があった場合のみ実行
+
+jobs:
+  migrate-database:
+    name: Supabase DB Migration
+    # ブランチ名に応じて実行環境を決定
+    runs-on: ubuntu-latest
+    # Vercelの環境名に合わせる
+    environment: ${{ (github.ref == 'refs/heads/main' && 'Production') || (startsWith(github.ref, 'refs/heads/release/') && 'staging') || 'Preview' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm' # npm ci を使う場合
+
+      - name: Install dependencies (including Supabase CLI)
+        run: npm ci # package-lock.jsonに基づいて正確に依存関係をインストール
+
+      - name: Link Supabase Project
+        run: npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }} # Linking requires an access token
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }} # DB password needed for linking and migrations
+
+      - name: Apply database migrations
+        run: npx supabase migration up
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }} # migration up also needs the password
