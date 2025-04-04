@@ -582,12 +582,21 @@ app/                      # Next.js App Router
 └── [...locale]/          # 国際化ルート
 
 domain/                   # ドメイン層
-├── models/               # ドメインモデル
-│   ├── entities/         # エンティティ
-│   └── value-objects/    # 値オブジェクト
-├── services/             # ドメインサービス
-├── repositories/         # リポジトリインターフェース
-└── events/               # ドメインイベント
+├── models/               # ドメインモデル (概念ごとにグルーピング)
+│   ├── user/             # Userドメイン関連ファイル群
+│   │   ├── user.entity.ts
+│   │   ├── user-id.vo.ts
+│   │   ├── email.vo.ts
+│   │   └── user-role.enum.ts
+│   ├── ai-prompt/        # AI Promptドメイン関連ファイル群
+│   │   ├── ai-prompt.entity.ts
+│   │   ├── prompt-id.vo.ts
+│   │   ├── prompt-category.enum.ts
+│   │   └── ai-model-type.enum.ts
+│   └── ...               # 他のドメインモデル
+├── services/             # ドメインサービス (必要に応じてドメインフォルダ内に配置も検討)
+├── repositories/         # リポジトリインターフェース (必要に応じてドメインフォルダ内に配置も検討)
+└── events/               # ドメインイベント (必要に応じてドメインフォルダ内に配置も検討)
 
 application/              # アプリケーション層
 ├── usecases/             # ユースケース
@@ -820,12 +829,11 @@ tests/                    # テスト
 ビジネスロジックの中心となる層です。外部依存を持たず、純粋なドメインロジックのみを含みます。
 
 **主な構成要素**
-- `domain/models/`: 値オブジェクトとエンティティ
-  - `value-objects/`: 識別子を持たない値オブジェクト
-  - `entities/`: 識別子を持つエンティティ
-- `domain/services/`: ドメインサービス
-- `domain/events/`: ドメインイベント
-- `domain/repositories/`: リポジトリインターフェース（ポート）
+- `domain/models/`: ドメインモデルのルートディレクトリ。
+  - `{domain-name}/`: 各ドメイン概念 (例: `user`, `ai-prompt`) ごとにファイルを格納するディレクトリ。Entity, Value Object, Enum など、そのドメインに関連する型やクラスをフラットに配置します。
+- `domain/services/`: ドメインサービス。複数のエンティティや値オブジェクトにまたがるドメインロジックをカプセル化します。（注: 特定のドメインに強く関連する場合は、`domain/models/{domain-name}/` 内に配置することも検討します。）
+- `domain/events/`: ドメインイベント。ドメイン内で発生した重要な出来事を表現します。（注: 配置場所は `services` と同様に検討します。）
+- `domain/repositories/`: リポジトリインターフェース（ポート）。ドメインオブジェクトの永続化に関する操作を定義します。（注: 配置場所は `services` と同様に検討します。）
 
 **役割と責務**
 - ビジネスルールとロジックを定義

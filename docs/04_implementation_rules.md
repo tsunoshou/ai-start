@@ -309,14 +309,14 @@ function BidiText({ text, baseDirection = 'auto' }) {
 | APIルート | route.ts | route.ts (app/api/users/route.ts) |
 | ユーティリティ | kebab-case.ts | format-date.ts, string-utils.ts |
 | | | またはディレクトリ + index.ts (例: date-utils/) |
-| 型定義 | kebab-case.ts | user-types.ts, api-types.ts (types/フォルダ内) |
-| エンティティ | PascalCase.ts | User.ts, Program.ts |
-| 値オブジェクト | camelCase.ts | ids.ts, email.ts |
-| リポジトリインターフェース | PascalCaseRepository.ts | UserRepository.ts |
-| リポジトリ実装 | {Infrastructure}PascalCaseRepository.ts | SupabaseUserRepository.ts, PostgresProjectRepository.ts |
-| ユースケース | PascalCaseUsecase.ts | CreateProjectUsecase.ts |
-| DTOクラス | PascalCaseDTO.ts | UserDTO.ts, ProjectDTO.ts |
-| マッパー | PascalCaseMapper.ts | UserMapper.ts, ProjectMapper.ts |
+| 型定義 | kebab-case.ts | user-types.ts, api-types.ts (shared/types/ 内) |
+| エンティティ | {ドメイン名}.entity.ts | user.entity.ts, program.entity.ts (domain/models/{ドメイン名}/ 内) |
+| 値オブジェクト | {値オブジェクト名}.vo.ts (kebab-case) | user-id.vo.ts, email.vo.ts (domain/models/{ドメイン名}/ 内) |
+| リポジトリインターフェース | PascalCaseRepository.ts | UserRepository.ts (domain/repositories/ 内 または domain/models/{ドメイン名}/ 内) |
+| リポジトリ実装 | {Infrastructure}PascalCaseRepository.ts | SupabaseUserRepository.ts (infrastructure/database/repositories/ 内) |
+| ユースケース | PascalCaseUsecase.ts | CreateProjectUsecase.ts (application/usecases/ 内) |
+| DTOクラス | PascalCaseDTO.ts | UserDTO.ts, ProjectDTO.ts (application/dtos/ 内) |
+| マッパー | PascalCaseMapper.ts | UserMapper.ts, ProjectMapper.ts (infrastructure/mappers/ 内) |
 | QueryObject/ReadModel | PascalCaseQuery.ts / PascalCaseReadModel.ts | UserProjectsQuery.ts, ActiveUsersReadModel.ts |
 | テストファイル | {対象ファイル名}.test.ts | User.test.ts, formatDate.test.ts |
 | 定数ファイル | camelCase.ts | appConstants.ts, errorCodes.ts |
