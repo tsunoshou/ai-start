@@ -1,3 +1,7 @@
 #!/usr/bin/env sh
 
+# TypeScript型チェックを実行
+npm run type-check || exit 1
+
+# ステージングされたファイルに対してlintと整形を実行
 npx lint-staged
