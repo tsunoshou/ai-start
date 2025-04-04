@@ -39,10 +39,10 @@
  * ```
  */
 export enum PromptCategory {
-  GENERAL = 'GENERAL',
-  PLANNING = 'PLANNING',
-  ANALYSIS = 'ANALYSIS',
-  WRITING = 'WRITING',
-  CODING = 'CODING',
-  BRAINSTORMING = 'BRAINSTORMING',
+  General = 'GENERAL',
+  Planning = 'PLANNING',
+  Analysis = 'ANALYSIS',
+  Writing = 'WRITING',
+  Coding = 'CODING',
+  Brainstorming = 'BRAINSTORMING',
 }

@@ -12,6 +12,7 @@
  *
  * @enum {string}
  * @property {string} ADMIN - 管理者権限を持つ役割。システム全体の設定変更やユーザー管理が可能。
+ * @property {string} EDITOR - 編集者権限を持つ役割。特定のコンテンツやプログラムの編集・管理が可能。
  * @property {string} USER - 一般ユーザー権限を持つ役割。自身のプロジェクト管理やサービス利用が可能。
  *
  * @example
@@ -31,6 +32,7 @@
  * ```
  */
 export enum UserRole {
-  ADMIN = 'ADMIN',
-  USER = 'USER',
+  Admin = 'ADMIN',
+  Editor = 'EDITOR',
+  User = 'USER',
 }
