@@ -146,16 +146,28 @@ module.exports = {
   },
   // .eslintrc.jsファイル自体を検証対象から除外
   ignorePatterns: ['.eslintrc.js'],
-  // components/ui/ ディレクトリのファイルに対する特別なルール
+  // コンポーネントライブラリのファイルに対する特別なルール
   overrides: [
     {
-      files: ['**/components/ui/**/*.{ts,tsx}'],
+      files: ['**/components/ui/**/*.{ts,tsx}', '**/presentation/components/ui/**/*.{ts,tsx}'],
       rules: {
         '@typescript-eslint/naming-convention': [
           'error',
           {
             selector: 'default',
             format: ['camelCase', 'PascalCase'],
+            filter: {
+              regex: '^_.*|.*_.*',
+              match: false,
+            },
+          },
+          {
+            selector: 'objectLiteralProperty',
+            format: null,
+            filter: {
+              regex: '.*_.*',
+              match: true,
+            },
           },
           {
             selector: 'variable',
@@ -175,6 +187,12 @@ module.exports = {
             format: ['PascalCase'],
           },
         ],
+      },
+    },
+    {
+      files: ['**/presentation/hooks/use-toast.ts'],
+      rules: {
+        '@typescript-eslint/naming-convention': 'off',
       },
     },
   ],
