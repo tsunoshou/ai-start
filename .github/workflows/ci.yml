@@ -21,8 +21,25 @@ jobs:
       - name: Node.jsセットアップ
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22.x'
           cache: 'npm'
+
+      - name: npm バージョン設定
+        run: |
+          npm install -g npm@10.9.2  # 開発環境のnpmバージョンに合わせる
+          npm --version
+          # npm設定の確認と調整
+          npm config set legacy-peer-deps=true # 必要に応じて追加
+          npm config list
+
+      - name: 環境情報表示
+        run: |
+          node -v
+          npm -v
+          echo "OS情報:"
+          lsb_release -a
+          echo "パッケージマネージャ情報:"
+          npm list -g --depth=0
 
       - name: 依存関係インストール
         run: npm ci

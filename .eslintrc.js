@@ -76,6 +76,24 @@ module.exports = {
         },
         format: ['PascalCase'],
       },
+      // components/ui/ ディレクトリ内の関数はPascalCaseを許可（Shadcn/UI用）
+      {
+        selector: 'function',
+        filter: {
+          regex: '^.+/components/ui/.+\\.[jt]sx?$',
+          match: true,
+        },
+        format: ['PascalCase', 'camelCase'],
+      },
+      // components/ui/ ディレクトリ内の変数はPascalCase, camelCaseを許可（Shadcn/UI用）
+      {
+        selector: 'variable',
+        filter: {
+          regex: '^.+/components/ui/.+\\.[jt]sx?$',
+          match: true,
+        },
+        format: ['PascalCase', 'camelCase', 'UPPER_CASE'],
+      },
       // .tsx ファイル内の大文字で始まる関数はPascalCaseを許可
       {
         selector: 'function',
@@ -105,9 +123,14 @@ module.exports = {
         modifiers: ['const', 'global'],
         format: ['UPPER_CASE'],
         filter: {
-          regex: '^(metadata|config)$',
+          regex: '^(metadata|config|React)$',
           match: false,
         },
+      },
+      // Reactのようなライブラリインポートは例外として許可
+      {
+        selector: 'import',
+        format: ['camelCase', 'PascalCase'],
       },
       // enumメンバーはPascalCase
       {
@@ -123,4 +146,54 @@ module.exports = {
   },
   // .eslintrc.jsファイル自体を検証対象から除外
   ignorePatterns: ['.eslintrc.js'],
+  // コンポーネントライブラリのファイルに対する特別なルール
+  overrides: [
+    {
+      files: ['**/components/ui/**/*.{ts,tsx}', '**/presentation/components/ui/**/*.{ts,tsx}'],
+      rules: {
+        '@typescript-eslint/naming-convention': [
+          'error',
+          {
+            selector: 'default',
+            format: ['camelCase', 'PascalCase'],
+            filter: {
+              regex: '^_.*|.*_.*',
+              match: false,
+            },
+          },
+          {
+            selector: 'objectLiteralProperty',
+            format: null,
+            filter: {
+              regex: '.*_.*',
+              match: true,
+            },
+          },
+          {
+            selector: 'variable',
+            format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
+          },
+          {
+            selector: 'function',
+            format: ['camelCase', 'PascalCase'],
+          },
+          {
+            selector: 'parameter',
+            format: ['camelCase', 'PascalCase'],
+            leadingUnderscore: 'allow',
+          },
+          {
+            selector: 'typeLike',
+            format: ['PascalCase'],
+          },
+        ],
+      },
+    },
+    {
+      files: ['**/presentation/hooks/use-toast.ts'],
+      rules: {
+        '@typescript-eslint/naming-convention': 'off',
+      },
+    },
+  ],
 };
