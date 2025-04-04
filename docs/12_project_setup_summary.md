@@ -14,14 +14,25 @@
 *   **Node.js**: v23.7.0 (*実行環境*)
 *   **Next.js**: 14.2.26
 *   **React**: 18.3.1
-*   **TypeScript**: 5.3.3
+*   **TypeScript**: 5.8.2
 
 **UI & Styling:**
 *   **Tailwind CSS**: 3.4.17
     *   `postcss`: 8.4.42 (*dependencies*)
     *   `autoprefixer`: 10.4.19 (*devDependencies*)
     *   `prettier-plugin-tailwindcss`: 0.6.11 (*devDependencies*) - Prettier 連携
+    *   `tailwindcss-animate`: 1.0.7 (*dependencies*) - アニメーション用ユーティリティ
 *   **shadcn/ui**: (バージョン管理なし、CLIで導入)
+    *   `class-variance-authority`: 0.7.1 (*dependencies*) - コンポーネントバリアント管理
+    *   `clsx`: 2.1.1 (*dependencies*) - クラス名結合ユーティリティ
+    *   `cmdk`: 1.1.1 (*dependencies*) - コマンドメニュー
+    *   `react-hook-form`: 7.55.0 (*dependencies*) - フォーム管理
+    *   `react-day-picker`: 8.10.1 (*dependencies*) - カレンダーコンポーネント
+*   **Radix UI**: (shadcn/uiの基盤)
+    *   `@radix-ui/react-accordion`: 1.2.3 (*dependencies*)
+    *   `@radix-ui/react-alert-dialog`: 1.1.6 (*dependencies*)
+    *   `@radix-ui/react-avatar`: 1.1.3 (*dependencies*)
+    *   その他Radixコンポーネント多数
 *   **Lucide React**: 0.359.0
 
 **Database & ORM:**
@@ -37,7 +48,7 @@
     *   `node-pg-migrate`: 7.9.1 (*`devDependencies`*)
 
 **State Management & Data Fetching:**
-*   **TanStack Query (React Query)**: 5.71.1 (*dependencies*)
+*   **TanStack Query (React Query)**: 5.71.5 (*dependencies*)
 
 **Authentication:**
 *   **Auth.js (Core)**: 0.38.0 (*dependencies*)
@@ -58,7 +69,7 @@
     *   `@types/testing-library__jest-dom`: 5.14.9 (*devDependencies*)
 
 **Linting & Formatting:**
-*   **ESLint**: 8.57.1 (*`devDependencies`*)
+*   **ESLint**: 8.57.0 (*`devDependencies`*)
     *   `@typescript-eslint/eslint-plugin`: 7.18.0 (*devDependencies*)
     *   `@typescript-eslint/parser`: 7.18.0 (*devDependencies*)
     *   `eslint-config-next`: 14.2.26 (*devDependencies*)
@@ -98,15 +109,15 @@
 
 **Component Development & Documentation (Storybook):**
 *   **Storybook**: 8.6.12 (*`devDependencies`*)
-    *   `@storybook/addon-essentials**: 8.6.12 (*`devDependencies`*) - 基本アドオン
-    *   `@storybook/experimental-addon-test**: 8.6.12 (*`devDependencies`*) - テストアドオン
-    *   `@storybook/experimental-nextjs-vite**: 8.6.12 (*`devDependencies`*) - Next.js 連携
-    *   `@storybook/addon-onboarding**: 8.6.12 (*devDependencies*)
-    *   `@storybook/blocks**: 8.6.12 (*devDependencies*)
-    *   `@storybook/react**: 8.6.12 (*devDependencies*)
-    *   `@storybook/test**: 8.6.12 (*devDependencies*)
-    *   `eslint-plugin-storybook**: 0.12.0 (*`devDependencies`*) - ESLint 連携
-    *   `@chromatic-com/storybook**: 3.2.6 (*devDependencies*) - Chromatic 連携
+    *   `@storybook/addon-essentials`: 8.6.12 (*`devDependencies`*) - 基本アドオン
+    *   `@storybook/experimental-addon-test`: 8.6.12 (*`devDependencies`*) - テストアドオン
+    *   `@storybook/experimental-nextjs-vite`: 8.6.12 (*`devDependencies`*) - Next.js 連携
+    *   `@storybook/addon-onboarding`: 8.6.12 (*devDependencies*)
+    *   `@storybook/blocks`: 8.6.12 (*devDependencies*)
+    *   `@storybook/react`: 8.6.12 (*devDependencies*)
+    *   `@storybook/test`: 8.6.12 (*devDependencies*)
+    *   `eslint-plugin-storybook`: 0.12.0 (*`devDependencies`*) - ESLint 連携
+    *   `@chromatic-com/storybook`: 3.2.6 (*devDependencies*) - Chromatic 連携
 
 **Other Libraries:**
 *   **openai**: 4.91.1 (*dependencies*) - OpenAI API クライアント
@@ -115,9 +126,9 @@
 ## セットアップリスト
 
 1.  **プロジェクト初期化 & 基本設定**:
-    *   **Next.js (v14.1.3, React 18.2.0)** プロジェクト (`ai-start`) を **TypeScript (v5.3.3)** で作成。
+    *   **Next.js (v14.2.26, React 18.3.1)** プロジェクト (`ai-start`) を **TypeScript (v5.8.2)** で作成。
     *   Git リポジトリを初期化。
-    *   `package.json` にプロジェクト情報、スクリプト、依存関係を定義 (現バージョン: `0.2.0`)。
+    *   `package.json` にプロジェクト情報、スクリプト、依存関係を定義 (現バージョン: `0.3.1`)。
     *   `tsconfig.json` で TypeScript コンパイラオプションを設定 (strict モード有効)。
     *   **Node.js (v23.7.0)** を開発環境として使用 (要件定義との差異あり)。
 
@@ -126,15 +137,17 @@
     *   **Husky (v9.1.7)** と **lint-staged (v15.5.0)** を設定し、コミット前の自動チェックを実装。
 
 3.  **UI 開発**:
-    *   **Tailwind CSS (v3.4.1)** を導入し、設定ファイル (`tailwind.config.js`, `postcss.config.js`) を構成。
+    *   **Tailwind CSS (v3.4.17)** を導入し、設定ファイル (`tailwind.config.js`, `postcss.config.js`) を構成。
     *   **shadcn/ui** を導入・設定 (`components.json`) し、UI コンポーネントの基盤を構築。
+    *   全ての shadcn/ui コンポーネント (Button, Card, Dialog, Toast など) をインストール済み。
     *   **Lucide React (v0.359.0)** アイコンライブラリを導入。
+    *   ディレクトリ構造を `presentation/components/ui` および `shared/utils/ui` に整理。
 
 4.  **クライアントサイド状態管理**:
-    *   **TanStack Query (React Query v5.28.2)** を導入し、データフェッチングとキャッシュ管理を設定。
+    *   **TanStack Query (React Query v5.71.5)** を導入し、データフェッチングとキャッシュ管理を設定。
 
 5.  **認証**:
-    *   **Auth.js (Core v0.38.0, next-auth v5.0.0-beta.3)** を導入し、認証基盤を設定 (`/lib/auth.ts` 等)。
+    *   **Auth.js (Core v0.38.0, next-auth v5.0.0-beta.25)** を導入し、認証基盤を設定 (`/lib/auth.ts` 等)。
     *   **Supabase SSR (v0.6.1)** を導入 (`@supabase/ssr`)。
 
 6.  **データベース & ORM**:
@@ -159,7 +172,7 @@
 9.  **バージョン管理 & ブランチ戦略**:
     *   基本的な Git ブランチ戦略を定義・運用。
     *   上記設定変更をコミットし、`development` ブランチへ統合。
-    *   `package.json` のバージョンを **`0.2.0`** に更新。
+    *   `package.json` のバージョンを **`0.3.1`** に更新。
 
 10. **ドキュメンテーション**:
     *   `docs/` ディレクトリを作成し、プロジェクトの目的、要件、アーキテクチャ、実装ルールなどを定義する Markdown ドキュメント群 (`01_requirements_definition.md`, `02_architecture_design.md`, etc.) を作成・整備。
