@@ -11,7 +11,7 @@
 以下は、プロジェクトで使用されている主要な技術要素と、`package-lock.json` に記録されている厳密なバージョンです。
 
 **Core Frameworks & Runtime:**
-*   **Node.js**: v23.7.0 (*実行環境*)
+*   **Node.js**: v22.x (*実行環境*)
 *   **npm**: 10.9.2 (*パッケージマネージャー*)
 *   **Next.js**: 14.2.26
 *   **React**: 18.3.1
@@ -131,7 +131,7 @@
     *   Git リポジトリを初期化。
     *   `package.json` にプロジェクト情報、スクリプト、依存関係を定義 (現バージョン: `0.3.1`)。
     *   `tsconfig.json` で TypeScript コンパイラオプションを設定 (strict モード有効)。
-    *   **Node.js (v23.7.0)** を開発環境として使用 (要件定義との差異あり)。
+    *   **Node.js (v22.x)** を開発環境として使用 (Vercel環境との互換性のため)。
 
 2.  **コード品質 & フォーマット**:
     *   **ESLint (v8.57.0)** と **Prettier (v3.2.5)** を導入し、設定ファイル (`.eslintrc.js`, `.prettierrc.js`, `.prettierignore`) でルールを構成。
