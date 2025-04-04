@@ -63,8 +63,8 @@
     *   `@typescript-eslint/parser`: 7.18.0 (*devDependencies*)
     *   `eslint-config-next`: 14.2.26 (*devDependencies*)
     *   `eslint-config-prettier`: 9.1.0 (*devDependencies*)
-    *   `eslint-plugin-import`: 2.29.1 (*devDependencies*)
-    *   `eslint-plugin-react`: 7.37.4 (*devDependencies*)
+    *   `eslint-plugin-import`: 2.31.0 (*devDependencies*)
+    *   `eslint-plugin-react`: 7.37.5 (*devDependencies*)
     *   `eslint-plugin-storybook`: 0.12.0 (*`devDependencies`*) - ESLint 連携
 *   **Prettier**: 3.2.5 (*`devDependencies`*)
 *   **Git Hooks:**
