@@ -1,6 +1,7 @@
 // ESLintルールを一時的に無効化（Reactコンポーネントは大文字で始める必要があるため）
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import ConnectionTest from '@/presentation/components/common/ConnectionTest';
+import { Button } from '@/presentation/components/ui/button';
 
 export default function Home() {
   return (
@@ -14,6 +15,11 @@ export default function Home() {
           <p className="text-base text-gray-700">
             開発環境のセットアップが完了しました。プロジェクトディレクトリ構造がアーキテクチャ設計に従って作成されています。
           </p>
+        </div>
+
+        <div className="mt-8 flex justify-center gap-4">
+          <Button variant="default">はじめる</Button>
+          <Button variant="outline">詳細</Button>
         </div>
 
         <ConnectionTest />
