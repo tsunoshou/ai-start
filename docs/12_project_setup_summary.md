@@ -1,6 +1,6 @@
 # プロジェクトセットアップ概要
 
-最終更新日: 2025-04-04
+最終更新日: 2024-04-05
 
 ## 目的
 
@@ -8,106 +8,109 @@
 
 ## 主要技術スタックとバージョン
 
-以下は、プロジェクトで使用されている主要な技術要素と、`package.json` または実行環境から確認されたバージョンです。
+以下は、プロジェクトで使用されている主要な技術要素と、`package-lock.json` に記録されている厳密なバージョンです。
 
 **Core Frameworks & Runtime:**
-*   **Node.js**: `v23.7.0` (*注: `docs/01_requirements_definition.md` では v22 LTS 指定*)
-*   **Next.js**: `^14.1.3`
-*   **React**: `^18.2.0`
-*   **TypeScript**: `^5.3.3`
+*   **Node.js**: v23.7.0 (*実行環境*)
+*   **Next.js**: 14.2.26
+*   **React**: 18.3.1
+*   **TypeScript**: 5.3.3
 
 **UI & Styling:**
-*   **Tailwind CSS**: `^3.4.1`
-    *   `postcss`: `^8.4.35` (*dependencies*)
-    *   `autoprefixer`: `^10.4.18` (*devDependencies*)
-    *   `prettier-plugin-tailwindcss`: `^0.6.11` (*devDependencies*) - Prettier 連携
+*   **Tailwind CSS**: 3.4.17
+    *   `postcss`: 8.4.42 (*dependencies*)
+    *   `autoprefixer`: 10.4.19 (*devDependencies*)
+    *   `prettier-plugin-tailwindcss`: 0.6.11 (*devDependencies*) - Prettier 連携
 *   **shadcn/ui**: (バージョン管理なし、CLIで導入)
-*   **Lucide React**: `^0.359.0` - アイコン
+*   **Lucide React**: 0.359.0
 
 **Database & ORM:**
 *   **Database**: PostgreSQL (Supabase 提供)
-*   **Drizzle ORM**: `^0.41.0` (*dependencies*)
-    *   `Drizzle Kit`: `^0.30.6` (*`devDependencies`*) - CLI ツール
+*   **Drizzle ORM**: 0.41.0 (*dependencies*)
+    *   `Drizzle Kit`: 0.30.6 (*`devDependencies`*) - CLI ツール
 *   **PostgreSQL Drivers/Clients:**
-    *   `pg`: `^8.14.1` (*dependencies*) - Node.js ドライバー
-    *   `@types/pg`: `^8.11.11` (*dependencies*)
-    *   `postgres`: `^3.4.3` (*dependencies*) - Node.js クライアント
-    *   `@vercel/postgres`: `^0.10.0` (*dependencies*) - Vercel 接続用
+    *   `pg`: 8.14.1 (*dependencies*) - Node.js ドライバー
+    *   `@types/pg`: 8.11.11 (*dependencies*)
+    *   `postgres`: 3.4.3 (*dependencies*) - Node.js クライアント
+    *   `@vercel/postgres`: 0.10.0 (*dependencies*) - Vercel 接続用
 *   **Migration Tool:**
-    *   `node-pg-migrate`: `^7.9.1` (*`devDependencies`*)
+    *   `node-pg-migrate`: 7.9.1 (*`devDependencies`*)
 
 **State Management & Data Fetching:**
-*   **TanStack Query (React Query)**: `^5.28.2` (*dependencies*)
+*   **TanStack Query (React Query)**: 5.71.1 (*dependencies*)
 
 **Authentication:**
-*   **Auth.js (Core)**: `^0.38.0` (*dependencies*)
-*   **Auth.js (NextAuth v5 Beta)**: `^5.0.0-beta.3` (*dependencies*)
-*   **Supabase Auth Helpers**: `^0.9.0` (*dependencies*)
+*   **Auth.js (Core)**: 0.38.0 (*dependencies*)
+*   **Auth.js (NextAuth v5 Beta)**: 5.0.0-beta.25 (*dependencies*)
+*   **Supabase SSR**: 0.6.1 (*dependencies*, `@supabase/ssr`)
 
 **Testing:**
-*   **Vitest**: `^3.1.1` (*`devDependencies`*) - Unit/Integration テストフレームワーク
-    *   `@vitejs/plugin-react`: `^4.3.4` (*devDependencies*) - Vite React プラグイン
-    *   `@vitest/browser`: `^3.1.1` (*devDependencies*) - ブラウザモード
-    *   `@vitest/coverage-v8`: `^3.1.1` (*devDependencies*) - カバレッジ
-    *   `jsdom`: `^26.0.0` (*devDependencies*) - DOM 環境エミュレーション
-*   **Playwright**: `^1.51.1` (*devDependencies*) - E2E テストフレームワーク
-    *   `@playwright/test`: `^1.51.1` (*`devDependencies`*) - テストランナー
+*   **Vitest**: 3.1.1 (*`devDependencies`*) - Unit/Integration テストフレームワーク
+    *   `@vitejs/plugin-react`: 4.3.4 (*devDependencies*) - Vite React プラグイン
+    *   `@vitest/browser`: 3.1.1 (*devDependencies*) - ブラウザモード
+    *   `@vitest/coverage-v8`: 3.1.1 (*devDependencies*) - カバレッジ
+    *   `jsdom`: 26.0.0 (*devDependencies*) - DOM 環境エミュレーション
+*   **Playwright**: 1.51.1 (*devDependencies*) - E2E テストフレームワーク
+    *   `@playwright/test`: 1.51.1 (*`devDependencies`*) - テストランナー
 *   **Testing Library:**
-    *   `@testing-library/react`: `^14.2.1` (*`devDependencies`*) - React テストユーティリティ
-    *   `@testing-library/jest-dom`: `^6.6.3` (*devDependencies*) - DOM マッチャー
-    *   `@types/testing-library__jest-dom`: `^5.14.9` (*devDependencies*)
+    *   `@testing-library/react`: 14.3.1 (*`devDependencies`*) - React テストユーティリティ
+    *   `@testing-library/jest-dom`: 6.6.3 (*devDependencies*) - DOM マッチャー
+    *   `@types/testing-library__jest-dom`: 5.14.9 (*devDependencies*)
 
 **Linting & Formatting:**
-*   **ESLint**: `^8.57.0` (*`devDependencies`*)
-    *   `@typescript-eslint/eslint-plugin`: `^7.0.0` (*devDependencies*)
-    *   `@typescript-eslint/parser`: `^7.0.0` (*devDependencies*)
-    *   `eslint-config-next`: `^14.1.3` (*devDependencies*)
-    *   `eslint-config-prettier`: `^9.1.0` (*devDependencies*)
-    *   `eslint-plugin-import`: `^2.29.1` (*devDependencies*)
-    *   `eslint-plugin-react`: `^7.37.4` (*devDependencies*)
-*   **Prettier**: `^3.2.5` (*`devDependencies`*)
+*   **ESLint**: 8.57.1 (*`devDependencies`*)
+    *   `@typescript-eslint/eslint-plugin`: 7.18.0 (*devDependencies*)
+    *   `@typescript-eslint/parser`: 7.18.0 (*devDependencies*)
+    *   `eslint-config-next`: 14.2.26 (*devDependencies*)
+    *   `eslint-config-prettier`: 9.1.0 (*devDependencies*)
+    *   `eslint-plugin-import`: 2.31.0 (*devDependencies*)
+    *   `eslint-plugin-react`: 7.37.5 (*devDependencies*)
+    *   `eslint-plugin-storybook`: 0.12.0 (*`devDependencies`*) - ESLint 連携
+*   **Prettier**: 3.2.5 (*`devDependencies`*)
 *   **Git Hooks:**
-    *   `Husky`: `^9.1.7` (*`devDependencies`*)
-    *   `lint-staged`: `^15.5.0` (*`devDependencies`*)
+    *   `Husky`: 9.1.7 (*`devDependencies`*)
+    *   `lint-staged`: 15.5.0 (*`devDependencies`*)
+    *   `rimraf`: 6.0.1 (*devDependencies*) - ファイル/ディレクトリ削除ツール
+    *   `glob`: 11.0.1 (*devDependencies*) - パターンマッチング
 
 **Build & Development Tools:**
-*   **esbuild**: `^0.25.2` (*devDependencies*, version overridden) - ビルドツール
-*   **tsx**: `^4.7.0` (*devDependencies*) - TypeScript 実行環境
-*   **dotenv**: `^16.4.5` (*dependencies*) - 環境変数読み込み
+*   **esbuild**: 0.25.2 (*devDependencies*, version overridden) - ビルドツール
+*   **tsx**: 4.7.0 (*devDependencies*) - TypeScript 実行環境
+*   **dotenv**: 16.4.5 (*dependencies*) - 環境変数読み込み
 *   **Type Definitions:**
-    *   `@types/node`: `^20.11.25` (*devDependencies*)
-    *   `@types/react`: `^18.2.64` (*devDependencies*)
-    *   `@types/react-dom`: `^18.2.21` (*devDependencies*)
+    *   `@types/node`: 20.17.28 (*devDependencies*)
+    *   `@types/react`: 18.3.20 (*devDependencies*)
+    *   `@types/react-dom`: 18.3.5 (*devDependencies*)
 
 **Internationalization (i18n):**
-*   **next-intl**: `^3.9.1` (*dependencies*)
-*   **next-international**: `^1.3.1` (*dependencies*)
+*   **next-intl**: 3.26.5 (*dependencies*)
+*   **next-international**: 1.3.1 (*dependencies*)
 
 **Dependency Injection (DI):**
-*   **tsyringe**: `^4.8.0` (*dependencies*)
-*   **reflect-metadata**: `^0.2.1` (*dependencies*)
+*   **tsyringe**: 4.8.0 (*dependencies*)
+*   **reflect-metadata**: 0.2.1 (*dependencies*)
 
 **Backend Services (Supabase):**
-*   **Supabase JS Client**: `^2.44.2` (*dependencies*)
+*   **Supabase JS Client**: 2.44.2 (*dependencies*)
 *   **Supabase CLI:**
-    *   `supabase`: `^2.20.5` (*devDependencies*)
-    *   `supabase-cli`: `^0.0.21` (*devDependencies*)
+    *   `supabase`: 2.20.5 (*devDependencies*)
+    *   `supabase-cli`: 0.0.21 (*devDependencies*)
 
 **Component Development & Documentation (Storybook):**
-*   **Storybook**: `^8.6.12` (*`devDependencies`*)
-    *   `@storybook/addon-essentials**: `^8.6.12` (*`devDependencies`*) - 基本アドオン
-    *   `@storybook/experimental-addon-test**: `^8.6.12` (*`devDependencies`*) - テストアドオン
-    *   `@storybook/experimental-nextjs-vite**: `^8.6.12` (*`devDependencies`*) - Next.js 連携
-    *   `@storybook/addon-onboarding**: `^8.6.12` (*devDependencies*)
-    *   `@storybook/blocks**: `^8.6.12` (*devDependencies*)
-    *   `@storybook/react**: `^8.6.12` (*devDependencies*)
-    *   `@storybook/test**: `^8.6.12` (*devDependencies*)
-    *   `eslint-plugin-storybook**: `^0.12.0` (*`devDependencies`*) - ESLint 連携
-    *   `@chromatic-com/storybook**: `^3.2.6` (*devDependencies*) - Chromatic 連携
+*   **Storybook**: 8.6.12 (*`devDependencies`*)
+    *   `@storybook/addon-essentials**: 8.6.12 (*`devDependencies`*) - 基本アドオン
+    *   `@storybook/experimental-addon-test**: 8.6.12 (*`devDependencies`*) - テストアドオン
+    *   `@storybook/experimental-nextjs-vite**: 8.6.12 (*`devDependencies`*) - Next.js 連携
+    *   `@storybook/addon-onboarding**: 8.6.12 (*devDependencies*)
+    *   `@storybook/blocks**: 8.6.12 (*devDependencies*)
+    *   `@storybook/react**: 8.6.12 (*devDependencies*)
+    *   `@storybook/test**: 8.6.12 (*devDependencies*)
+    *   `eslint-plugin-storybook**: 0.12.0 (*`devDependencies`*) - ESLint 連携
+    *   `@chromatic-com/storybook**: 3.2.6 (*devDependencies*) - Chromatic 連携
 
 **Other Libraries:**
-*   **openai**: `^4.91.1` (*dependencies*) - OpenAI API クライアント
-*   **zod**: `^3.22.4` (*dependencies*) - スキーマバリデーション
+*   **openai**: 4.91.1 (*dependencies*) - OpenAI API クライアント
+*   **zod**: 3.22.4 (*dependencies*) - スキーマバリデーション
 
 ## セットアップリスト
 
@@ -132,7 +135,7 @@
 
 5.  **認証**:
     *   **Auth.js (Core v0.38.0, next-auth v5.0.0-beta.3)** を導入し、認証基盤を設定 (`/lib/auth.ts` 等)。
-    *   **Supabase Auth Helpers (v0.9.0)** も依存関係に追加済み。
+    *   **Supabase SSR (v0.6.1)** を導入 (`@supabase/ssr`)。
 
 6.  **データベース & ORM**:
     *   データベースとして **PostgreSQL** (Supabase 提供) を選択。
@@ -222,4 +225,4 @@
 
 ---
 
-*このドキュメントは、プロジェクトの進行に合わせて適宜更新する必要があります。* 
+*このドキュメントは、プロジェクトの進行に合わせて適宜更新する必要があります。*
