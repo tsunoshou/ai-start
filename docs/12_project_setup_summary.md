@@ -12,6 +12,7 @@
 
 **Core Frameworks & Runtime:**
 *   **Node.js**: v23.7.0 (*実行環境*)
+*   **npm**: 10.9.2 (*パッケージマネージャー*)
 *   **Next.js**: 14.2.26
 *   **React**: 18.3.1
 *   **TypeScript**: 5.8.2
@@ -111,7 +112,7 @@
 *   **Storybook**: 8.6.12 (*`devDependencies`*)
     *   `@storybook/addon-essentials`: 8.6.12 (*`devDependencies`*) - 基本アドオン
     *   `@storybook/experimental-addon-test`: 8.6.12 (*`devDependencies`*) - テストアドオン
-    *   `@storybook/experimental-nextjs-vite`: 8.6.12 (*`devDependencies`*) - Next.js 連携
+    *   `@storybook/nextjs`: 最新版 (*`devDependencies`*) - Next.js 連携（従来の`@storybook/experimental-nextjs-vite`から更新）
     *   `@storybook/addon-onboarding`: 8.6.12 (*devDependencies*)
     *   `@storybook/blocks`: 8.6.12 (*devDependencies*)
     *   `@storybook/react`: 8.6.12 (*devDependencies*)
@@ -232,6 +233,7 @@
     *   **Storybook (v8.6.12)** を導入し、UI コンポーネントの開発、テスト、ドキュメンテーション環境を構築。
     *   `npx storybook@latest init` コマンドで初期セットアップを実行。
     *   設定ファイル (`.storybook/main.ts`, `.storybook/preview.ts` など) を生成。
+    *   **2024-09-10更新**: `@storybook/experimental-nextjs-vite`から`@storybook/nextjs`に更新し、Next.js連携を強化。
     *   npm スクリプト (`storybook`, `build-storybook`) を `package.json` に追加。
     *   ESLint 設定 (`.eslintrc.js`) に `eslint-plugin-storybook` を統合。
     *   サンプルストーリー (`src/stories/`) を生成。
