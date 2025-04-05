@@ -46,16 +46,29 @@ module.exports = {
       {
         selector: 'default',
         format: ['camelCase'],
+        leadingUnderscore: 'allow',
       },
-      // 変数のケース
+      // ★★★ 修正: エクスポートされた変数（関数型を含む）は camelCase を許可
       {
         selector: 'variable',
-        format: ['camelCase', 'UPPER_CASE', 'PascalCase'],
+        modifiers: ['exported'],
+        format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
+        filter: {
+          regex: '.*(Page|Layout|Component|Provider|Context)$',
+          match: false,
+        },
       },
-      // 一般的な関数名はcamelCaseのみ
+      // 変数のケース (UPPER_CASEを除外)
+      {
+        selector: 'variable',
+        format: ['camelCase', 'PascalCase'],
+        leadingUnderscore: 'allow',
+      },
+      // 一般的な関数宣言はcamelCaseのみ
       {
         selector: 'function',
         format: ['camelCase'],
+        leadingUnderscore: 'allow',
       },
       // Reactコンポーネント関数（app/ ディレクトリ内の関数）はPascalCaseを許可
       {
@@ -107,10 +120,6 @@ module.exports = {
       {
         selector: 'interface',
         format: ['PascalCase'],
-        custom: {
-          regex: '^I[A-Z]',
-          match: false,
-        },
       },
       // 型名はPascalCase
       {
@@ -120,10 +129,10 @@ module.exports = {
       // グローバル定数は大文字スネークケース
       {
         selector: 'variable',
-        modifiers: ['const', 'global'],
+        modifiers: ['const', 'global'], // export されていないトップレベルの const など
         format: ['UPPER_CASE'],
         filter: {
-          regex: '^(metadata|config|React)$',
+          regex: '^(metadata|config|React)$', // 例外
           match: false,
         },
       },
@@ -136,6 +145,19 @@ module.exports = {
       {
         selector: 'enumMember',
         format: ['PascalCase'],
+      },
+      // ★★★ 追加: クラスプロパティ（メンバー）のルール
+      {
+        selector: 'classProperty',
+        format: ['camelCase'],
+        leadingUnderscore: 'allow',
+      },
+      // ★★★ 追加: プライベートメンバーのルール (modifiers で指定)
+      {
+        selector: 'memberLike',
+        modifiers: ['private'],
+        format: ['camelCase'],
+        leadingUnderscore: 'allow',
       },
     ],
   },

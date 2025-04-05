@@ -1,47 +1,53 @@
 /**
  * @file プログラムIDを表す値オブジェクトの型定義
  * @description `Identifier` 型を基にしたブランド型として ProgramId を定義します。
+ * プログラムエンティティを一意に識別するための UUID 形式のIDです。
+ * 詳細は docs/05_type_definitions.md を参照。
  *
  * @author tsunoshou
- * @date 2024-03-29
+ * @date 2025-04-05
  * @version 1.0.0
  */
 
 import { Identifier } from '@/shared/types/common.types';
 import { Brand } from '@/shared/types/utility.types';
+import { createIdentifier, generateIdentifier } from '@/shared/utils/identifier.utils';
 
 /**
- * 学習プログラム（コース）の一意な識別子を表す型。
- * UUID形式の文字列を基にしたブランド型です。
- * データベース上の `programs` テーブルの主キーに対応することを想定しています。
- *
- * @typedef {Brand<Identifier, 'ProgramId'>} ProgramId
- * @see {@link Identifier} - ベースとなる識別子の型定義
- * @see {@link Brand} - 型安全性を高めるためのユーティリティ型
+ * プログラムIDを表すブランド型。
+ * UUID v4 形式の文字列として表現されます。
  *
  * @example
- * ```typescript
- * import { ProgramId } from '@/domain/models/program/program-id.vo';
- * import { Identifier } from '@/shared/types/common.types';
+ * import { ProgramId, generateProgramId, createProgramId } from '@/domain/models/program/program-id.vo';
  *
- * // IDを安全に生成または変換する関数 (別途定義・実装が必要)
- * declare function generateProgramId(): ProgramId;
- * declare function createProgramId(id: string): ProgramId; // バリデーション含む想定
+ * // 新しい ProgramId を生成
+ * const newId: ProgramId = generateProgramId();
  *
- * const programId1: ProgramId = generateProgramId();
- * const programId2: ProgramId = createProgramId('ghi78901-e89b-12d3-a456-426614174000');
+ * // 既存のUUID文字列から ProgramId を作成
+ * const existingId: ProgramId = createProgramId('123e4567-e89b-12d3-a456-426614174000');
  *
- * function getProgram(id: ProgramId) {
- *   // ... ProgramId を使ってプログラムを取得する処理 ...
- *   console.log('Fetching program with ID:', id);
- * }
+ * // UUID形式でない場合はエラー
+ * // const invalidId = createProgramId('invalid-uuid'); // -> Error
  *
- * getProgram(programId1);
+ * console.log(newId);
+ * console.log(existingId);
  *
- * // 型安全性の例: 他のID型とは互換性がない
- * import { StepId } from '@/domain/models/step/step-id.vo'; // 仮
- * declare const stepId: StepId;
- * // getProgram(stepId); // -> Compile Error!
- * ```
+ * @see {@link Identifier}
+ * @see {@link Brand}
  */
 export type ProgramId = Brand<Identifier, 'ProgramId'>;
+
+/**
+ * 新しい ProgramId を生成します。
+ * @returns {ProgramId} 新しく生成されたプログラムID。
+ */
+export const generateProgramId = (): ProgramId => generateIdentifier<ProgramId>();
+
+/**
+ * 既存の識別子文字列から ProgramId を作成します。
+ * UUID v4 形式である必要があります。
+ * @param {string} id - プログラムIDとして使用するUUID文字列。
+ * @returns {ProgramId} 作成されたプログラムID。
+ * @throws {Error} UUID v4 形式でない場合にエラーをスローします。
+ */
+export const createProgramId = (id: string): ProgramId => createIdentifier<ProgramId>(id);

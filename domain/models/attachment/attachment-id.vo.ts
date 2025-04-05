@@ -13,35 +13,21 @@ import { Brand } from '@/shared/types/utility.types';
 /**
  * プロジェクトやステップに添付されるファイルの一意な識別子を表す型。
  * UUID形式の文字列を基にしたブランド型です。
- * データベース上の `attachments` テーブルなどの主キーに対応することを想定しています。
  *
- * @typedef {Brand<Identifier, 'AttachmentId'>} AttachmentId
  * @see {@link Identifier} - ベースとなる識別子の型定義
  * @see {@link Brand} - 型安全性を高めるためのユーティリティ型
  *
  * @example
- * ```typescript
- * import { AttachmentId } from '@/domain/models/attachment/attachment-id.vo';
- * import { Identifier } from '@/shared/types/common.types';
+ * // 新しい AttachmentId を生成
+ * const newId: AttachmentId = generateAttachmentId();
  *
- * // IDを安全に生成または変換する関数 (別途定義・実装が必要)
- * declare function generateAttachmentId(): AttachmentId;
- * declare function createAttachmentId(id: string): AttachmentId; // バリデーション含む想定
+ * // 既存のUUID文字列から AttachmentId を作成
+ * const existingId: AttachmentId = createAttachmentId('yz012345-e89b-12d3-a456-426614174000');
  *
- * const attachmentId1: AttachmentId = generateAttachmentId();
- * const attachmentId2: AttachmentId = createAttachmentId('yz012345-e89b-12d3-a456-426614174000');
+ * // UUID形式でない場合はエラー
+ * // const invalidId = createAttachmentId('invalid-uuid'); // -> Error
  *
- * function getAttachment(id: AttachmentId) {
- *   // ... AttachmentId を使って添付ファイル情報を取得する処理 ...
- *   console.log('Fetching attachment with ID:', id);
- * }
- *
- * getAttachment(attachmentId1);
- *
- * // 型安全性の例: 他のID型とは互換性がない
- * import { ProjectId } from '@/domain/models/project/project-id.vo';
- * declare const projectId: ProjectId;
- * // getAttachment(projectId); // -> Compile Error!
- * ```
+ * console.log(newId);
+ * console.log(existingId);
  */
 export type AttachmentId = Brand<Identifier, 'AttachmentId'>;

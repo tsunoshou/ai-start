@@ -1383,3 +1383,14 @@ shared/utils/
     -   (必要に応じて `axios` ラッパーも提供)
 
 > **参照**: 具体的な実装例については「code_examples/06_utility_functions_examples.md」の「共通ネットワークユーティリティ」セクションを参照してください。
+
+### 識別子 (Identifier) 関連 (`shared/utils/identifier.utils.ts`)
+
+- **`generateIdentifier<T extends Identifier>(): T`**
+  - **機能**: 新しい一意な識別子 (UUID v4) を生成し、指定されたブランド型 `T` として返します。
+  - **使用例**: `const newUserId = generateIdentifier<UserId>();`
+
+- **`createIdentifier<T extends Identifier>(id: string): T`**
+  - **機能**: 文字列 `id` が有効な UUID v4 形式であるかを検証し、問題なければ指定されたブランド型 `T` として返します。
+  - **エラー**: `id` が無効な形式の場合、エラーをスローします。
+  - **使用例**: `const userId = createIdentifier<UserId>('valid-uuid-string');`

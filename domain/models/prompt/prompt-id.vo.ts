@@ -1,47 +1,53 @@
 /**
  * @file プロンプトIDを表す値オブジェクトの型定義
  * @description `Identifier` 型を基にしたブランド型として PromptId を定義します。
+ * プロンプトテンプレートエンティティを一意に識別するための UUID 形式のIDです。
+ * 詳細は docs/05_type_definitions.md を参照。
  *
  * @author tsunoshou
- * @date 2024-03-29
+ * @date 2025-04-05
  * @version 1.0.0
  */
 
 import { Identifier } from '@/shared/types/common.types';
 import { Brand } from '@/shared/types/utility.types';
+import { createIdentifier, generateIdentifier } from '@/shared/utils/identifier.utils';
 
 /**
- * AIプロンプトテンプレートの一意な識別子を表す型。
- * UUID形式の文字列を基にしたブランド型です。
- * データベース上の `prompts` テーブルなどの主キーに対応することを想定しています。
- *
- * @typedef {Brand<Identifier, 'PromptId'>} PromptId
- * @see {@link Identifier} - ベースとなる識別子の型定義
- * @see {@link Brand} - 型安全性を高めるためのユーティリティ型
+ * プロンプトIDを表すブランド型。
+ * UUID v4 形式の文字列として表現されます。
  *
  * @example
- * ```typescript
- * import { PromptId } from '@/domain/models/prompt/prompt-id.vo';
- * import { Identifier } from '@/shared/types/common.types';
+ * import { PromptId, generatePromptId, createPromptId } from '@/domain/models/prompt/prompt-id.vo';
  *
- * // IDを安全に生成または変換する関数 (別途定義・実装が必要)
- * declare function generatePromptId(): PromptId;
- * declare function createPromptId(id: string): PromptId; // バリデーション含む想定
+ * // 新しい PromptId を生成
+ * const newId: PromptId = generatePromptId();
  *
- * const promptId1: PromptId = generatePromptId();
- * const promptId2: PromptId = createPromptId('def45678-e89b-12d3-a456-426614174000');
+ * // 既存のUUID文字列から PromptId を作成
+ * const existingId: PromptId = createPromptId('abc12345-e89b-12d3-a456-426614174003');
  *
- * function getPrompt(id: PromptId) {
- *   // ... PromptId を使ってプロンプトテンプレートを取得する処理 ...
- *   console.log('Fetching prompt with ID:', id);
- * }
+ * // UUID形式でない場合はエラー
+ * // const invalidId = createPromptId('invalid-uuid'); // -> Error
  *
- * getPrompt(promptId1);
+ * console.log(newId);
+ * console.log(existingId);
  *
- * // 型安全性の例: 他のID型とは互換性がない
- * import { ProjectId } from '@/domain/models/project/project-id.vo';
- * declare const projectId: ProjectId;
- * // getPrompt(projectId); // -> Compile Error!
- * ```
+ * @see {@link Identifier}
+ * @see {@link Brand}
  */
 export type PromptId = Brand<Identifier, 'PromptId'>;
+
+/**
+ * 新しい PromptId を生成します。
+ * @returns {PromptId} 新しく生成されたプロンプトID。
+ */
+export const generatePromptId = (): PromptId => generateIdentifier<PromptId>();
+
+/**
+ * 既存の識別子文字列から PromptId を作成します。
+ * UUID v4 形式である必要があります。
+ * @param {string} id - プロンプトIDとして使用するUUID文字列。
+ * @returns {PromptId} 作成されたプロンプトID。
+ * @throws {Error} UUID v4 形式でない場合にエラーをスローします。
+ */
+export const createPromptId = (id: string): PromptId => createIdentifier<PromptId>(id);
