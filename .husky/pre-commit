@@ -1,3 +1,10 @@
 #!/usr/bin/env sh
 
+# TypeScript型チェックを実行
+npm run type-check || exit 1
+
+# ユニットテストを実行（テスト失敗時は中断）
+npm run test:unit || exit 1
+
+# ステージングされたファイルに対してlintと整形を実行
 npx lint-staged

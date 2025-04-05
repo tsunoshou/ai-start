@@ -19,4 +19,8 @@ coverage/
 jest.setup.js
 
 # Supabase
-supabase/ 
+supabase/
+
+# Storybook
+.storybook/
+stories/ 
