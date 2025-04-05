@@ -64,6 +64,20 @@ Prettierを使用して以下のフォーマットを自動適用します：
 
 詳細な設定例は[code_examples/04_implementation_rules_examples.md](code_examples/04_implementation_rules_examples.md)を参照してください。
 
+### Enum 定義ルール (新規)
+
+- **Enum 名:** PascalCase で定義します。
+  - 例: `UserRole`, `ProgramStatus`
+- **メンバー名:** PascalCase で定義します。これは ESLint ルール (`@typescript-eslint/naming-convention` の `enumMember`) によって強制されます。
+  - 例: `Admin`, `Public`, `Initial`
+- **値:** 文字列リテラルを使用し、通常は `UPPER_SNAKE_CASE` で定義します。
+  - 例: `Admin = 'ADMIN'`, `Public = 'PUBLIC'`
+  - **例外:** 外部の仕様や標準（例: API のレスポンス、ISO コード）に合わせる必要がある場合は、その形式に従います。コメントで理由を明記してください。
+    - 例 (`AIModelType`): `Gpt4o = 'gpt-4o'` // OpenAI API のモデル名に合わせる
+    - 例 (`SupportedLanguage`): `Ja = 'ja'` // ISO 639-1 言語コード
+- **ファイル名:** ドメインに関連する場合は `domain/models/{domain}/{enum-name}.enum.ts`、共有の場合は `shared/enums/{enum-name}.enum.ts` という形式で、kebab-case を使用します。
+- **JSDoc:** Enum 自体とその各メンバーに、目的や意味を説明する JSDoc コメントを必ず付与します。`@enum`, `@property` タグを使用します。
+
 ### 国際化（i18n）実装ルール
 
 国際化機能の実装には、以下のルールを適用します。
@@ -309,14 +323,14 @@ function BidiText({ text, baseDirection = 'auto' }) {
 | APIルート | route.ts | route.ts (app/api/users/route.ts) |
 | ユーティリティ | kebab-case.ts | format-date.ts, string-utils.ts |
 | | | またはディレクトリ + index.ts (例: date-utils/) |
-| 型定義 | kebab-case.ts | user-types.ts, api-types.ts (types/フォルダ内) |
-| エンティティ | PascalCase.ts | User.ts, Program.ts |
-| 値オブジェクト | camelCase.ts | ids.ts, email.ts |
-| リポジトリインターフェース | PascalCaseRepository.ts | UserRepository.ts |
-| リポジトリ実装 | {Infrastructure}PascalCaseRepository.ts | SupabaseUserRepository.ts, PostgresProjectRepository.ts |
-| ユースケース | PascalCaseUsecase.ts | CreateProjectUsecase.ts |
-| DTOクラス | PascalCaseDTO.ts | UserDTO.ts, ProjectDTO.ts |
-| マッパー | PascalCaseMapper.ts | UserMapper.ts, ProjectMapper.ts |
+| 型定義 | kebab-case.ts | user-types.ts, api-types.ts (shared/types/ 内) |
+| エンティティ | {ドメイン名}.entity.ts | user.entity.ts, program.entity.ts (domain/models/{ドメイン名}/ 内) |
+| 値オブジェクト | {値オブジェクト名}.vo.ts (kebab-case) | user-id.vo.ts, email.vo.ts (domain/models/{ドメイン名}/ 内) |
+| リポジトリインターフェース | PascalCaseRepository.ts | UserRepository.ts (domain/repositories/ 内 または domain/models/{ドメイン名}/ 内) |
+| リポジトリ実装 | {Infrastructure}PascalCaseRepository.ts | SupabaseUserRepository.ts (infrastructure/database/repositories/ 内) |
+| ユースケース | PascalCaseUsecase.ts | CreateProjectUsecase.ts (application/usecases/ 内) |
+| DTOクラス | PascalCaseDTO.ts | UserDTO.ts, ProjectDTO.ts (application/dtos/ 内) |
+| マッパー | PascalCaseMapper.ts | UserMapper.ts, ProjectMapper.ts (infrastructure/mappers/ 内) |
 | QueryObject/ReadModel | PascalCaseQuery.ts / PascalCaseReadModel.ts | UserProjectsQuery.ts, ActiveUsersReadModel.ts |
 | テストファイル | {対象ファイル名}.test.ts | User.test.ts, formatDate.test.ts |
 | 定数ファイル | camelCase.ts | appConstants.ts, errorCodes.ts |
