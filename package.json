@@ -37,7 +37,6 @@
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "tsc --noEmit --skipLibCheck",
       "eslint --fix",
       "prettier --write"
     ],
