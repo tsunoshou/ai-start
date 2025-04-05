@@ -6,4 +6,3 @@
 
 // export * from './users'; // Removed users export
 export * from './users.schema';
-export * from './simple_test';

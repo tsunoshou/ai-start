@@ -6,10 +6,7 @@ import { timestamp, uuid } from 'drizzle-orm/pg-core';
  * Uses PostgreSQL's uuid_generate_v4() function for default value.
  */
 export const idColumn = {
-  id: uuid('id')
-    .primaryKey()
-    .default(sql`uuid_generate_v4()`) // Assumes uuid-ossp extension is enabled
-    .notNull(),
+  id: uuid('id').primaryKey().defaultRandom().notNull(),
 };
 
 /**
