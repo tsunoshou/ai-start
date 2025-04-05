@@ -1,18 +1,18 @@
 import { validate as uuidValidate } from 'uuid';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { BaseError } from '@/shared/errors/base.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
 import * as DateTimeStringModule from '@/shared/value-objects/date-time-string.vo';
 import { Email } from '@/shared/value-objects/email.vo';
+import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
 
 import { UserId } from '../user-id.vo';
+import { UserName } from '../user-name.vo';
 import { User } from '../user.entity';
 
 describe('User Entity', () => {
   let validEmail: Email;
-  const validName = 'Test User';
-  const validPasswordHash = 'hashedPassword123';
+  let validName: UserName;
+  let validPasswordHash: PasswordHash;
   let fixedNow: DateTimeStringModule.DateTimeString;
   let nowSpy: ReturnType<typeof vi.spyOn>;
 
@@ -31,6 +31,14 @@ describe('User Entity', () => {
     const emailResult = Email.create('test@example.com');
     if (emailResult.isErr()) throw new Error('Setup failed: Invalid Email');
     validEmail = emailResult.value;
+
+    const nameResult = UserName.create('Test User');
+    if (nameResult.isErr()) throw new Error('Setup failed: Invalid UserName');
+    validName = nameResult.value;
+
+    const hashResult = PasswordHash.create('hashedPassword123');
+    if (hashResult.isErr()) throw new Error('Setup failed: Invalid PasswordHash');
+    validPasswordHash = hashResult.value;
   });
 
   afterEach(() => {
@@ -59,64 +67,15 @@ describe('User Entity', () => {
       expect(user.updatedAt).toEqual(fixedNow);
     });
 
-    it('should trim the name property', () => {
-      const props = {
-        email: validEmail,
-        name: '  Test User  ',
-        passwordHash: validPasswordHash,
-      };
-      const result = User.create(props);
-      expect(result.isOk()).toBe(true);
-      const user = result._unsafeUnwrap();
-      expect(user.name).toBe('Test User');
-    });
+    // Remove tests for empty name/passwordHash, as User.create now expects valid VOs
+    // These validation scenarios should be tested in UserName.test.ts and PasswordHash.test.ts
+    // it('should return an error if name is empty', () => { ... });
+    // it('should return an error if name consists only of whitespace', () => { ... });
+    // it('should return an error if passwordHash is empty', () => { ... });
 
-    it('should return an error if name is empty', () => {
-      const props = {
-        email: validEmail,
-        name: '',
-        passwordHash: validPasswordHash,
-      };
-      const result = User.create(props);
-
-      expect(result.isErr()).toBe(true);
-      const error = result._unsafeUnwrapErr();
-      expect(error).toBeInstanceOf(BaseError);
-      expect(error.code).toBe(ErrorCode.ValidationError);
-      expect(error.message).toContain('User name cannot be empty');
-    });
-
-    it('should return an error if name consists only of whitespace', () => {
-      const props = {
-        email: validEmail,
-        name: '   ',
-        passwordHash: validPasswordHash,
-      };
-      const result = User.create(props);
-
-      expect(result.isErr()).toBe(true);
-      const error = result._unsafeUnwrapErr();
-      expect(error).toBeInstanceOf(BaseError);
-      expect(error.code).toBe(ErrorCode.ValidationError);
-      expect(error.message).toContain('User name cannot be empty');
-    });
-
-    it('should return an error if passwordHash is empty', () => {
-      const props = {
-        email: validEmail,
-        name: validName,
-        passwordHash: '',
-      };
-      const result = User.create(props);
-
-      expect(result.isErr()).toBe(true);
-      const error = result._unsafeUnwrapErr();
-      expect(error).toBeInstanceOf(BaseError);
-      expect(error.code).toBe(ErrorCode.ValidationError);
-      expect(error.message).toContain('Password hash cannot be empty');
-    });
-
-    // Add tests for invalid email if Email.create were part of User.create logic
+    // Test for trimming is implicitly covered by UserName VO tests if UserName.create handles trimming.
+    // We don't need to test it again at the User entity level.
+    // it('should trim the name property', () => { ... });
   });
 
   describe('reconstruct static method', () => {
@@ -150,29 +109,39 @@ describe('User Entity', () => {
   });
 
   describe('equals method', () => {
-    const props1 = { email: validEmail, name: 'User One', passwordHash: 'hash1' };
-    const user1Result = User.create(props1);
-    if (user1Result.isErr()) throw new Error('Setup failed for user1');
-    const user1 = user1Result.value;
+    let user1: User;
+    let user1SameId: User;
+    let user3: User;
 
-    // Manually create a second user with the SAME ID as user1 for testing equals
-    const user1SameId = User.reconstruct({
-      id: user1.id, // Same ID
-      email: Email.create('another@example.com')._unsafeUnwrap(),
-      name: 'User Two',
-      passwordHash: 'hash2',
-      createdAt: fixedNow,
-      updatedAt: fixedNow,
+    // Setup users within this describe block as User.create signature changed
+    beforeEach(() => {
+      const props1 = { email: validEmail, name: validName, passwordHash: validPasswordHash };
+      const user1Result = User.create(props1);
+      if (user1Result.isErr()) throw new Error('Setup failed for user1');
+      user1 = user1Result.value;
+
+      // Prepare VOs for other users
+      const email2 = Email.create('another@example.com')._unsafeUnwrap();
+      const name2 = UserName.create('User Two')._unsafeUnwrap();
+      const hash2 = PasswordHash.create('hash2')._unsafeUnwrap();
+      const email3 = Email.create('user3@example.com')._unsafeUnwrap();
+      const name3 = UserName.create('User Three')._unsafeUnwrap();
+      const hash3 = PasswordHash.create('hash3')._unsafeUnwrap();
+
+      user1SameId = User.reconstruct({
+        id: user1.id, // Same ID
+        email: email2,
+        name: name2,
+        passwordHash: hash2,
+        createdAt: fixedNow,
+        updatedAt: fixedNow,
+      });
+
+      const props3 = { email: email3, name: name3, passwordHash: hash3 };
+      const user3Result = User.create(props3);
+      if (user3Result.isErr()) throw new Error('Setup failed for user3');
+      user3 = user3Result.value;
     });
-
-    const props3 = {
-      email: Email.create('user3@example.com')._unsafeUnwrap(),
-      name: 'User Three',
-      passwordHash: 'hash3',
-    };
-    const user3Result = User.create(props3);
-    if (user3Result.isErr()) throw new Error('Setup failed for user3');
-    const user3 = user3Result.value;
 
     it('should return true for the same User instance', () => {
       expect(user1.equals(user1)).toBe(true);
@@ -187,24 +156,11 @@ describe('User Entity', () => {
     });
 
     it('should return false when comparing with null', () => {
-      // @ts-expect-error Testing comparison with null which expects a different type
       expect(user1.equals(null)).toBe(false);
     });
 
     it('should return false when comparing with undefined', () => {
-      // @ts-expect-error Testing comparison with undefined which expects a different type
       expect(user1.equals(undefined)).toBe(false);
     });
-
-    // Although EntityBase interface doesn't prevent comparison with other Entity types,
-    // the equals method in BaseId (used by UserId.equals) checks constructor type.
-    // If we implement equals directly in User, this test might be needed.
-    // For now, UserId.equals handles the type check.
-    // it('should return false when comparing with an object of a different entity type', () => {
-    //   // Mock another entity type
-    //   class MockEntity implements EntityBase { /* ... */ }
-    //   const mockEntity = new MockEntity(/* ... */);
-    //   expect(user1.equals(mockEntity as any)).toBe(false);
-    // });
   });
 });

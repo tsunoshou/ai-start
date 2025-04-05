@@ -1,6 +1,6 @@
 # 共通型定義・DB型定義
 
-最終更新日: 2025-04-03
+最終更新日: 2025-04-05
 
 ## 本ドキュメントの目的と位置づけ
 
@@ -389,6 +389,7 @@ interface EntityMapper<Entity, Dto> {
 - DateOnly - 日付のみを表す型（YYYY-MM-DD形式）
 - Email - メールアドレスを表すブランド型
 - Money - 金額と通貨を表す複合型
+- PasswordHash - パスワードハッシュを表す値オブジェクト
 - TimeStampFields - 作成日時と更新日時のフィールドを含む型
 - EntityBase - 全エンティティの基底となる型
 
@@ -2087,3 +2088,28 @@ interface VideoPlaylist {
 ```
 
 // ... existing code ...
+
+// 値オブジェクト例（UserName）
+class UserName {
+  private readonly value: string;
+
+  constructor(name: string) {
+    // ここでは簡易的なバリデーションのみ記載。
+    // 実際のコードではZodなどを使用してより詳細なバリデーションを行う。
+    if (!name || name.length > 50) { 
+      throw new Error('Invalid user name');
+    }
+    this.value = name;
+  }
+
+  toString(): string {
+    return this.value;
+  }
+
+  equals(other: UserName): boolean {
+    return this.value === other.value;
+  }
+}
+
+// 型エイリアス例
+type Email = string;
