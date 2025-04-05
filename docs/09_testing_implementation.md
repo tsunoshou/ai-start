@@ -6,11 +6,14 @@
 
 ## テストファイルの配置場所
 
-テストコードの場所は、プロジェクトの一貫性とメンテナンス性に影響します。以下の配置方針を推奨します。
+テストコードの場所は、プロジェクトの一貫性とメンテナンス性に影響します。以下の配置方針を**採用**します。
 
 ### ユニットテスト/統合テスト (Vitest, React Testing Library)
 
-- **コンポーネントテスト**: `presentation/components` 内の各コンポーネントディレクトリに `__tests__` フォルダを作成し、その中にテストファイル（例: `Button.test.tsx`）を配置します。
+- **原則**: テスト対象となるソースファイルと同じディレクトリ内に `__tests__` サブディレクトリを作成し、その中にテストファイルを配置します。
+- **ファイル名**: テストファイルのサフィックスは `.test.ts` (または `.test.tsx`) を使用します。
+
+- **例 (コンポーネントテスト)**:
   ```
   presentation/
   └── components/
@@ -20,21 +23,30 @@
               └── __tests__/
                   └── Button.test.tsx
   ```
-- **その他 (ドメイン、アプリケーション、インフラ層のテスト)**: `tests/unit/` および `tests/integration/` ディレクトリ内に、テスト対象のモジュール構造を反映した形でテストファイルを配置します。
+- **例 (その他 - ドメイン、アプリケーション、インフラ層のテスト)**:
   ```
-  tests/
-  ├── unit/
-  │   ├── domain/
-  │   │   └── models/
-  │   │       └── User.test.ts
-  │   └── application/
-  │       └── usecases/
-  │           └── AuthUsecase.test.ts
-  └── integration/
-      └── infrastructure/
-          └── database/
-              └── repositories/
-                  └── UserRepository.int.test.ts
+  domain/
+  └── models/
+      └── user/
+          ├── user.entity.ts
+          └── __tests__/
+              └── user.entity.test.ts
+
+  application/
+  └── usecases/
+      ├── auth/
+      │   ├── auth.usecase.ts
+      │   └── __tests__/
+      │       └── auth.usecase.test.ts
+      └── project/
+          └── ...
+
+  infrastructure/
+  └── database/
+      └── repositories/
+          ├── user.repository.ts
+          └── __tests__/
+              └── user.repository.integration.test.ts
   ```
 
 ### E2Eテスト (Playwright)
