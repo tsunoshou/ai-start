@@ -62,11 +62,12 @@ export class DateTimeString {
     if (!DateTimeString.iso8601Regex.test(value)) {
       return false;
     }
-    // Dateオブジェクトでのパース可否チェック (より確実)
+    // Dateオブジェクトでのパース可否チェック
     try {
       const date = new Date(value);
-      // getTime() が NaN でないこと、toISOString() で元に戻ることを確認
-      return !isNaN(date.getTime()) && date.toISOString() === value;
+      // getTime() が NaN でないことのみを確認する (toISOString()との比較は削除)
+      // オフセット付き文字列も Date オブジェクトに変換できれば有効とみなす
+      return !isNaN(date.getTime());
     } catch (e) {
       return false;
     }
@@ -76,10 +77,15 @@ export class DateTimeString {
    * DateTimeStringインスタンスを生成するための静的ファクトリメソッド。
    * 入力文字列のバリデーションを行い、成功すれば Result.Ok を、失敗すれば Result.Err を返します。
    *
-   * @param {string} value - ISO 8601形式の日時文字列。
+   * @param {unknown} value - ISO 8601形式の可能性がある入力値。
    * @returns {Result<DateTimeString, Error>} 生成結果。
    */
-  public static create(value: string): Result<DateTimeString, Error> {
+  public static create(value: unknown): Result<DateTimeString, Error> {
+    // 型ガード: 文字列以外はエラー
+    if (typeof value !== 'string') {
+      return err(new Error('Input must be a string.'));
+    }
+
     const trimmedValue = value.trim();
     if (!DateTimeString.isValid(trimmedValue)) {
       return err(new Error(`Invalid ISO 8601 DateTime format: ${value}`));
