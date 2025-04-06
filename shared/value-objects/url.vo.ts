@@ -55,15 +55,33 @@ export class Url {
     }
     try {
       const url = new URL(value);
+      // console.log(`[Url.validate] Input: ${value}, Parsed hostname: '${url.hostname}', Parsed pathname: '${url.pathname}'`); // Detailed Debug log
+
       // http または https プロトコルのみを許可
       if (url.protocol !== 'http:' && url.protocol !== 'https:') {
         return err(
           new Error(`Invalid URL protocol: ${url.protocol}. Only http: or https: are allowed.`)
         );
       }
+      // ホスト名が空でないことを確認
+      if (!url.hostname) {
+        return err(new Error(`Invalid URL format: Missing hostname for ${value}`));
+      }
+
+      // 追加チェック: // が hostname の前に存在するか（より簡易的な形式チェック）
+      const protocolSeparatorIndex = value.indexOf('://');
+      const hostnameIndex = value.indexOf(url.hostname);
+      if (
+        protocolSeparatorIndex === -1 ||
+        hostnameIndex === -1 ||
+        protocolSeparatorIndex + 3 > hostnameIndex
+      ) {
+        return err(new Error(`Invalid URL structure for ${value}`));
+      }
+
       return ok(url);
     } catch (e) {
-      // URL कंストラクタがエラーを投げた場合 (形式が無効)
+      // URL コンストラクタがエラーを投げた場合 (形式が無効)
       if (e instanceof TypeError) {
         return err(new Error(`Invalid URL format: ${value}`));
       }
@@ -76,10 +94,15 @@ export class Url {
    * Urlインスタンスを生成するための静的ファクトリメソッド。
    * 入力文字列のバリデーションを行い、成功すれば Result.Ok を、失敗すれば Result.Err を返します。
    *
-   * @param {string} value - URL文字列。
+   * @param {unknown} value - URL文字列の可能性がある入力値。
    * @returns {Result<Url, Error>} 生成結果。
    */
-  public static create(value: string): Result<Url, Error> {
+  public static create(value: unknown): Result<Url, Error> {
+    // 型ガード: 文字列以外はエラー
+    if (typeof value !== 'string') {
+      return err(new Error('Input must be a string.'));
+    }
+
     const trimmedValue = value.trim();
     const validationResult = Url.validate(trimmedValue);
 
