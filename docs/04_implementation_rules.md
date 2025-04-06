@@ -326,21 +326,21 @@ function BidiText({ text, baseDirection = 'auto' }) {
 | 型定義 | kebab-case.ts | user-types.ts, api-types.ts (shared/types/ 内) |
 | エンティティ | {ドメイン名}.entity.ts | user.entity.ts, program.entity.ts (domain/models/{ドメイン名}/ 内) |
 | 値オブジェクト | {値オブジェクト名}.vo.ts (kebab-case) | user-id.vo.ts, email.vo.ts (domain/models/{ドメイン名}/ 内) |
-| リポジトリインターフェース | PascalCaseRepository.ts | UserRepository.ts (domain/repositories/ 内 または domain/models/{ドメイン名}/ 内) |
-| リポジトリ実装 | {Infrastructure}PascalCaseRepository.ts | SupabaseUserRepository.ts (infrastructure/database/repositories/ 内) |
-| ユースケース | PascalCaseUsecase.ts | CreateProjectUsecase.ts (application/usecases/ 内) |
-| DTOクラス | PascalCaseDTO.ts | UserDTO.ts, ProjectDTO.ts (application/dtos/ 内) |
-| マッパー | PascalCaseMapper.ts | UserMapper.ts, ProjectMapper.ts (infrastructure/mappers/ 内) |
-| QueryObject/ReadModel | PascalCaseQuery.ts / PascalCaseReadModel.ts | UserProjectsQuery.ts, ActiveUsersReadModel.ts |
-| テストファイル | {対象ファイル名}.test.ts | User.test.ts, formatDate.test.ts |
+| リポジトリインターフェース | kebab-case.repository.interface.ts | user.repository.interface.ts (domain/repositories/ 内) |
+| リポジトリ実装 | kebab-case.repository.ts | user.repository.ts (infrastructure/database/repositories/ 内) |
+| ユースケース | kebab-case.usecase.ts | create-user.usecase.ts (application/usecases/ 内) |
+| DTO | kebab-case.dto.ts | user.dto.ts (application/dtos/ 内) |
+| マッパー | kebab-case.mapper.ts | user.mapper.ts (infrastructure/mappers/ 内) |
+| QueryObject/ReadModel | kebab-case.query.ts / kebab-case.read-model.ts | user-projects.query.ts, active-users.read-model.ts |
+| テストファイル | {対象ファイル名}.test.ts | user.entity.test.ts, format-date.test.ts |
 | 定数ファイル | camelCase.ts | appConstants.ts, errorCodes.ts |
-| カスタムフック | use{名詞}.ts | useAuth.ts, useFormValidation.ts |
+| カスタムフック | use{名詞}.ts (kebab-case も可) | use-auth.ts, use-form-validation.ts |
 | 言語リソースファイル | {言語コード}.json | en.json, ja.json |
-| 翻訳ユーティリティ | i18n{機能}.ts | i18nConfig.ts, i18nUtils.ts |
-| 事例データモデル | {モデル}Entity.ts, {モデル}DTO.ts | CaseStudyEntity.ts, AnalysisResultDTO.ts |
-| 分析アルゴリズム | {機能}Algorithm.ts | SimilarityAlgorithm.ts, RiskEvaluationAlgorithm.ts |
-| DIコンテナ設定 | container.ts / {module}.container.ts | container.ts, auth.container.ts (config/ 内) |
-| 状態管理Context | PascalCaseContext.tsx | AuthContext.tsx, ThemeContext.tsx |
+| 翻訳ユーティリティ | i18n-{機能}.ts | i18n-config.ts, i18n-utils.ts |
+| 事例データモデル | {モデル}.entity.ts, {モデル}.dto.ts | case-study.entity.ts, analysis-result.dto.ts |
+| 分析アルゴリズム | {機能}.algorithm.ts | similarity.algorithm.ts, risk-evaluation.algorithm.ts |
+| DIコンテナ設定 | container.config.ts | container.config.ts (config/ 内) |
+| 状態管理Context | {コンテキスト名}.context.tsx (kebab-case) | auth.context.tsx, theme.context.tsx |
 
 ### ディレクトリ命名規則
 
