@@ -8,6 +8,11 @@ import { UserId } from '@/domain/models/user/user-id.vo'; // ID Value Object
 import { UserName } from '@/domain/models/user/user-name.vo'; // UserName Value Object
 import { User } from '@/domain/models/user/user.entity'; // ドメインエンティティ
 import { UserRepositoryInterface } from '@/domain/repositories/user.repository.interface'; // リポジトリインターフェース
+import {
+  findRecordById,
+  saveRecord,
+  deleteRecordById,
+} from '@/infrastructure/database/helpers/crud.helpers';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error'; // エラー型
 import * as DateTimeStringModule from '@/shared/value-objects/date-time-string.vo'; // DateTimeString Value Object
 import { Email } from '@/shared/value-objects/email.vo'; // Email Value Object
@@ -20,6 +25,8 @@ import { BaseRepository } from './base.repository'; // 継承元クラス
 // Drizzle schema selection/insertion types (adjust if schema file exports these)
 type UserDbSelect = typeof users.$inferSelect;
 type UserDbInsert = typeof users.$inferInsert;
+
+// Import the CRUD helpers
 
 /**
  * @class UserRepository
@@ -173,39 +180,40 @@ export class UserRepository
   // No need to re-implement unless specific overrides are needed for User.
 
   async findById(id: UserId): Promise<Result<User | null, InfrastructureError>> {
-    try {
-      const [record] = await this.db
-        .select()
-        .from(this.schema)
-        .where(eq(this.idColumn, id.value))
-        .limit(1);
+    // Call helper function
+    const findResult = await findRecordById<UserDbSelect>(
+      this.db,
+      this.schema,
+      this.idColumn,
+      id.value
+    );
 
-      if (!record) {
-        return ok(null);
-      }
-      try {
-        // Use _toDomain for mapping. _toDomain now handles VO creation and reconstruction.
-        const user = this._toDomain(record);
-        return ok(user);
-      } catch (mappingError) {
-        console.error(`[UserRepository] Error mapping record for ID ${id.value}:`, mappingError);
-        if (mappingError instanceof InfrastructureError) {
-          return err(mappingError);
-        }
-        // Wrap other errors as InfrastructureError
-        return err(
-          new InfrastructureError(
-            `[UserRepository] Failed to process record found for ID ${id.value}`,
-            { cause: mappingError }
-          )
-        );
-      }
-    } catch (error) {
-      console.error(`[UserRepository] Database error finding user by id ${id.value}:`, error);
+    if (findResult.isErr()) {
+      // Wrap generic Error into InfrastructureError
       return err(
-        new InfrastructureError(`[UserRepository] Failed to find user by id ${id.value}`, {
-          cause: error,
+        new InfrastructureError(`Failed to find user by id ${id.value}`, {
+          cause: findResult.error,
         })
+      );
+    }
+
+    const record = findResult.value;
+    if (!record) {
+      return ok(null); // Not found is not an error in this context
+    }
+
+    // Map record to domain entity
+    try {
+      const user = this._toDomain(record);
+      return ok(user);
+    } catch (mappingError) {
+      // Handle mapping errors (which might throw InfrastructureError directly)
+      console.error(`[UserRepository] Error mapping record for ID ${id.value}:`, mappingError);
+      if (mappingError instanceof InfrastructureError) {
+        return err(mappingError);
+      }
+      return err(
+        new InfrastructureError(`Mapping failed for user ${id.value}`, { cause: mappingError })
       );
     }
   }
@@ -213,44 +221,53 @@ export class UserRepository
   async save(entity: User): Promise<Result<void, InfrastructureError>> {
     try {
       const persistenceData = this._toPersistence(entity);
-      await this.db.insert(this.schema).values(persistenceData).onConflictDoUpdate({
-        target: this.idColumn,
-        set: persistenceData,
-      });
-      return ok(undefined);
-    } catch (error) {
-      console.error(`[UserRepository] Database error saving user ${entity.id.value}:`, error);
+      // Call helper function
+      const saveResult = await saveRecord(this.db, this.schema, this.idColumn, persistenceData);
+
+      if (saveResult.isErr()) {
+        // Wrap generic Error into InfrastructureError
+        return err(
+          new InfrastructureError(`Failed to save user ${entity.id.value}`, {
+            cause: saveResult.error,
+          })
+        );
+      }
+
+      return ok(undefined); // Success
+    } catch (mappingError) {
+      // Catch potential errors from _toPersistence
+      console.error(
+        `[UserRepository] Error during _toPersistence for user ${entity.id.value}:`,
+        mappingError
+      );
       return err(
-        new InfrastructureError(`[UserRepository] Failed to save user ${entity.id.value}`, {
-          cause: error,
+        new InfrastructureError(`Failed to prepare user data for saving: ${entity.id.value}`, {
+          cause: mappingError,
         })
       );
     }
   }
 
   async delete(id: UserId): Promise<Result<void, InfrastructureError>> {
-    try {
-      const result = await this.db
-        .delete(this.schema)
-        .where(eq(this.idColumn, id.value))
-        .returning({ id: this.idColumn });
-      // Check if any row was actually deleted
-      if (result.length === 0) {
-        console.warn(`[UserRepository] Attempted to delete non-existent user with id ${id.value}`);
-        // Return specific error if user not found, include type in message
-        // return err(new InfrastructureError(`User with id ${id.value} not found for deletion.`, { name: 'NOT_FOUND' }));
-        return err(
-          new InfrastructureError(`[NOT_FOUND] User with id ${id.value} not found for deletion.`)
-        );
-      }
-      return ok(undefined);
-    } catch (error) {
-      console.error(`[UserRepository] Database error deleting user ${id.value}:`, error);
+    // Call helper function
+    const deleteResult = await deleteRecordById(this.db, this.schema, this.idColumn, id.value);
+
+    if (deleteResult.isErr()) {
+      // Wrap generic Error into InfrastructureError
       return err(
-        new InfrastructureError(`[UserRepository] Failed to delete user ${id.value}`, {
-          cause: error,
-        })
+        new InfrastructureError(`Failed to delete user ${id.value}`, { cause: deleteResult.error })
       );
     }
+
+    const deletedCount = deleteResult.value;
+    if (deletedCount === 0) {
+      // User not found, return specific InfrastructureError
+      console.warn(`[UserRepository] Attempted to delete non-existent user with id ${id.value}`);
+      return err(
+        new InfrastructureError(`[NOT_FOUND] User with id ${id.value} not found for deletion.`)
+      );
+    }
+
+    return ok(undefined); // Success
   }
 }

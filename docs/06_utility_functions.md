@@ -1394,3 +1394,46 @@ shared/utils/
   - **機能**: 文字列 `id` が有効な UUID v4 形式であるかを検証し、問題なければ指定されたブランド型 `T` として返します。
   - **エラー**: `id` が無効な形式の場合、エラーをスローします。
   - **使用例**: `const userId = createIdentifier<UserId>('valid-uuid-string');`
+
+## データベース操作ヘルパー (`infrastructure/database/helpers/crud.helpers.ts`)
+
+基本的な CRUD 操作（IDによる検索、保存（UPSERT）、IDによる削除）をカプセル化し、リポジトリ実装におけるコードの重複を削減するためのヘルパー関数群です。Drizzle ORM の操作を直接ラップし、汎用的なインターフェースを提供します。
+
+### 設計原則
+- **単一責任:** 各ヘルパー関数は、特定の基本的な CRUD 操作のみを担当します。
+- **汎用性:** ジェネリクスを使用し、特定のテーブルスキーマに依存しません。
+- **エラーハンドリング:** Drizzle 操作時のエラーを捕捉し、`Result` 型で返却します。具体的な `InfrastructureError` への変換は呼び出し元（リポジトリ）の責務とします。
+
+### 提供される関数
+- `findRecordById<TSelect>(db, schema, idColumn, idValue)`: 指定された ID に基づいて単一のレコードを検索します。
+- `saveRecord<TInsert>(db, schema, idColumn, data)`: レコードを挿入または更新（UPSERT）します。ID 列は更新対象から除外されます。
+- `deleteRecordById(db, schema, idColumn, idValue)`: 指定された ID に基づいてレコードを削除し、削除された行数を返します。
+
+### 利用方法
+各リポジトリ実装（例: `UserRepository`）の `findById`, `save`, `delete` メソッド内で、これらのヘルパー関数を呼び出します。ヘルパー関数から返された `Result` を処理し、必要に応じてドメインエンティティへのマッピングや `InfrastructureError` への変換を行います。
+
+```typescript
+// UserRepository での findById 実装例
+async findById(id: UserId): Promise<Result<User | null, InfrastructureError>> {
+  const findResult = await findRecordById<UserDbSelect>(
+    this.db,
+    this.schema,
+    this.idColumn,
+    id.value
+  );
+  if (findResult.isErr()) {
+    return err(new InfrastructureError(/*...*/));
+  }
+  const record = findResult.value;
+  if (!record) return ok(null);
+  try {
+    return ok(this._toDomain(record));
+  } catch (mappingError) {
+    return err(new InfrastructureError(/*...*/));
+  }
+}
+```
+
+## その他のユーティリティ
+
+// ... rest of the document ...

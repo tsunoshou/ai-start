@@ -194,297 +194,150 @@ import { z } from 'zod';
     -   各レイヤーで発生したエラーは、適切なエラー型（`DomainError`, `ApplicationError`, `InfrastructureError`）のインスタンスとして生成し、`err()` でラップして返します。
     -   エラーの原因（`cause`）を可能な限り含め、スタックトレースを保持します。
 
+3.  **エラーの伝播と処理**:
+    -   呼び出し元（例: ユースケース層）は、リポジトリやサービスから返された `Result` を受け取り、`match` メソッドや `map`, `mapErr`, `asyncMap` などを使って適切に処理します。
+    -   UI層に返す前に、エラーは標準化されたエラーレスポンス形式に変換されます。
+
 ```typescript
     // 例: infrastructure/database/repositories/ProjectRepository.ts
+    // (注: 以下の例は BaseRepository + ヘルパー関数利用のパターンを反映するように修正)
     import { Result, ok, err } from 'neverthrow';
-    import { Project } from '@/domain/models/entities/Project';
-    import { IProjectRepository } from '@/domain/repositories/IProjectRepository';
-    import { PrismaClient } from '@prisma/client'; // 仮
+    import { Project } from '@/domain/models/entities/Project'; // 仮のパス
+    import { ProjectId } from '@/domain/models/value-objects/ProjectId'; // 仮のパス
+    import { IProjectRepository } from '@/domain/repositories/IProjectRepository'; // 仮のパス
+    import { PrismaClient } from '@prisma/client'; // Prismaの代わりにDrizzle想定だが例として残す
     import { InfrastructureError } from '@/shared/errors/InfrastructureError';
     import { inject, injectable } from 'tsyringe';
+    import { BaseRepository } from './base.repository'; // BaseRepository を継承
+    import { projects } from '../schema/projects.schema'; // 仮のスキーマパス
+    import { findRecordById, saveRecord, deleteRecordById } from '../helpers/crud.helpers'; // ヘルパー関数をインポート
+    import { PgColumn } from 'drizzle-orm/pg-core';
+
+    // 仮のDB型
+    type ProjectDbSelect = typeof projects.$inferSelect;
+    type ProjectDbInsert = typeof projects.$inferInsert;
 
     @injectable()
-    export class ProjectRepository implements IProjectRepository {
-      constructor(@inject(PrismaClient) private prisma: PrismaClient) {}
+    export class ProjectRepository
+      extends BaseRepository<ProjectId, Project, ProjectDbSelect, ProjectDbInsert, typeof projects>
+      implements IProjectRepository
+    {
+      // スキーマとIDカラムを定義 (BaseRepository の抽象プロパティ実装)
+      protected readonly schema = projects;
+      protected readonly idColumn: PgColumn = projects.id;
 
-      async findById(id: string): Promise<Result<Project | null, InfrastructureError>> {
+      constructor(@inject('Database') db: NodePgDatabase) { // Drizzle DB想定
+        super(db);
+      }
+
+      // マッピングメソッド (BaseRepository の抽象メソッド実装)
+      protected _toDomain(record: ProjectDbSelect): Project {
+          // DBレコードからドメインエンティティへのマッピングロジック
+          // Value Object の生成などを含む
+          // 例: return Project.reconstruct({...});
+          throw new Error('Method not implemented.'); // 要実装
+      }
+      protected _toPersistence(entity: Project): ProjectDbInsert {
+          // ドメインエンティティからDBレコード形式へのマッピングロジック
+          // Value Object からプリミティブ値への変換などを含む
+          // 例: return { id: entity.id.value, ... };
+          throw new Error('Method not implemented.'); // 要実装
+      }
+
+      // findById (BaseRepository の抽象メソッド実装、ヘルパー利用)
+      async findById(id: ProjectId): Promise<Result<Project | null, InfrastructureError>> {
+        const findResult = await findRecordById<ProjectDbSelect>(this.db, this.schema, this.idColumn, id.value);
+        if (findResult.isErr()) {
+            return err(new InfrastructureError(`Failed to find project by id: ${id.value}`, { cause: findResult.error }));
+        }
+        const record = findResult.value;
+        if (!record) return ok(null);
         try {
-          const data = await this.prisma.project.findUnique({ where: { id } });
-          if (!data) {
-            return ok(null);
-          }
-          // Mapperを使って Prisma データ -> ドメインモデル に変換 (Mapperは別途定義)
-          // const project = ProjectMapper.toDomain(data);
-          const project = new Project(data.id, data.userId, data.name, new Date(data.createdAt)); // 仮実装
-          return ok(project);
-        } catch (error) {
-          return err(new InfrastructureError(`Failed to find project by id: ${id}`, { cause: error }));
+            return ok(this._toDomain(record));
+        } catch (mappingError) {
+            return err(new InfrastructureError(`Mapping failed for project ${id.value}`, { cause: mappingError }));
         }
       }
 
-      async save(project: Project): Promise<Result<Project, InfrastructureError>> {
-        try {
-          const data = {
-             id: project.id,
-             userId: project.userId,
-             name: project.name,
-             createdAt: project.createdAt,
-             // ... 他の永続化データ (Mapper経由が望ましい)
-          };
-          const savedData = await this.prisma.project.upsert({
-             where: { id: project.id },
-             update: data,
-             create: data,
-          });
-          // const savedProject = ProjectMapper.toDomain(savedData);
-          const savedProject = new Project(savedData.id, savedData.userId, savedData.name, new Date(savedData.createdAt)); // 仮実装
-          return ok(savedProject);
-        } catch (error) {
-          return err(new InfrastructureError(`Failed to save project: ${project.id}`, { cause: error }));
-        }
-      }
-       // ... 他のリポジトリメソッド
-    }
-    ```
-
-3.  **エラーの伝播と処理**:
-    -   呼び出し元の関数は、`Result` オブジェクトの `isOk()`, `isErr()` で成功/失敗を判定します。
-    -   `match(okFn, errFn)` や `map(okFn)`, `mapErr(errFn)` を使って結果を処理・変換します。
-    -   アプリケーション層（ユースケース）では、下位レイヤー（インフラ層）からの `InfrastructureError` を受け取り、必要に応じて `ApplicationError` にマッピングして返すことがあります。
-    -   プレゼンテーション層（API Routes）では、最終的に `Result` を受け取り、成功時はデータを、失敗時は `handleApiError` ユーティリティなどを使って適切なHTTPレスポンスに変換します。
-
-```typescript
-    // 例: presentation/utils/handleApiError.ts
-    import { NextResponse } from 'next/server';
-    import { BaseError } from '@/shared/errors/BaseError';
-    import { DomainError } from '@/shared/errors/DomainError';
-    import { ApplicationError } from '@/shared/errors/ApplicationError';
-    import { InfrastructureError } from '@/shared/errors/InfrastructureError';
-    import { ValidationError } from '@/shared/errors/ValidationError';
-    import pino from 'pino'; // 例: ロガー
-
-    const logger = pino();
-
-    export function handleApiError(error: BaseError): NextResponse {
-      logger.error({ err: error, stack: error.stack }, error.message); // エラーログ出力
-
-      let statusCode = 500;
-      let responseBody: { error: string; code?: string; details?: any } = {
-        error: 'Internal Server Error',
-      };
-
-      if (error instanceof ValidationError) {
-        statusCode = 400; // Bad Request
-        responseBody = {
-          error: 'Validation Failed',
-          code: error.code,
-          details: error.details || error.message,
-        };
-      } else if (error instanceof DomainError) {
-        statusCode = 400; // Bad Request or 4xx depending on context
-        responseBody = { error: error.message, code: error.code };
-      } else if (error instanceof ApplicationError) {
-        // ApplicationErrorはより汎用的。causeによって判断が必要な場合も
-        statusCode = 500; // Or specific based on error code
-        responseBody = { error: error.message, code: error.code };
-      } else if (error instanceof InfrastructureError) {
-        statusCode = 503; // Service Unavailable or 500
-        responseBody = { error: 'Service Error', code: error.code };
-      }
-       // 他のエラータイプ（認証エラーなど）もここに追加
-
-      return NextResponse.json(responseBody, { status: statusCode });
-    }
-    ```
-
-### QueryObject / ReadModel
-
-[02_architecture_design.md](/docs/restructuring/02_architecture_design.md) および [05_type_definitions.md](/docs/restructuring/05_type_definitions.md) で定義された通り、読み取り専用のデータ取得にはQueryObjectパターンやReadModelを使用します。
-
-1.  **目的**: 書き込み操作とは独立した、UI表示やレポート生成に最適化されたデータ構造を取得する。CQRS (Command Query Responsibility Segregation) の原則に基づきます。
-2.  **実装場所**: 主に `infrastructure/database/` 配下に実装します。
-    -   `read-models/`: ReadModelのデータ構造定義と、それを生成するクエリロジックを配置。
-    -   `repositories/`: ReadModelを取得するための専用メソッドをリポジトリインターフェースに追加し、実装を提供する場合もあります。
-3.  **技術**:
-    -   Drizzle ORM の `select()` やビューを利用して、必要なカラムのみを結合・取得する効率的なクエリを構築します。
-    -   複雑な集計や読み取り専用のデータ変換ロジックをカプセル化します。
-4.  **データフロー**:
-    -   プレゼンテーション層 (例: サーバーコンポーネント) → アプリケーション層 (ユースケース、または専用のQueryService) → インフラストラクチャ層 (ReadModelクエリ実行) → データベース
-    -   取得されたReadModelは、ドメインモデルへのマッピングを経由せず、直接DTOとしてプレゼンテーション層に返されることが多いです。
-5.  **例 (概念)**:
-
-```typescript
-    // infrastructure/database/read-models/ProjectDashboardReadModel.ts
-    import { db } from '@/infrastructure/database/db'; // Drizzle instance
-    import { projects, users, steps } from '@/infrastructure/database/schema';
-    import { eq, count } from 'drizzle-orm';
-
-    export type ProjectDashboardItem = {
-      projectId: string;
-      projectName: string;
-      ownerName: string;
-      stepCount: number;
-      lastUpdatedAt: Date;
-    };
-
-    export async function getProjectDashboardItems(userId: string): Promise<ProjectDashboardItem[]> {
-       // Drizzleを使って複数テーブルを結合し、必要な情報だけを取得
-       const results = await db.select({
-           projectId: projects.id,
-           projectName: projects.name,
-           ownerName: users.name,
-           stepCount: count(steps.id),
-           lastUpdatedAt: projects.updatedAt, // 例
-         })
-         .from(projects)
-         .leftJoin(users, eq(projects.userId, users.id))
-         .leftJoin(steps, eq(projects.id, steps.projectId)) // プロジェクトIDでステップを結合
-         .where(eq(projects.userId, userId)) // 特定ユーザーのプロジェクト
-         .groupBy(projects.id, users.name)
-         .orderBy(projects.updatedAt); // 例: 更新日時順
-
-       // Drizzleの結果を ProjectDashboardItem 型に整形して返す
-       return results.map(r => ({
-           ...r,
-           lastUpdatedAt: new Date(r.lastUpdatedAt), // 日付型に変換など
-       }));
-    }
-
-    // application/queryservices/ProjectQueryService.ts (ユースケースとは別のサービスクラス)
-    import { getProjectDashboardItems, ProjectDashboardItem } from '@/infrastructure/database/read-models/ProjectDashboardReadModel';
-    import { Result, ok, err } from 'neverthrow';
-    import { ApplicationError } from '@/shared/errors/ApplicationError';
-    import { injectable } from 'tsyringe';
-
-    @injectable()
-    export class ProjectQueryService {
-        async getDashboard(userId: string): Promise<Result<ProjectDashboardItem[], ApplicationError>> {
-            try {
-                const items = await getProjectDashboardItems(userId);
-                return ok(items);
-    } catch (error) {
-                return err(new ApplicationError('Failed to fetch project dashboard', { cause: error }));
+      // save (BaseRepository の抽象メソッド実装、ヘルパー利用)
+      async save(project: Project): Promise<Result<void, InfrastructureError>> {
+          try {
+            const persistenceData = this._toPersistence(project);
+            const saveResult = await saveRecord(this.db, this.schema, this.idColumn, persistenceData);
+            if (saveResult.isErr()) {
+                return err(new InfrastructureError(`Failed to save project: ${project.id.value}`, { cause: saveResult.error }));
             }
-        }
-    }
-
-    // presentation/components/ProjectDashboard.server.tsx (サーバーコンポーネント)
-    import { container } from '@/infrastructure/di/container.config';
-    import { ProjectQueryService } from '@/application/queryservices/ProjectQueryService';
-    // ... 他のインポート
-
-    async function ProjectDashboard({ userId }: { userId: string }) {
-      const projectQueryService = container.resolve(ProjectQueryService);
-      const result = await projectQueryService.getDashboard(userId);
-
-      if (result.isErr()) {
-        // エラーハンドリング (UI)
-        return <div>Error loading dashboard: {result.error.message}</div>;
+            return ok(undefined);
+          } catch (mappingError) {
+             return err(new InfrastructureError(`Failed to prepare project data for saving: ${project.id.value}`, { cause: mappingError }));
+          }
       }
 
-      const dashboardItems = result.value;
+       // delete (BaseRepository の抽象メソッド実装、ヘルパー利用)
+       async delete(id: ProjectId): Promise<Result<void, InfrastructureError>> {
+            const deleteResult = await deleteRecordById(this.db, this.schema, this.idColumn, id.value);
+            if (deleteResult.isErr()) {
+                return err(new InfrastructureError(`Failed to delete project ${id.value}`, { cause: deleteResult.error }));
+            }
+            if (deleteResult.value === 0) {
+                return err(new InfrastructureError(`[NOT_FOUND] Project with id ${id.value} not found for deletion.`));
+            }
+            return ok(undefined);
+       }
 
-      return (
-        <div>
-          <h1>Project Dashboard</h1>
-          <ul>
-            {dashboardItems.map(item => (
-              <li key={item.projectId}>
-                {item.projectName} by {item.ownerName} ({item.stepCount} steps) - Last updated: {item.lastUpdatedAt.toLocaleDateString()}
-              </li>
-            ))}
-          </ul>
-        </div>
-      );
+       // ... 他の Project 固有のリポジトリメソッド (findByUserId など) ...
     }
     ```
 
-### サーバーコンポーネント (SC) / クライアントコンポーネント (CC) 連携
+4.  **プレゼンテーション層での処理**:
+    -   API Routes や Server Actions のハンドラーは、ユースケースから返された `Result` を受け取ります。
+    -   `match` メソッドを使用して成功時と失敗時のレスポンスを分岐させます。
+    -   失敗時には、エラーオブジェクト (`ApplicationError`, `InfrastructureError` など) の情報をもとに、ユーザーフレンドリーなメッセージと適切なHTTPステータスコードを持つ標準エラーレスポンスを生成します ([`handleApiError`](#apiエラーハンドリングユーティリティ) ユーティリティなどを利用)。
 
-Next.js App RouterにおけるSCとCCの連携では、データの受け渡しに関するルールを遵守します。
+### リポジトリパターン実装
 
-1.  **データ転送の基本**:
-    -   SCからCCへデータを渡す場合、**シリアライズ可能 (Serializable)** なデータのみを `props` として渡す必要があります。
-    -   シリアライズ可能とは、JSONに変換できるデータ型を指します（例: `string`, `number`, `boolean`, `null`, `Array`, Plain Object）。
-    -   `Date`, `Map`, `Set`, `BigInt`, 関数、クラスインスタンスなどは直接渡せません。
+[02_architecture_design.md](/docs/restructuring/02_architecture_design.md) で定義された通り、データ永続化の責務はリポジトリパターンを用いて抽象化されます。
 
-2.  **推奨されるデータ形式**:
-    -   **DTO (Data Transfer Object)**: サーバーサイドで取得したデータを、プレーンなオブジェクト構造を持つDTOに変換してからCCに渡します。型定義は [05_type_definitions.md](/docs/restructuring/05_type_definitions.md) を参照。
-    -   **QueryObject/ReadModel**: 上記で説明したReadModelは、通常シリアライズ可能なプレーンオブジェクトとして設計されるため、そのままCCに渡すのに適しています。
+1.  **インターフェース定義 (ドメイン層)**:
+    -   `domain/repositories/` ディレクトリに、各集約ルート（例: `User`, `Project`）に対応するリポジトリインターフェース (`IUserRepository`, `IProjectRepository` など) を定義します。
+    -   基本的なCRUD操作は `domain/repositories/base.repository.interface.ts` で定義された `BaseRepositoryInterface` を継承します。
 
-3.  **非シリアライズ可能データの扱い**:
-    -   `Date` オブジェクト: 文字列 (ISO 8601形式) または数値 (タイムスタンプ) に変換してから渡します。CC側で必要に応じて `new Date()` で復元します。
-    -   複雑なオブジェクト/クラスインスタンス: 必要なプロパティのみを抽出し、プレーンオブジェクトに変換します。CC側でインスタンスが必要な場合は、渡されたデータから再構築します。
-
-4.  **TanStack Query (`initialData`)**:
-    -   サーバーコンポーネントでデータをフェッチし、それをクライアントコンポーネントのTanStack Queryの `initialData` として渡す場合も、データはシリアライズ可能である必要があります。
-    -   SCで `Result` 型を処理し、成功時の値 (DTO/ReadModel) を抽出して `initialData` に渡します。エラー情報は別途 `props` で渡すか、クライアント側で再フェッチ時にハンドリングします。
+2.  **実装クラス (インフラストラクチャ層)**:
+    -   `infrastructure/database/repositories/` ディレクトリに、各インターフェースの具象実装クラス (`UserRepository`, `ProjectRepository` など) を配置します。
+    -   **`BaseRepository` の利用**: 実装クラスは `infrastructure/database/repositories/base.repository.ts` で定義された抽象クラス `BaseRepository` を継承します。`BaseRepository` は Drizzle の DB インスタンスへのアクセス、スキーマ・IDカラム定義の強制、マッピングメソッド (`_toDomain`, `_toPersistence`) の抽象定義を提供します。
+    -   **CRUD メソッドの実装**: `findById`, `save`, `delete` などの基本的な CRUD 操作は `BaseRepository` では抽象メソッドとして定義されているため、各サブクラスで実装する必要があります。実装においては、コードの重複を避けるため `infrastructure/database/helpers/crud.helpers.ts` で提供される共通ヘルパー関数を利用します。これは、Drizzle の厳密な型システムとジェネリックな `BaseRepository` との互換性問題を回避するための設計です。
+    -   **マッピングロジック**: `_toDomain` と `_toPersistence` メソッドを実装し、ドメインモデルとデータベーススキーマ間の変換を行います。Value Object の生成やプリミティブ値への変換はこの層の責務です。
+    -   **依存性注入**: 実装クラスには `@injectable()` デコレータを付与し、コンストラクタで `Database` インスタンス (`NodePgDatabase`) を `@inject('Database')` で注入します。
+    -   DIコンテナにはインターフェース（トークン）と実装クラスを紐付けて登録します。
 
 ```typescript
-    // presentation/components/ProjectDetails.server.tsx
-    import { ProjectQueryService } from '@/application/queryservices/ProjectQueryService';
-    import ProjectDetailsClient from './ProjectDetailsClient.client'; // クライアントコンポーネント
-    import { container } from '@/infrastructure/di/container.config';
-    import { QueryClient } from '@tanstack/react-query';
-    import { HydrationBoundary, dehydrate } from '@tanstack/react-query';
+    // UserRepository の例 (抜粋)
+    @injectable()
+    export class UserRepository
+      extends BaseRepository<UserId, User, UserDbSelect, UserDbInsert, typeof users>
+      implements IUserRepository // ドメイン層のインターフェースを実装
+    {
+      protected readonly schema = users;
+      protected readonly idColumn: PgColumn = users.id;
 
-    async function ProjectDetailsServer({ projectId }: { projectId: string }) {
-      const queryClient = new QueryClient();
-      const projectQueryService = container.resolve(ProjectQueryService);
-      const queryKey = ['project', projectId];
+      constructor(@inject('Database') db: NodePgDatabase) { super(db); }
 
-      // サーバーサイドでデータフェッチし、QueryClientにキャッシュ
-      await queryClient.prefetchQuery({
-         queryKey: queryKey,
-         queryFn: async () => {
-           const result = await projectQueryService.getProjectDetails(projectId); // ReadModel or DTOを返す関数
-           if (result.isErr()) {
-             // prefetchQuery内でエラーを投げるとHydrationでエラーになることが多い
-             // null や空配列を返すなどして、クライアント側でエラー状態をハンドルさせる方が安全な場合がある
-             console.error("Prefetch failed:", result.error);
-             return null; // または適切なデフォルト値
-           }
-           // ★ シリアライズ可能なデータ (ReadModel/DTO) を返す
-           return result.value;
-         }
-      });
+      protected _toDomain(record: UserDbSelect): User { /* ...マッピング... */ }
+      protected _toPersistence(entity: User): UserDbInsert { /* ...マッピング... */ }
 
-      // dehydratedState はシリアライズ可能な形式になっている
-      const dehydratedState = dehydrate(queryClient);
-
-      return (
-        // HydrationBoundaryでクライアントに状態を引き継ぐ
-        <HydrationBoundary state={dehydratedState}>
-          <ProjectDetailsClient projectId={projectId} />
-        </HydrationBoundary>
-      );
-    }
-
-    // presentation/components/ProjectDetailsClient.client.tsx
-    'use client';
-    import { useQuery } from '@tanstack/react-query';
-    import { getProjectDetailsClient } // クライアントから呼び出すAPI関数 (React Query用)
-
-    function ProjectDetailsClient({ projectId }: { projectId: string }) {
-      const queryKey = ['project', projectId];
-
-      // initialDataはHydrationBoundaryから提供される
-      const { data: project, isLoading, error } = useQuery({
-        queryKey: queryKey,
-        queryFn: () => getProjectDetailsClient(projectId), // クライアント用のフェッチ関数
-        // staleTime など、キャッシュ戦略を設定
-      });
-
-      if (isLoading) return <div>Loading...</div>;
-      if (error) return <div>Error: {error.message}</div>;
-      if (!project) return <div>Project not found.</div>; // サーバーフェッチ失敗時の考慮
-
-      return (
-        <div>
-          <h1>{project.projectName}</h1>
-          {/* ...プロジェクト詳細表示... */}
-        </div>
-      );
+      async findById(id: UserId): Promise<Result<User | null, InfrastructureError>> {
+        // crud.helpers の findRecordById を利用
+        // Result を処理し、_toDomain でマッピング
+      }
+      async save(entity: User): Promise<Result<void, InfrastructureError>> {
+        // _toPersistence で変換し、crud.helpers の saveRecord を利用
+      }
+      async delete(id: UserId): Promise<Result<void, InfrastructureError>> {
+        // crud.helpers の deleteRecordById を利用し、結果を処理
+      }
+      async findByEmail(email: Email): Promise<Result<User | null, InfrastructureError>> {
+        // 固有メソッドは Drizzle を直接利用
+      }
     }
     ```
 
