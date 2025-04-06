@@ -28,6 +28,8 @@
  * @property ProjectNotFound - 指定されたプロジェクトが見つからない
  * @property DbUniqueConstraintViolation - データベースの一意性制約違反 (より具体的に変換されるべき)
  * @property InvalidIdentifierFormat - 識別子の形式が無効 (UUIDなど)
+ * @property PasswordHashingFailed - パスワードハッシュ化に失敗
+ * @property DomainRuleViolation - ドメインルール違反
  */
 export enum ErrorCode {
   UnknownError = 'UNKNOWN_ERROR',
@@ -50,4 +52,6 @@ export enum ErrorCode {
   ProjectNotFound = 'PROJECT_NOT_FOUND',
   DbUniqueConstraintViolation = 'DB_UNIQUE_CONSTRAINT_VIOLATION',
   InvalidIdentifierFormat = 'INVALID_IDENTIFIER_FORMAT',
+  PasswordHashingFailed = 'PASSWORD_HASHING_FAILED',
+  DomainRuleViolation = 'DOMAIN_RULE_VIOLATION',
 }
