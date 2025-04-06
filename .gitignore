@@ -57,3 +57,9 @@ next-env.d.ts
 
 # Storybook
 storybook-static/
+
+# Playwright
+/playwright-report/
+
+# Vitest / Test Results
+/test-results/
