@@ -9,58 +9,60 @@
  * @version 1.0.0
  */
 
-import { Identifier } from '@/shared/types/common.types';
-import { Brand } from '@/shared/types/utility.types';
-import { createIdentifier, generateIdentifier } from '@/shared/utils/identifier.utils';
+import { Result, ok, err } from 'neverthrow';
+
+import { BaseError } from '@/shared/errors/base.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
+import { generateUuidV4String, validateUuidV4String } from '@/shared/utils/identifier.utils';
+import { BaseId } from '@/shared/value-objects/base-id.vo';
 
 /**
- * ユーザーのサブスクリプション契約の一意な識別子を表す型。
- * UUID形式の文字列を基にしたブランド型です。
- * データベース上の `subscriptions` テーブルの主キーに対応することを想定しています。
- *
- * @typedef {Brand<Identifier, 'SubscriptionId'>} SubscriptionId
- * @see {@link Identifier} - ベースとなる識別子の型定義
- * @see {@link Brand} - 型安全性を高めるためのユーティリティ型
- *
- * @example
- * ```typescript
- * import { SubscriptionId, generateSubscriptionId, createSubscriptionId } from '@/domain/models/subscription/subscription-id.vo';
- * import { Identifier } from '@/shared/types/common.types';
- *
- * // IDを安全に生成または変換する関数 (別途定義・実装が必要)
- * declare function generateSubscriptionId(): SubscriptionId;
- * declare function createSubscriptionId(id: string): SubscriptionId; // バリデーション含む想定
- *
- * const subscriptionId1: SubscriptionId = generateSubscriptionId();
- * const subscriptionId2: SubscriptionId = createSubscriptionId('vwx23456-e89b-12d3-a456-426614174000');
- *
- * function getSubscription(id: SubscriptionId) {
- *   // ... SubscriptionId を使ってサブスクリプション情報を取得する処理 ...
- *   console.log('Fetching subscription with ID:', id);
- * }
- *
- * getSubscription(subscriptionId1);
- *
- * // 型安全性の例: 他のID型とは互換性がない
- * import { UserId } from '@/domain/models/user/user-id.vo';
- * declare const userId: UserId;
- * // getSubscription(userId); // -> Compile Error!
- * ```
+ * @class SubscriptionId
+ * @extends BaseId<string>
+ * @description Represents the unique identifier for a Subscription entity.
  */
-export type SubscriptionId = Brand<Identifier, 'SubscriptionId'>;
+export class SubscriptionId extends BaseId<string> {
+  /**
+   * Private constructor to enforce creation via static factory methods.
+   * @param {string} value - The UUID string value.
+   * @private
+   */
+  private constructor(value: string) {
+    super(value);
+  }
 
-/**
- * 新しい SubscriptionId を生成します。
- * @returns {SubscriptionId} 新しく生成されたサブスクリプションID。
- */
-export const generateSubscriptionId = (): SubscriptionId => generateIdentifier<SubscriptionId>();
+  /**
+   * Creates a SubscriptionId instance from a string.
+   * Validates that the string is a valid UUID v4 using the utility function.
+   * @param {string} id - The UUID string.
+   * @returns {Result<SubscriptionId, BaseError>} Ok with SubscriptionId instance or Err with BaseError.
+   */
+  public static create(id: string): Result<SubscriptionId, BaseError> {
+    // 1. Validate the input string using the utility
+    const validationResult = validateUuidV4String(id);
+    if (validationResult.isErr()) {
+      return err(validationResult.error); // Propagate the error
+    }
+    // 2. If valid, create the instance
+    return ok(new SubscriptionId(validationResult.value));
+  }
 
-/**
- * 既存の識別子文字列から SubscriptionId を作成します。
- * UUID v4 形式である必要があります。
- * @param {string} id - サブスクリプションIDとして使用するUUID文字列。
- * @returns {SubscriptionId} 作成されたサブスクリプションID。
- * @throws {Error} UUID v4 形式でない場合にエラーをスローします。
- */
-export const createSubscriptionId = (id: string): SubscriptionId =>
-  createIdentifier<SubscriptionId>(id);
+  /**
+   * Generates a new SubscriptionId with a v4 UUID.
+   * @returns {Result<SubscriptionId, BaseError>} Ok with the new SubscriptionId instance, or Err if UUID generation fails.
+   */
+  public static generate(): Result<SubscriptionId, BaseError> {
+    try {
+      // 1. Generate a new UUID string using the utility
+      const newUuid = generateUuidV4String();
+      // 2. Create the instance
+      return ok(new SubscriptionId(newUuid));
+    } catch (error) {
+      return err(
+        new BaseError(ErrorCode.InternalServerError, 'Failed to generate new SubscriptionId', {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
+  }
+}
