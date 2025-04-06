@@ -40,17 +40,16 @@ export type DateOnlyString = string;
 export type Timestamp = Date;
 
 /**
- * Represents a generic string-based identifier, typically a UUID or CUID.
- * Used as a base type for identifiers. For stronger type safety in the domain layer,
- * prefer specific Value Objects (e.g., UserId, ProductId) created using the Brand type.
- *
- * @example
- * const genericId: Identifier = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
- * function findItemById(id: Identifier): Item | null {
- *   // ... implementation ...
- * }
+ * Represents a generic identifier with a value and an equality check method.
+ * This interface ensures that identifier value objects have a consistent structure.
+ * @template T The type of the underlying identifier value (e.g., string, number).
  */
-export type Identifier = string;
+export interface Identifier<T = string> {
+  /** The underlying value of the identifier. */
+  readonly value: T;
+  /** Checks if this identifier is equal to another identifier. */
+  equals(other: Identifier<T>): boolean;
+}
 
 /**
  * Represents a percentage value as a number, typically ranging from 0 to 100.

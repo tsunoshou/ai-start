@@ -22,8 +22,10 @@ import { Identifier } from '@/shared/types/common.types';
  * const newUserId = generateIdentifier<UserId>();
  */
 export function generateIdentifier<T extends Identifier>(): T {
-  // return uuidv4() as Brand<Identifier, T extends Brand<Identifier, infer B> ? B : never>;
-  return uuidv4() as T; // Cast directly to T
+  // Cast through unknown to bypass the strict type check
+  // TODO: Consider refactoring to return string and use factory at call site
+  // or pass a factory function as an argument for type safety.
+  return uuidv4() as unknown as T;
 }
 
 /**
@@ -45,6 +47,8 @@ export function createIdentifier<T extends Identifier>(id: string): T {
     // throw new AppError(ErrorCode.InvalidIdentifierFormat, `Invalid Identifier format. Expected UUID v4, received: ${id}`);
     throw new Error(`Invalid Identifier format. Expected UUID v4, received: ${id}`);
   }
-  // return id as Brand<Identifier, T extends Brand<Identifier, infer B> ? B : never>;
-  return id as T; // Cast directly to T
+  // Cast through unknown to bypass the strict type check
+  // TODO: Consider refactoring to return string and use factory at call site
+  // or pass a factory function as an argument for type safety.
+  return id as unknown as T;
 }

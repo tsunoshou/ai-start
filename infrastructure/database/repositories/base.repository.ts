@@ -11,16 +11,13 @@ import { EntityBase } from '@/shared/types/entity-base.interface';
 /**
  * @description Base abstract class for repositories providing common CRUD operations.
  * @template TDomain The domain entity type, must extend EntityBase.
- * @template TID The identifier type for the entity, must extend Identifier.
+ * @template TID The identifier type for the entity, must extend Identifier<string>.
  * @template TDbSelect The type representing a selected database record.
  * @template TDbInsert The type representing data for insertion/update.
  * @template TSchema The Drizzle schema type, must extend PgTableWithColumns.
  */
 export abstract class BaseRepository<
-  TID extends Identifier & {
-    readonly value: string;
-    equals(other: TID): boolean;
-  },
+  TID extends Identifier<string>,
   TDomain extends EntityBase<TID>,
   TDbSelect extends Record<string, unknown>,
   TDbInsert extends Record<string, unknown>,
