@@ -16,26 +16,26 @@ describe('API Utils', () => {
   });
 
   describe('apiSuccess', () => {
-    it('should create a standard success response', () => {
+    it('should create a standard success response', async () => {
       const data = { message: 'Success' };
       const response = apiSuccess(200, data);
       expect(response.status).toBe(200);
-      expect(response.json()).resolves.toEqual({ success: true, data });
+      await expect(response.json()).resolves.toEqual({ success: true, data });
     });
 
-    it('should handle different status codes', () => {
+    it('should handle different status codes', async () => {
       const data = { id: 123 };
       const response = apiSuccess(201, data);
       expect(response.status).toBe(201);
-      expect(response.json()).resolves.toEqual({ success: true, data });
+      await expect(response.json()).resolves.toEqual({ success: true, data });
     });
   });
 
   describe('apiError', () => {
-    it('should create a standard error response', () => {
+    it('should create a standard error response', async () => {
       const response = apiError(400, ErrorCode.ValidationError, 'Invalid input');
       expect(response.status).toBe(400);
-      expect(response.json()).resolves.toEqual({
+      await expect(response.json()).resolves.toEqual({
         success: false,
         error: {
           code: ErrorCode.ValidationError,
@@ -45,11 +45,11 @@ describe('API Utils', () => {
       });
     });
 
-    it('should include details when provided', () => {
+    it('should include details when provided', async () => {
       const details = { field: 'email', issue: 'format' };
       const response = apiError(404, ErrorCode.NotFound, 'User not found', details);
       expect(response.status).toBe(404);
-      expect(response.json()).resolves.toEqual({
+      await expect(response.json()).resolves.toEqual({
         success: false,
         error: {
           code: ErrorCode.NotFound,
