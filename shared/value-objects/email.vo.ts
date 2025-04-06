@@ -31,8 +31,9 @@ import { Result, ok, err } from 'neverthrow';
 export class Email {
   private readonly _value: string;
 
-  /** Emailの有効な形式を表す正規表現 */
-  private static readonly emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+  // Revert to the more complex regex, ensuring correct literal syntax
+  private static readonly emailRegex =
+    /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
   /**
    * Emailクラスのインスタンスをプライベートに生成します。
@@ -52,9 +53,7 @@ export class Email {
     if (!value) {
       return false;
     }
-    // 簡単な形式チェック
     return Email.emailRegex.test(value);
-    // 必要であればより厳密なバリデーションやライブラリ (例: validator.js) の使用を検討
   }
 
   /**
@@ -65,10 +64,16 @@ export class Email {
    * @returns {Result<Email, Error>} 生成結果。成功時はEmailインスタンス、失敗時はErrorを含むResult。
    */
   public static create(value: string): Result<Email, Error> {
-    if (!Email.isValid(value)) {
-      return err(new Error(`Invalid email format: ${value}`));
+    const trimmedValue = typeof value === 'string' ? value.trim() : '';
+
+    if (!Email.isValid(trimmedValue)) {
+      const errorMessage =
+        !trimmedValue && typeof value === 'string'
+          ? 'Email cannot be empty or just whitespace.'
+          : `Invalid email format: ${value}`;
+      return err(new Error(errorMessage));
     }
-    return ok(new Email(value.trim())); // 前後の空白を除去
+    return ok(new Email(trimmedValue));
   }
 
   /**
@@ -85,6 +90,9 @@ export class Email {
    * @returns {boolean} 値が等しければ true、そうでなければ false。
    */
   public equals(other: Email): boolean {
+    if (other === null || other === undefined) {
+      return false;
+    }
     return this._value === other.value;
   }
 }
