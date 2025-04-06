@@ -3,6 +3,7 @@ import { Result, ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
 // Domain Layer
+import { UserDTO } from '@/application/dtos/user.dto';
 import { UserName } from '@/domain/models/user/user-name.vo';
 import { User } from '@/domain/models/user/user.entity';
 import {
@@ -10,12 +11,17 @@ import {
   UserRepositoryToken,
 } from '@/domain/repositories/user.repository.interface';
 // Shared Layer
+import { UserMapper } from '@/infrastructure/mappers/user.mapper';
 import { AppError } from '@/shared/errors/app.error';
 import { BaseError } from '@/shared/errors/base.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { hashPassword } from '@/shared/utils/security/password.utils';
 import { Email } from '@/shared/value-objects/email.vo';
 import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+
+// Application Layer
+
+// Infrastructure Layer
 
 // TODO: Define Input Type (e.g., CreateUserInput DTO)
 type CreateUserInput = {
@@ -25,9 +31,8 @@ type CreateUserInput = {
 };
 
 // TODO: Define Output Type (e.g., UserDTO)
-// For now, let's assume it returns the created User entity for simplicity,
-// but we should create a UserDTO later.
-type CreateUserOutput = User;
+// Use UserDTO as the output type
+type CreateUserOutput = UserDTO;
 
 /**
  * @class CreateUserUsecase
@@ -128,7 +133,8 @@ export class CreateUserUsecase {
     }
 
     // 5. Output Mapping (to DTO if necessary)
-    const output: CreateUserOutput = userEntity;
+    // Map the created User entity to UserDTO
+    const output: CreateUserOutput = UserMapper.toDTO(userEntity);
 
     // 6. Error Handling & Wrapping (already handled in previous steps)
 

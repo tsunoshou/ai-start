@@ -1,14 +1,20 @@
 import { Result, ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
+import { UserDTO } from '@/application/dtos/user.dto';
 import { UserId } from '@/domain/models/user/user-id.vo';
-import { User } from '@/domain/models/user/user.entity';
+// import { User } from '@/domain/models/user/user.entity'; // Removed unused import
 import {
   type UserRepositoryInterface,
   UserRepositoryToken,
 } from '@/domain/repositories/user.repository.interface';
+import { UserMapper } from '@/infrastructure/mappers/user.mapper';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
+
+// Application Layer
+
+// Infrastructure Layer
 
 // Input: Requires the user ID
 type GetUserByIdInput = {
@@ -16,7 +22,7 @@ type GetUserByIdInput = {
 };
 
 // Output: The found User entity (or null), or a DTO later
-type GetUserByIdOutput = User | null;
+type GetUserByIdOutput = UserDTO | null;
 
 /**
  * @class GetUserByIdUsecase
@@ -63,8 +69,9 @@ export class GetUserByIdUsecase {
 
     // 3. Output Mapping (to DTO if necessary)
     // findResult.value is User | null
-    const user = findResult.value; // This can be null if not found
-    const output: GetUserByIdOutput = user;
+    const userEntity = findResult.value;
+    // Map to DTO if user exists, otherwise keep null
+    const output: GetUserByIdOutput = userEntity ? UserMapper.toDTO(userEntity) : null;
 
     // 4. Error Handling (already handled)
 
