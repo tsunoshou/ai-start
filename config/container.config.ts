@@ -1,26 +1,33 @@
 import 'reflect-metadata';
-import { container } from 'tsyringe'; // Lifecycle のインポートを削除
+import { container, Lifecycle } from 'tsyringe'; // Lifecycle をインポート
 
-// --- 基本的な依存関係の登録例 ---
+// Domain Layer Imports
+import {
+  UserRepositoryInterface,
+  UserRepositoryToken,
+} from '@/domain/repositories/user.repository.interface';
+// Infrastructure Layer Imports
+import { DB } from '@/infrastructure/database/db';
+import { UserRepository } from '@/infrastructure/database/repositories/user.repository';
 
-// DBクライアント (Drizzle Client) - シングルトン性は db.ts の実装で担保
-import { DB } from '@/infrastructure/database/db'; // エクスポート名に合わせて DB をインポート
+// --- Dependency Registration ---
+
+// Database Client
 container.register('DrizzleClient', {
-  useValue: DB, // インポートした DB を使用
+  useValue: DB,
 });
 
-// リポジトリインターフェースと実装の紐付け (トークン使用)
-// import { IUserRepository } from '@/domain/repositories/IUserRepository';
-// import { UserRepository } from '@/infrastructure/database/repositories/UserRepository';
-// container.register<IUserRepository>('IUserRepository', {
-//   useClass: UserRepository,
-// });
+// Repositories (Singleton)
+container.register<UserRepositoryInterface>(UserRepositoryToken, UserRepository, {
+  // 第2引数にクラス、第3引数にオプション
+  lifecycle: Lifecycle.Singleton, // Singletonライフサイクルを指定
+});
 
-// アプリケーションサービス/ユースケース
+// Application Services / Usecases (Typically Transient or Scoped)
 // import { CreateUserUsecase } from '@/application/usecases/user/CreateUserUsecase';
-// container.register(CreateUserUsecase, { lifecycle: Lifecycle.Transient }); // ユースケースはリクエストごとに生成する場合など
+// container.register(CreateUserUsecase, { lifecycle: Lifecycle.Transient });
 
-// --- DIコンテナのエクスポート ---
+// --- Export Container ---
 
 /**
  * アプリケーション全体で使用するDIコンテナインスタンス。
