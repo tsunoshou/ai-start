@@ -1,0 +1,127 @@
+import { NextResponse } from 'next/server';
+import { ZodError } from 'zod';
+
+import { AppError } from '@/shared/errors/app.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
+
+/**
+ * @interface ApiErrorResponse
+ * @description Standard error response format for API endpoints.
+ */
+interface ApiErrorResponse {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: unknown; // For validation errors or other details
+  };
+}
+
+/**
+ * @interface ApiSuccessResponse<T>
+ * @description Standard success response format for API endpoints.
+ */
+interface ApiSuccessResponse<T> {
+  success: true;
+  data: T;
+}
+
+/**
+ * Creates a standard success JSON response.
+ * @param status HTTP status code.
+ * @param data The data payload.
+ * @returns A NextResponse object.
+ */
+export function apiSuccess<T>(status: number, data: T): NextResponse<ApiSuccessResponse<T>> {
+  return NextResponse.json({ success: true, data }, { status });
+}
+
+/**
+ * Creates a standard error JSON response.
+ * @param status HTTP status code.
+ * @param code The application-specific error code.
+ * @param message The error message.
+ * @param details Optional additional error details.
+ * @returns A NextResponse object.
+ */
+export function apiError(
+  status: number,
+  code: string,
+  message: string,
+  details?: unknown
+): NextResponse<ApiErrorResponse> {
+  return NextResponse.json({ success: false, error: { code, message, details } }, { status });
+}
+
+/**
+ * Maps ErrorCode enum members to HTTP status codes.
+ * @param code The ErrorCode.
+ * @returns The corresponding HTTP status code.
+ */
+function mapErrorCodeToStatus(code: ErrorCode): number {
+  switch (code) {
+    case ErrorCode.ValidationError:
+    case ErrorCode.InvalidIdentifierFormat:
+    case ErrorCode.UserEmailAlreadyExists: // Considered a client error (conflict)
+    case ErrorCode.DomainRuleViolation:
+      return 400; // Bad Request
+    case ErrorCode.Unauthorized:
+      return 401; // Unauthorized
+    case ErrorCode.Forbidden:
+      return 403; // Forbidden
+    case ErrorCode.NotFound:
+    case ErrorCode.ProjectNotFound: // Example of specific NotFound
+      return 404; // Not Found
+    case ErrorCode.DbUniqueConstraintViolation: // Could also be 400 depending on context
+      return 409; // Conflict
+    case ErrorCode.DatabaseError:
+    case ErrorCode.NetworkError:
+    case ErrorCode.ApiRequestFailed:
+    case ErrorCode.ConfigurationError:
+    case ErrorCode.AiServiceError:
+    case ErrorCode.AiRateLimitExceeded:
+    case ErrorCode.AiTimeout:
+    case ErrorCode.AiInvalidRequest:
+    case ErrorCode.AiProviderUnavailable:
+    case ErrorCode.AllAiProvidersUnavailable:
+    case ErrorCode.PasswordHashingFailed:
+    case ErrorCode.UnknownError:
+    case ErrorCode.InternalServerError:
+    default:
+      return 500; // Internal Server Error
+  }
+}
+
+/**
+ * Handles errors caught in API Route Handlers and returns an appropriate error response.
+ * Differentiates between AppError, ZodError (for request validation), and other Errors.
+ * @param error The error object caught.
+ * @returns A NextResponse object representing the error.
+ */
+export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
+  // TODO: Replace with injected logger
+  console.error('[API Error Handler]:', error);
+
+  if (error instanceof AppError) {
+    const status = mapErrorCodeToStatus(error.code);
+    return apiError(status, error.code, error.message, error.metadata);
+  }
+
+  if (error instanceof ZodError) {
+    // Handle Zod validation errors specifically
+    return apiError(
+      400,
+      ErrorCode.ValidationError, // Use standard validation error code
+      'Input validation failed',
+      error.errors // Provide Zod error details
+    );
+  }
+
+  if (error instanceof Error) {
+    // Generic unexpected errors
+    return apiError(500, ErrorCode.InternalServerError, 'An unexpected server error occurred.');
+  }
+
+  // Fallback for non-Error types thrown
+  return apiError(500, ErrorCode.UnknownError, 'An unknown error occurred.');
+}

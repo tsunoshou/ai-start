@@ -132,7 +132,8 @@ module.exports = {
         modifiers: ['const', 'global'], // export されていないトップレベルの const など
         format: ['UPPER_CASE'],
         filter: {
-          regex: '^(metadata|config|React)$', // 例外
+          // 既存の例外に加えて、末尾が Schema の変数を UPPER_CASE 強制から除外
+          regex: '^(metadata|config|React|.*Schema)$',
           match: false,
         },
       },
