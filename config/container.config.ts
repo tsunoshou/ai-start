@@ -9,6 +9,7 @@ import { container } from 'tsyringe';
 
 // Import Implementations
 import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
+import { DeleteUserUsecase } from '@/application/usecases/user/delete-user.usecase';
 import { GetUserByIdUsecase } from '@/application/usecases/user/get-user-by-id.usecase';
 import { ListUsersUsecase } from '@/application/usecases/user/list-users.usecase';
 import { UpdateUserProfileUsecase } from '@/application/usecases/user/update-user-profile.usecase';
@@ -43,6 +44,9 @@ container.register<UpdateUserProfileUsecase>(UpdateUserProfileUsecase, {
 });
 container.register<ListUsersUsecase>(ListUsersUsecase, {
   useClass: ListUsersUsecase,
+});
+container.register<DeleteUserUsecase>(DeleteUserUsecase, {
+  useClass: DeleteUserUsecase,
 });
 
 // --- Export Container ---
