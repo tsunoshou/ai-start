@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgTable, PgColumn } from 'drizzle-orm/pg-core';
 import { Result, ok, err } from 'neverthrow';
@@ -51,9 +51,15 @@ export async function saveRecord<TInsert extends Record<string, unknown>>(
     const setData = { ...data };
     Reflect.deleteProperty(setData, idColumn.name); // Delete using Reflect API
 
+    // Automatically set updatedAt to the current timestamp on update
+    const setDataWithTimestamp = {
+      ...setData,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    };
+
     await db.insert(schema).values(data).onConflictDoUpdate({
       target: idColumn,
-      set: setData, // Use the object without the id
+      set: setDataWithTimestamp, // Use the object with updatedAt set to now
     });
     return ok(undefined);
   } catch (error) {
