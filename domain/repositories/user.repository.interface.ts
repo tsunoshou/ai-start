@@ -23,6 +23,15 @@ export interface UserRepositoryInterface extends BaseRepositoryInterface<UserId,
    */
   findByEmail(email: Email): Promise<Result<User | null, InfrastructureError>>;
 
+  /** Deletes an entity by its ID. */
+  delete(id: UserId): Promise<Result<void, InfrastructureError>>;
+
+  /** Finds all user entities, possibly with pagination. */
+  findAll(options?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<Result<User[], InfrastructureError>>;
+
   // --- Add other necessary user-specific methods as required ---
 }
 

@@ -176,6 +176,66 @@ export class UserRepository
     }
   }
 
+  /**
+   * Finds all user entities, optionally applying limit and offset.
+   * @param options - Optional object containing limit and offset.
+   * @returns A Result containing an array of User entities or an InfrastructureError.
+   */
+  async findAll(
+    options: { limit?: number; offset?: number } = {}
+  ): Promise<Result<User[], InfrastructureError>> {
+    const { limit, offset } = options;
+    try {
+      let results: UserDbSelect[]; // Declare results array type
+
+      // Select query based on limit/offset presence
+      if (limit !== undefined && offset !== undefined) {
+        results = await this.db.select().from(this.schema).limit(limit).offset(offset);
+      } else if (limit !== undefined) {
+        results = await this.db.select().from(this.schema).limit(limit);
+      } else if (offset !== undefined) {
+        results = await this.db.select().from(this.schema).offset(offset);
+      } else {
+        results = await this.db.select().from(this.schema);
+      }
+
+      // Map each record to domain entity, handling potential errors
+      const usersResult = Result.combine(
+        results.map((record) => {
+          try {
+            // Use a Result-based mapping or wrap _toDomain
+            return ok(this._toDomain(record));
+          } catch (mappingError) {
+            console.error(`[UserRepository] Failed to map record in findAll:`, mappingError);
+            return err(
+              mappingError instanceof InfrastructureError
+                ? mappingError
+                : new InfrastructureError('Failed to process record during findAll mapping', {
+                    cause: mappingError,
+                  })
+            );
+          }
+        })
+      );
+
+      // If any mapping failed, return the combined error
+      if (usersResult.isErr()) {
+        return err(
+          new InfrastructureError('Failed to map one or more user records in findAll', {
+            cause: usersResult.error, // Aggregate errors
+          })
+        );
+      }
+
+      // Return the array of successfully mapped User entities
+      return ok(usersResult.value);
+    } catch (error) {
+      const infraError = new InfrastructureError('Failed to find all users', { cause: error });
+      console.error(infraError.message, infraError.cause);
+      return err(infraError);
+    }
+  }
+
   // --- Inherited methods (findById, save, delete) from BaseRepository ---
   // No need to re-implement unless specific overrides are needed for User.
 

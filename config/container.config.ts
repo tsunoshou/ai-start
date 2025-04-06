@@ -1,37 +1,49 @@
 import 'reflect-metadata';
-import { container, Lifecycle } from 'tsyringe'; // Lifecycle をインポート
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { container } from 'tsyringe';
 
-// Domain Layer Imports
+// Import DB Config
+
+// Import Interfaces & Tokens
+
+// Import Implementations
+import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
+import { GetUserByIdUsecase } from '@/application/usecases/user/get-user-by-id.usecase';
+import { ListUsersUsecase } from '@/application/usecases/user/list-users.usecase';
+import { UpdateUserProfileUsecase } from '@/application/usecases/user/update-user-profile.usecase';
+import { ENV } from '@/config/environment';
 import {
   UserRepositoryInterface,
   UserRepositoryToken,
 } from '@/domain/repositories/user.repository.interface';
-// Infrastructure Layer Imports
-import { DB } from '@/infrastructure/database/db';
 import { UserRepository } from '@/infrastructure/database/repositories/user.repository';
 
 // --- Dependency Registration ---
 
-// Database Client
-container.register('DrizzleClient', {
-  useValue: DB,
+// Database Connection (Singleton)
+const POOL = new Pool({ connectionString: ENV.DATABASE_URL });
+const DB = drizzle(POOL);
+container.register<typeof DB>('Database', { useValue: DB });
+
+// Repositories
+container.register<UserRepositoryInterface>(UserRepositoryToken, {
+  useClass: UserRepository,
 });
 
-// Repositories (Singleton)
-container.register<UserRepositoryInterface>(UserRepositoryToken, UserRepository, {
-  // 第2引数にクラス、第3引数にオプション
-  lifecycle: Lifecycle.Singleton, // Singletonライフサイクルを指定
+// Usecases
+container.register<CreateUserUsecase>(CreateUserUsecase, {
+  useClass: CreateUserUsecase,
 });
-
-// Application Services / Usecases (Typically Transient or Scoped)
-// import { CreateUserUsecase } from '@/application/usecases/user/CreateUserUsecase';
-// container.register(CreateUserUsecase, { lifecycle: Lifecycle.Transient });
+container.register<GetUserByIdUsecase>(GetUserByIdUsecase, {
+  useClass: GetUserByIdUsecase,
+});
+container.register<UpdateUserProfileUsecase>(UpdateUserProfileUsecase, {
+  useClass: UpdateUserProfileUsecase,
+});
+container.register<ListUsersUsecase>(ListUsersUsecase, {
+  useClass: ListUsersUsecase,
+});
 
 // --- Export Container ---
-
-/**
- * アプリケーション全体で使用するDIコンテナインスタンス。
- * アプリケーションのエントリーポイント（API Routes, Server Actionsなど）で
- * このコンテナから必要なインスタンスを解決（resolve）して使用します。
- */
-export { container };
+export default container;
