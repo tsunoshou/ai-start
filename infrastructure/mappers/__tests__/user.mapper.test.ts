@@ -1,0 +1,140 @@
+import { describe, it, expect } from 'vitest';
+
+import { UserDTO } from '@/application/dtos/user.dto';
+import { UserId } from '@/domain/models/user/user-id.vo';
+import { UserName } from '@/domain/models/user/user-name.vo';
+import { User } from '@/domain/models/user/user.entity';
+import { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
+import { Email } from '@/shared/value-objects/email.vo';
+import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+
+import { UserMapper } from '../user.mapper'; // Adjust path if necessary
+
+describe('UserMapper', () => {
+  // Helper to create a valid User entity for testing
+  // Returns the created user and the generated userId for assertion comparison
+  const createTestUser = (idSuffix: string, dateString: string): { user: User; userId: UserId } => {
+    // Use UserId.generate() to create a valid UUID
+    const userIdResult = UserId.generate();
+    const emailResult = Email.create(`test-${idSuffix}@example.com`);
+    const nameResult = UserName.create(`Test User ${idSuffix}`);
+    const passwordResult = PasswordHash.create(`hashedPassword-${idSuffix}`);
+    const dateResult = DateTimeString.create(dateString);
+
+    if (
+      userIdResult.isErr() || // generate should theoretically not fail easily, but check anyway
+      emailResult.isErr() ||
+      nameResult.isErr() ||
+      passwordResult.isErr() ||
+      dateResult.isErr()
+    ) {
+      console.error('UserID Error:', userIdResult.isErr() ? userIdResult.error : 'OK');
+      console.error('Email Error:', emailResult.isErr() ? emailResult.error : 'OK');
+      console.error('Name Error:', nameResult.isErr() ? nameResult.error : 'OK');
+      console.error('Password Error:', passwordResult.isErr() ? passwordResult.error : 'OK');
+      console.error('Date Error:', dateResult.isErr() ? dateResult.error : 'OK');
+      throw new Error(
+        `Failed to create test user prerequisites for suffix ${idSuffix} with date ${dateString}`
+      );
+    }
+
+    const userId = userIdResult.value;
+    const user = User.reconstruct({
+      id: userId, // Use the generated userId
+      email: emailResult.value,
+      name: nameResult.value,
+      passwordHash: passwordResult.value,
+      createdAt: dateResult.value,
+      updatedAt: dateResult.value,
+    });
+    return { user, userId }; // Return both user and the generated ID
+  };
+
+  describe('toDTO', () => {
+    it('should map a User entity to a UserDTO, excluding sensitive data', () => {
+      // Arrange
+      const testDate = '2024-01-01T10:00:00.000Z';
+      // Destructure the user and userId from the helper
+      const { user: userEntity, userId } = createTestUser('1', testDate);
+
+      // Act
+      const userDTO = UserMapper.toDTO(userEntity);
+
+      // Assert
+      const expectedDTO: UserDTO = {
+        id: userId.value, // Use the generated userId value
+        name: 'Test User 1',
+        email: 'test-1@example.com',
+        createdAt: testDate,
+        updatedAt: testDate,
+      };
+      expect(userDTO).toEqual(expectedDTO);
+      expect(userDTO).not.toHaveProperty('passwordHash');
+    });
+
+    it('should correctly extract values from Value Objects', () => {
+      // Arrange
+      const testDate = '2024-01-02T12:30:00.000Z';
+      const { user: userEntity } = createTestUser('2', testDate);
+
+      // Act
+      const userDTO = UserMapper.toDTO(userEntity);
+
+      // Assert
+      expect(userDTO.id).toBe(userEntity.id.value);
+      expect(userDTO.name).toBe(userEntity.name.value);
+      expect(userDTO.email).toBe(userEntity.email.value);
+      expect(userDTO.createdAt).toBe(userEntity.createdAt.value);
+      expect(userDTO.updatedAt).toBe(userEntity.updatedAt.value);
+      expect(userDTO.createdAt).toBe(testDate);
+    });
+  });
+
+  describe('toDTOs', () => {
+    it('should return an empty array if given an empty array of entities', () => {
+      // Arrange
+      const emptyUserArray: User[] = [];
+
+      // Act
+      const userDTOs = UserMapper.toDTOs(emptyUserArray);
+
+      // Assert
+      expect(userDTOs).toEqual([]);
+    });
+
+    it('should map an array of User entities to an array of UserDTOs', () => {
+      // Arrange
+      const date1 = '2024-01-03T10:00:00.000Z';
+      const date2 = '2024-01-04T11:00:00.000Z';
+      const { user: user1, userId: userId1 } = createTestUser('3', date1);
+      const { user: user2, userId: userId2 } = createTestUser('4', date2);
+      const userEntities = [user1, user2];
+
+      // Act
+      const userDTOs = UserMapper.toDTOs(userEntities);
+
+      // Assert
+      expect(userDTOs).toHaveLength(2);
+
+      const expectedDTO1: UserDTO = {
+        id: userId1.value, // Use generated ID
+        name: 'Test User 3',
+        email: 'test-3@example.com',
+        createdAt: date1,
+        updatedAt: date1,
+      };
+      const expectedDTO2: UserDTO = {
+        id: userId2.value, // Use generated ID
+        name: 'Test User 4',
+        email: 'test-4@example.com',
+        createdAt: date2,
+        updatedAt: date2,
+      };
+
+      expect(userDTOs[0]).toEqual(expectedDTO1);
+      expect(userDTOs[1]).toEqual(expectedDTO2);
+      expect(userDTOs[0]).not.toHaveProperty('passwordHash');
+      expect(userDTOs[1]).not.toHaveProperty('passwordHash');
+    });
+  });
+});
