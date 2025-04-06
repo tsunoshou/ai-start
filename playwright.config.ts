@@ -1,5 +1,17 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// webServerの設定を条件付きで定義
+const WEB_SERVER_CONFIG = process.env.PLAYWRIGHT_BASE_URL
+  ? undefined // PLAYWRIGHT_BASE_URL があれば webServer を無効化
+  : {
+      command: 'npm run dev', // ローカル開発時は `npm run dev` を使うことが多い
+      url: 'http://localhost:3000',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+      stdout: 'pipe' as const,
+      stderr: 'pipe' as const,
+    };
+
 export default defineConfig({
   testDir: './tests/e2e', // E2Eテストファイルのディレクトリ
   fullyParallel: true, // 並列実行を有効化
@@ -36,12 +48,6 @@ export default defineConfig({
     */
   ],
   /* Webサーバーを自動起動する場合 */
-  webServer: {
-    command: 'npm run start', // サーバー起動コマンド (必要に応じて変更)
-    url: 'http://localhost:3000', // サーバーが起動するURL
-    reuseExistingServer: !process.env.CI, // CI環境以外では既存サーバーを再利用
-    timeout: 120 * 1000, // サーバー起動のタイムアウト (ミリ秒)
-    stdout: 'pipe', // stdoutをパイプしてログを確認可能に
-    stderr: 'pipe', // stderrをパイプ
-  },
+  // 条件付きで webServer を設定
+  webServer: WEB_SERVER_CONFIG,
 });
