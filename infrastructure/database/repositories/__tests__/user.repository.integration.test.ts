@@ -21,6 +21,7 @@ import { users } from '@/infrastructure/database/schema';
 import { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
 import { Email } from '@/shared/value-objects/email.vo';
 import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+import { UserMapper } from '@/infrastructure/mappers/user.mapper';
 
 // 型エラーを回避するための eslint-disable
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -70,7 +71,7 @@ describe('UserRepository 統合テスト', () => {
 
     // UserRepository を初期化
     console.log('UserRepository を初期化しています...');
-    userRepository = new UserRepository(db);
+    userRepository = new UserRepository(db, new UserMapper());
     console.log('UserRepository が初期化されました。');
   }, 180000); // 3分のタイムアウト
 
