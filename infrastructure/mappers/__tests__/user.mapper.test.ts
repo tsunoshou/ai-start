@@ -9,7 +9,7 @@ import { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
 import { Email } from '@/shared/value-objects/email.vo';
 import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
 
-import { UserMapper } from '../user.mapper'; // Adjust path if necessary
+import { UserMapper, UserDbSelect } from '../user.mapper'; // Adjust path if necessary
 
 describe('UserMapper', () => {
   // Helper to create a valid User entity for testing
@@ -51,7 +51,7 @@ describe('UserMapper', () => {
     return { user, userId }; // Return both user and the generated ID
   };
 
-  describe('toDTO', () => {
+  describe('Static toDTO', () => {
     it('should map a User entity to a UserDTO, excluding sensitive data', () => {
       // Arrange
       const testDate = '2024-01-01T10:00:00.000Z';
@@ -91,7 +91,7 @@ describe('UserMapper', () => {
     });
   });
 
-  describe('toDTOs', () => {
+  describe('Static toDTOs', () => {
     it('should return an empty array if given an empty array of entities', () => {
       // Arrange
       const emptyUserArray: User[] = [];
@@ -136,6 +136,138 @@ describe('UserMapper', () => {
       expect(userDTOs[1]).toEqual(expectedDTO2);
       expect(userDTOs[0]).not.toHaveProperty('passwordHash');
       expect(userDTOs[1]).not.toHaveProperty('passwordHash');
+    });
+  });
+
+  // 宣言的マッピングを使用したインスタンスメソッドのテスト
+  describe('Instance methods with declarative mapping', () => {
+    // テスト用のマッパーインスタンス
+    let userMapper: UserMapper;
+
+    // 各テストの前にマッパーを初期化
+    beforeEach(() => {
+      userMapper = new UserMapper();
+    });
+
+    describe('toDomain', () => {
+      it('should convert a database record to a User entity', () => {
+        // テスト用のデータを準備
+        const id = '123e4567-e89b-12d3-a456-426614174000'; // 有効なUUID形式
+        const email = 'test@example.com';
+        const name = 'Test User';
+        const passwordHash = 'hashed_password_123';
+        const createdAt = new Date('2024-01-05T10:00:00.000Z');
+        const updatedAt = new Date('2024-01-05T10:00:00.000Z');
+
+        const dbRecord: UserDbSelect = {
+          id,
+          email,
+          name,
+          passwordHash,
+          createdAt,
+          updatedAt,
+        };
+
+        // 変換実行
+        const result = userMapper.toDomain(dbRecord);
+
+        // 検証
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          const user = result.value;
+
+          // エンティティの型と構造を検証
+          expect(user).toBeInstanceOf(User);
+
+          // 値オブジェクトの値を検証
+          expect(user.id.value).toBe(id);
+          expect(user.email.value).toBe(email);
+          expect(user.name.value).toBe(name);
+          expect(user.passwordHash.value).toBe(passwordHash);
+          expect(user.createdAt.value).toBe(createdAt.toISOString());
+          expect(user.updatedAt.value).toBe(updatedAt.toISOString());
+        }
+      });
+
+      it('should return an error when a required field is missing', () => {
+        // 必須フィールドが欠けているレコード
+        const incompleteRecord: Partial<UserDbSelect> = {
+          id: '123e4567-e89b-12d3-a456-426614174000', // 有効なUUID形式
+          email: 'test@example.com',
+          // nameが欠けている
+          passwordHash: 'hashed_password',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        // 変換実行
+        const result = userMapper.toDomain(incompleteRecord as UserDbSelect);
+
+        // 検証
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.message).toContain('必須プロパティ');
+          expect(result.error.message).toContain('name');
+        }
+      });
+    });
+
+    describe('toDTO', () => {
+      it('should convert a User entity to a DTO', () => {
+        // テスト用のユーザーエンティティを作成
+        const testDate = '2024-01-06T10:00:00.000Z';
+        const { user, userId } = createTestUser('dto-test', testDate);
+
+        // 変換実行
+        const result = userMapper.toDTO(user);
+
+        // 検証
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          const dto = result.value;
+
+          // DTOの構造を検証
+          expect(dto).toEqual({
+            id: userId.value,
+            name: 'Test User dto-test',
+            email: 'test-dto-test@example.com',
+            createdAt: testDate,
+            updatedAt: testDate,
+          });
+
+          // 機密情報が含まれていないことを確認
+          expect(dto).not.toHaveProperty('passwordHash');
+        }
+      });
+    });
+
+    describe('toPersistence', () => {
+      it('should convert a User entity to a database record', () => {
+        // テスト用のユーザーエンティティを作成
+        const testDate = '2024-01-07T10:00:00.000Z';
+        const { user, userId } = createTestUser('persist-test', testDate);
+
+        // 変換実行
+        const result = userMapper.toPersistence(user);
+
+        // 検証
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          const dbRecord = result.value;
+
+          // DBレコードの構造を検証
+          expect(dbRecord).toEqual({
+            id: userId.value,
+            name: 'Test User persist-test',
+            email: 'test-persist-test@example.com',
+            passwordHash: 'hashedPassword-persist-test',
+          });
+
+          // データベース側で管理されるフィールドが含まれていないことを確認
+          expect(dbRecord).not.toHaveProperty('createdAt');
+          expect(dbRecord).not.toHaveProperty('updatedAt');
+        }
+      });
     });
   });
 });
