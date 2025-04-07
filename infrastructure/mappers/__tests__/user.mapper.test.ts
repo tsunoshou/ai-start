@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-
 import { describe, it, expect } from 'vitest';
 
 import { UserDTO } from '@/application/dtos/user.dto';
