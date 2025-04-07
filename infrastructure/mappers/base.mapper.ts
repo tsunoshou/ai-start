@@ -4,26 +4,42 @@ import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 
 /**
  * 値オブジェクトマッピング定義
+ *
+ * @template TInput - 値オブジェクト作成時の入力型
+ * @template TOutput - 値オブジェクトの出力型
  */
-export interface ValueObjectMapping<T = unknown, R = unknown> {
-  valueObject: { create: (value: T) => Result<R, Error> };
+export interface ValueObjectMapping<TInput = unknown, TOutput = unknown> {
+  /** 値オブジェクトのファクトリー関数を持つクラス参照 */
+  valueObject: { create: (value: TInput) => Result<TOutput, Error> };
+
+  /** 変換元のフィールド名（省略時はキー名を使用） */
   sourceField?: string;
-  transform?: (value: unknown) => T;
+
+  /** 値オブジェクト作成前に適用する変換関数（オプション） */
+  transform?: (value: unknown) => TInput;
 }
 
 /**
  * プロパティマッピング定義
+ *
+ * @template TOutput - 変換後の出力型
  */
-export interface PropertyMapping<T = unknown> {
+export interface PropertyMapping<TOutput = unknown> {
+  /** 変換元のフィールドパス（ドット区切りでネスト参照可能） */
   sourceField: string;
-  transform?: (value: unknown) => T;
+
+  /** 変換時に適用する関数（オプション） */
+  transform?: (value: unknown) => TOutput;
 }
 
 /**
  * ドメインエンティティ構築のための設定
+ *
+ * @template TEntity - 構築するドメインエンティティの型
+ * @template TRecord - 変換元のデータベースレコード型
  */
 export interface DomainMappingConfig<TEntity, TRecord> {
-  /** 値オブジェクト定義 */
+  /** 値オブジェクト定義マップ */
   valueObjects: Record<string, ValueObjectMapping>;
 
   /** 必須フィールド */

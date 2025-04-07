@@ -12,6 +12,7 @@ import { Email } from '@/shared/value-objects/email.vo';
 import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
 
 import { BaseEntityMapper, DomainMappingConfig, PropertyMapping } from './base.mapper';
+import { asValueObjectMapper, asType, toISOString } from './utils/mapping-helpers';
 
 // DrizzleスキーマからDBの型を取得
 export type UserDbSelect = typeof users.$inferSelect;
@@ -31,47 +32,41 @@ export class UserMapper extends BaseEntityMapper<User, UserDbSelect, UserDbInser
   private readonly domainMappingConfig: DomainMappingConfig<User, UserDbSelect> = {
     valueObjects: {
       id: {
-        valueObject: UserId as unknown as { create: (value: unknown) => Result<unknown, Error> },
+        valueObject: asValueObjectMapper(UserId),
         sourceField: 'id',
       },
       email: {
-        valueObject: Email as unknown as { create: (value: unknown) => Result<unknown, Error> },
+        valueObject: asValueObjectMapper(Email),
         sourceField: 'email',
       },
       name: {
-        valueObject: UserName as unknown as { create: (value: unknown) => Result<unknown, Error> },
+        valueObject: asValueObjectMapper(UserName),
         sourceField: 'name',
       },
       passwordHash: {
-        valueObject: PasswordHash as unknown as {
-          create: (value: unknown) => Result<unknown, Error>;
-        },
+        valueObject: asValueObjectMapper(PasswordHash),
         sourceField: 'passwordHash',
       },
       createdAt: {
-        valueObject: DateTimeStringModule.DateTimeString as unknown as {
-          create: (value: unknown) => Result<unknown, Error>;
-        },
+        valueObject: asValueObjectMapper(DateTimeStringModule.DateTimeString),
         sourceField: 'createdAt',
-        transform: (value) => this.dateToISOString(value as Date | string),
+        transform: (value) => toISOString(value),
       },
       updatedAt: {
-        valueObject: DateTimeStringModule.DateTimeString as unknown as {
-          create: (value: unknown) => Result<unknown, Error>;
-        },
+        valueObject: asValueObjectMapper(DateTimeStringModule.DateTimeString),
         sourceField: 'updatedAt',
-        transform: (value) => this.dateToISOString(value as Date | string),
+        transform: (value) => toISOString(value),
       },
     },
     requiredFields: ['id', 'email', 'name', 'passwordHash', 'createdAt', 'updatedAt'],
     entityConstructor: (valueObjects) =>
       User.reconstruct({
-        id: valueObjects.id as UserId,
-        email: valueObjects.email as Email,
-        name: valueObjects.name as UserName,
-        passwordHash: valueObjects.passwordHash as PasswordHash,
-        createdAt: valueObjects.createdAt as DateTimeStringModule.DateTimeString,
-        updatedAt: valueObjects.updatedAt as DateTimeStringModule.DateTimeString,
+        id: asType<UserId>(valueObjects.id),
+        email: asType<Email>(valueObjects.email),
+        name: asType<UserName>(valueObjects.name),
+        passwordHash: asType<PasswordHash>(valueObjects.passwordHash),
+        createdAt: asType<DateTimeStringModule.DateTimeString>(valueObjects.createdAt),
+        updatedAt: asType<DateTimeStringModule.DateTimeString>(valueObjects.updatedAt),
       }),
   };
 
@@ -80,8 +75,8 @@ export class UserMapper extends BaseEntityMapper<User, UserDbSelect, UserDbInser
    */
   private readonly dtoPropMappings: Record<keyof UserDTO, PropertyMapping> = {
     id: { sourceField: 'id.value' },
-    name: { sourceField: 'name.value' },
     email: { sourceField: 'email.value' },
+    name: { sourceField: 'name.value' },
     createdAt: { sourceField: 'createdAt.value' },
     updatedAt: { sourceField: 'updatedAt.value' },
   };
@@ -90,11 +85,19 @@ export class UserMapper extends BaseEntityMapper<User, UserDbSelect, UserDbInser
    * DBレコードへの変換に使用するプロパティマッピング
    * UserDbInsertには必須のフィールドのみ含める（createdAt、updatedAtはDBで自動管理）
    */
-  private readonly persistencePropMappings: Record<string, PropertyMapping> = {
+  private readonly persistencePropMappings: Record<keyof UserDbSelect, PropertyMapping> = {
     id: { sourceField: 'id.value' },
-    name: { sourceField: 'name.value' },
     email: { sourceField: 'email.value' },
+    name: { sourceField: 'name.value' },
     passwordHash: { sourceField: 'passwordHash.value' },
+    createdAt: {
+      sourceField: 'createdAt.value',
+      transform: (value) => new Date(value as string),
+    },
+    updatedAt: {
+      sourceField: 'updatedAt.value',
+      transform: (value) => new Date(value as string),
+    },
   };
 
   /**
@@ -107,8 +110,8 @@ export class UserMapper extends BaseEntityMapper<User, UserDbSelect, UserDbInser
   static toDTO(entity: User): UserDTO {
     return {
       id: entity.id.value,
-      name: entity.name.value,
       email: entity.email.value,
+      name: entity.name.value,
       createdAt: entity.createdAt.value,
       updatedAt: entity.updatedAt.value,
     };
