@@ -1,4 +1,5 @@
-import { eq } from 'drizzle-orm';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { eq, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import { Result, ok, err } from 'neverthrow';
@@ -6,6 +7,8 @@ import { inject } from 'tsyringe';
 
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.interface';
 import { Identifier } from '@/shared/types/common.types';
 import { EntityBase } from '@/shared/types/entity-base.interface';
 
@@ -25,11 +28,10 @@ export abstract class BaseRepository<
   TDbInsert extends Record<string, unknown>,
   TSchema extends PgTable,
 > {
-  protected readonly db: NodePgDatabase;
-
-  constructor(@inject('Database') db: NodePgDatabase) {
-    this.db = db;
-  }
+  constructor(
+    @inject('Database') protected readonly db: NodePgDatabase,
+    @inject(LoggerToken) protected readonly logger: LoggerInterface
+  ) {}
 
   /** Drizzle schema definition for the table. Must be implemented by subclasses. */
   protected abstract readonly schema: TSchema;
@@ -51,9 +53,9 @@ export abstract class BaseRepository<
   async findById(id: TID): Promise<Result<TDomain | null, InfrastructureError>> {
     try {
       // drizzle-ormの型システム問題を回避するために型アサーションを使用
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       const findResult = await this.db
         .select()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
         .from(this.schema as any)
         .where(eq(this.idColumn, id.value))
         .limit(1);
@@ -68,6 +70,15 @@ export abstract class BaseRepository<
         return ok(entity);
       } catch (mappingError) {
         // Handle mapping errors (which might throw InfrastructureError directly)
+        this.logger.error(
+          {
+            message: `Mapping failed for entity with ID ${id.value}`,
+            entityId: id.value,
+            operation: 'findById',
+          },
+          mappingError
+        );
+
         if (mappingError instanceof InfrastructureError) {
           return err(mappingError);
         }
@@ -78,6 +89,15 @@ export abstract class BaseRepository<
         );
       }
     } catch (error) {
+      this.logger.error(
+        {
+          message: `Failed to find entity by id ${id.value}`,
+          entityId: id.value,
+          operation: 'findById',
+        },
+        error
+      );
+
       return err(
         new InfrastructureError(`Failed to find entity by id ${id.value}`, {
           cause: error instanceof Error ? error : undefined,
@@ -92,12 +112,33 @@ export abstract class BaseRepository<
    * @returns A Result containing void or an InfrastructureError.
    */
   async save(entity: TDomain): Promise<Result<void, InfrastructureError>> {
-    try {
-      const persistenceData = this._toPersistence(entity);
+    let persistenceData: TDbInsert;
 
+    try {
+      persistenceData = this._toPersistence(entity);
+    } catch (mappingError) {
+      this.logger.error(
+        {
+          message: `Mapping to persistence failed for ${entity.id.value}`,
+          entityId: entity.id.value,
+          operation: 'save',
+        },
+        mappingError
+      );
+
+      return err(
+        mappingError instanceof InfrastructureError
+          ? mappingError
+          : new InfrastructureError(`Mapping to persistence failed for ${entity.id.value}`, {
+              cause: mappingError instanceof Error ? mappingError : undefined,
+            })
+      );
+    }
+
+    try {
       // drizzle-ormの型システム問題を回避するために型アサーションを使用
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       await this.db
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
         .insert(this.schema as any)
         .values(persistenceData)
         .onConflictDoUpdate({
@@ -106,8 +147,30 @@ export abstract class BaseRepository<
         });
 
       return ok(undefined); // Success
-    } catch (error) {
-      // Catch potential errors from _toPersistence
+    } catch (error: any) {
+      this.logger.error(
+        {
+          message: `Failed to save entity data: ${entity.id.value}`,
+          entityId: entity.id.value,
+          operation: 'save',
+          errorCode: error?.code,
+        },
+        error
+      );
+
+      // PostgreSQLのユニーク制約違反エラーコード: 23505
+      if (error?.code === '23505') {
+        return err(
+          new InfrastructureError(
+            `Unique constraint violation during save of entity ${entity.id.value}.`,
+            {
+              cause: error,
+              metadata: { code: ErrorCode.ConflictError },
+            }
+          )
+        );
+      }
+
       return err(
         new InfrastructureError(`Failed to save entity data: ${entity.id.value}`, {
           cause: error instanceof Error ? error : undefined,
@@ -124,12 +187,18 @@ export abstract class BaseRepository<
   async delete(id: TID): Promise<Result<void, InfrastructureError>> {
     try {
       // drizzle-ormの型システム問題を回避するために型アサーションを使用
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       const deleteResult = await this.db
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
         .delete(this.schema as any)
         .where(eq(this.idColumn, id.value));
 
       if (deleteResult.rowCount === 0) {
+        this.logger.info({
+          message: `Entity with id ${id.value} not found for deletion.`,
+          entityId: id.value,
+          operation: 'delete',
+        });
+
         // Entity not found, return specific InfrastructureError
         return err(
           new InfrastructureError(`Entity with id ${id.value} not found for deletion.`, {
@@ -138,10 +207,58 @@ export abstract class BaseRepository<
         );
       }
 
+      this.logger.info({
+        message: `Successfully deleted entity ${id.value}`,
+        entityId: id.value,
+        operation: 'delete',
+      });
+
       return ok(undefined); // Success
     } catch (error) {
+      this.logger.error(
+        {
+          message: `Failed to delete entity ${id.value}`,
+          entityId: id.value,
+          operation: 'delete',
+        },
+        error
+      );
+
       return err(
         new InfrastructureError(`Failed to delete entity ${id.value}`, {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
+  }
+
+  /**
+   * エンティティが存在するかチェックします。
+   * @param id エンティティのID。
+   * @returns 存在する場合はtrue、存在しない場合はfalseを含むResult。エラー時はInfrastructureErrorを含むResult。
+   */
+  async exists(id: TID): Promise<Result<boolean, InfrastructureError>> {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      const result = await this.db
+        .select({ count: sql<string>`count(*)` })
+        .from(this.schema as any)
+        .where(eq(this.idColumn, id.value));
+
+      const exists = parseInt(result[0].count as string, 10) > 0;
+      return ok(exists);
+    } catch (error) {
+      this.logger.error(
+        {
+          message: `Failed to check existence of entity ${id.value}`,
+          entityId: id.value,
+          operation: 'exists',
+        },
+        error
+      );
+
+      return err(
+        new InfrastructureError(`Failed to check if entity ${id.value} exists`, {
           cause: error instanceof Error ? error : undefined,
         })
       );

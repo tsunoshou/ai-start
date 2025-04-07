@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import container from '@/config/container.config';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.interface';
 
 /**
  * @interface ApiErrorResponse
@@ -73,6 +76,7 @@ function mapErrorCodeToStatus(code: ErrorCode): number {
     case ErrorCode.ProjectNotFound: // Example of specific NotFound
       return 404; // Not Found
     case ErrorCode.DbUniqueConstraintViolation: // Could also be 400 depending on context
+    case ErrorCode.ConflictError:
       return 409; // Conflict
     case ErrorCode.DatabaseError:
     case ErrorCode.NetworkError:
@@ -99,15 +103,43 @@ function mapErrorCodeToStatus(code: ErrorCode): number {
  * @returns A NextResponse object representing the error.
  */
 export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
-  // TODO: Replace with injected logger
-  console.error('[API Error Handler]:', error);
+  // ロガーを取得
+  const logger = container.resolve<LoggerInterface>(LoggerToken);
 
   if (error instanceof AppError) {
     const status = mapErrorCodeToStatus(error.code);
+
+    // クライアントエラー (4xx) と サーバーエラー (5xx) を異なるレベルでログに記録
+    if (status >= 500) {
+      logger.error(
+        {
+          message: `API Error: ${error.message}`,
+          code: error.code,
+          status,
+          metadata: error.metadata,
+        },
+        error.cause
+      );
+    } else {
+      logger.warn({
+        message: `API Client Error: ${error.message}`,
+        code: error.code,
+        status,
+        metadata: error.metadata,
+      });
+    }
+
     return apiError(status, error.code, error.message, error.metadata);
   }
 
   if (error instanceof z.ZodError) {
+    // Zod バリデーションエラーを記録
+    logger.warn({
+      message: 'API Input Validation Failed',
+      code: ErrorCode.ValidationError,
+      errors: error.errors,
+    });
+
     // Handle Zod validation errors specifically
     return apiError(
       400,
@@ -118,9 +150,25 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
   }
 
   if (error instanceof Error) {
+    // 予期せぬエラーを記録
+    logger.error(
+      {
+        message: `Unexpected Server Error: ${error.message}`,
+        code: ErrorCode.InternalServerError,
+      },
+      error
+    );
+
     // Generic unexpected errors
     return apiError(500, ErrorCode.InternalServerError, 'An unexpected server error occurred.');
   }
+
+  // Error オブジェクトではない場合
+  logger.error({
+    message: 'Unknown Error Type in API',
+    code: ErrorCode.UnknownError,
+    error,
+  });
 
   // Fallback for non-Error types thrown
   return apiError(500, ErrorCode.UnknownError, 'An unknown error occurred.');

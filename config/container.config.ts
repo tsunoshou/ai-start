@@ -19,6 +19,8 @@ import {
   UserRepositoryToken,
 } from '@/domain/repositories/user.repository.interface';
 import { UserRepository } from '@/infrastructure/database/repositories/user.repository';
+import { ConsoleLogger } from '@/shared/logger/console.logger';
+import { LoggerToken, LoggerInterface } from '@/shared/logger/logger.interface';
 
 // --- Dependency Registration ---
 
@@ -26,6 +28,11 @@ import { UserRepository } from '@/infrastructure/database/repositories/user.repo
 const POOL = new Pool({ connectionString: ENV.DATABASE_URL });
 const DB = drizzle(POOL);
 container.register<typeof DB>('Database', { useValue: DB });
+
+// Logger
+container.register<LoggerInterface>(LoggerToken, {
+  useClass: ConsoleLogger,
+});
 
 // Repositories
 container.register<UserRepositoryInterface>(UserRepositoryToken, {

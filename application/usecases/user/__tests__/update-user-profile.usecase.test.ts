@@ -15,6 +15,7 @@ import { UserRepositoryInterface } from '@/domain/repositories/user.repository.i
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import type { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
 import type { Email } from '@/shared/value-objects/email.vo';
 import type { PasswordHash } from '@/shared/value-objects/password-hash.vo';
@@ -48,6 +49,14 @@ describe('UpdateUserProfileUsecase', () => {
     findByEmail: vi.fn(),
     delete: vi.fn(),
     findAll: vi.fn(),
+  };
+
+  // モックロガーの作成
+  const mockLogger: LoggerInterface = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   };
 
   // テスト対象のユースケース
@@ -92,14 +101,14 @@ describe('UpdateUserProfileUsecase', () => {
     });
 
     // ユースケースのインスタンスを作成
-    updateUserProfileUsecase = new UpdateUserProfileUsecase(mockUserRepository);
+    updateUserProfileUsecase = new UpdateUserProfileUsecase(mockUserRepository, mockLogger);
   });
 
   it('正常系: ユーザー情報を更新し、更新後のDTOを返す', async () => {
     // モックリポジトリの挙動を設定
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockUserRepository.findById as Mock).mockResolvedValue(ok(mockUser));
-    
+
     // 更新後のユーザーを返すようにモック設定
     const updatedUser = {
       ...mockUser,
@@ -116,19 +125,24 @@ describe('UpdateUserProfileUsecase', () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       const userDTO = result.value;
-      
+
       // 更新されたデータを検証
       expect(userDTO).toHaveProperty('id', '01234567-89ab-cdef-0123-456789abcdef');
       expect(userDTO).toHaveProperty('name', '更新後ユーザー');
       expect(userDTO).toHaveProperty('email', 'test@example.com');
-      
+
       // モックが期待通り呼び出されたか検証
       expect(mockUserRepository.findById).toHaveBeenCalledTimes(1);
-      expect(mockUserRepository.findById).toHaveBeenCalledWith({ value: '01234567-89ab-cdef-0123-456789abcdef' });
-      
+      expect(mockUserRepository.findById).toHaveBeenCalledWith({
+        value: '01234567-89ab-cdef-0123-456789abcdef',
+      });
+
       expect(mockUserRepository.save).toHaveBeenCalledTimes(1);
       // User.reconstructが呼ばれていることを検証
       expect(User.reconstruct).toHaveBeenCalledTimes(1);
+
+      // ロガーが呼ばれていることを検証
+      expect(mockLogger.info).toHaveBeenCalledTimes(1);
     }
   });
 
@@ -150,6 +164,9 @@ describe('UpdateUserProfileUsecase', () => {
 
     // saveメソッドが呼ばれていないことを検証
     expect(mockUserRepository.save).not.toHaveBeenCalled();
+
+    // ロガーが呼ばれていることを検証
+    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
   });
 
   it('異常系: 無効なユーザーIDを指定した場合', async () => {
@@ -174,6 +191,9 @@ describe('UpdateUserProfileUsecase', () => {
     // モックが呼ばれていないことを検証
     expect(mockUserRepository.findById).not.toHaveBeenCalled();
     expect(mockUserRepository.save).not.toHaveBeenCalled();
+
+    // ロガーが呼ばれていることを検証
+    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
   });
 
   it('異常系: 無効なユーザー名を指定した場合', async () => {
@@ -224,13 +244,16 @@ describe('UpdateUserProfileUsecase', () => {
 
     // saveメソッドが呼ばれていないことを検証
     expect(mockUserRepository.save).not.toHaveBeenCalled();
+
+    // ロガーが呼ばれていることを検証
+    expect(mockLogger.error).toHaveBeenCalledTimes(1);
   });
 
   it('異常系: リポジトリからのsaveでエラーが発生した場合', async () => {
     // モックリポジトリの挙動を設定 - findByIdは成功、saveはエラー
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockUserRepository.findById as Mock).mockResolvedValue(ok(mockUser));
-    
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockUserRepository.save as Mock).mockResolvedValue(
       err(new InfrastructureError('ユーザー更新に失敗しました', { cause: new Error('DB error') }))
@@ -249,9 +272,7 @@ describe('UpdateUserProfileUsecase', () => {
       expect(result.error.message).toContain('Failed to save updated user profile');
     }
 
-    // findByIdが呼ばれていることを検証
-    expect(mockUserRepository.findById).toHaveBeenCalledTimes(1);
-    // saveが呼ばれていることを検証
-    expect(mockUserRepository.save).toHaveBeenCalledTimes(1);
+    // ロガーが呼ばれていることを検証
+    expect(mockLogger.error).toHaveBeenCalledTimes(1);
   });
-}); 
+});

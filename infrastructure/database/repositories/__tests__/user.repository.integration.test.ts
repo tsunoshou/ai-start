@@ -11,7 +11,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { UserId } from '@/domain/models/user/user-id.vo';
 import { UserName } from '@/domain/models/user/user-name.vo';
@@ -19,6 +19,7 @@ import { User } from '@/domain/models/user/user.entity';
 import { UserRepository } from '@/infrastructure/database/repositories/user.repository';
 import { users } from '@/infrastructure/database/schema';
 import { UserMapper } from '@/infrastructure/mappers/user.mapper';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
 import { Email } from '@/shared/value-objects/email.vo';
 import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
@@ -31,6 +32,8 @@ describe('UserRepository 統合テスト', () => {
   let pool: Pool;
   let db: any; // テストのための簡易的な型定義
   let userRepository: UserRepository;
+  let userMapper: UserMapper;
+  let mockLogger: LoggerInterface;
 
   beforeAll(async () => {
     console.log('PostgreSQL コンテナを開始しています...');
@@ -69,10 +72,18 @@ describe('UserRepository 統合テスト', () => {
       throw error;
     }
 
-    // UserRepository を初期化
+    // モックロガーを作成
+    mockLogger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    };
+
+    // UserMapperとUserRepositoryを初期化
     console.log('UserRepository を初期化しています...');
-    const userMapper = new UserMapper();
-    userRepository = new UserRepository(db, userMapper);
+    userMapper = new UserMapper();
+    userRepository = new UserRepository(db, mockLogger, userMapper);
     console.log('UserRepository が初期化されました。');
   }, 180000); // 3分のタイムアウト
 
@@ -86,6 +97,9 @@ describe('UserRepository 統合テスト', () => {
   beforeEach(async () => {
     // 各テスト前にユーザーテーブルをクリーンアップ
     await db.delete(users);
+
+    // モックロガーをリセット
+    vi.clearAllMocks();
   });
 
   it('新しいユーザーを保存し、IDで検索できる', async () => {

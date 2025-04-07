@@ -218,5 +218,15 @@ module.exports = {
         '@typescript-eslint/naming-convention': 'off',
       },
     },
+    // ロガー関連ファイルでのコンソール使用を許可
+    {
+      files: [
+        '**/shared/logger/**/*.ts',
+        '**/infrastructure/database/repositories/__tests__/*.test.ts',
+      ],
+      rules: {
+        'no-console': 'off',
+      },
+    },
   ],
 };

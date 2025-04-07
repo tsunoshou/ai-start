@@ -8,8 +8,9 @@ import { UserId } from '@/domain/models/user/user-id.vo';
 import { User } from '@/domain/models/user/user.entity';
 import { UserRepositoryInterface } from '@/domain/repositories/user.repository.interface';
 import { UserMapper } from '@/infrastructure/mappers/user.mapper';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.interface';
 import { Email } from '@/shared/value-objects/email.vo';
 
 import { users } from '../schema/users.schema';
@@ -37,15 +38,17 @@ export class UserRepository
   protected readonly idColumn: PgColumn = users.id;
 
   /**
-   * Constructor injecting the database instance and user mapper.
+   * Constructor injecting the database instance, logger, and user mapper.
    * @param db Drizzle database instance from DI container.
+   * @param logger Logger instance for logging operations.
    * @param userMapper User entity mapper for domain-database conversions
    */
   constructor(
     @inject('Database') db: NodePgDatabase,
+    @inject(LoggerToken) logger: LoggerInterface,
     @inject(UserMapper) private readonly userMapper: UserMapper
   ) {
-    super(db); // Pass db instance to the base class constructor
+    super(db, logger); // Pass db and logger instances to the base class constructor
   }
 
   /**
@@ -102,6 +105,15 @@ export class UserRepository
       try {
         return ok(this._toDomain(result));
       } catch (mappingError) {
+        this.logger.error(
+          {
+            message: `Failed to process record found for email ${email.value}`,
+            email: email.value,
+            operation: 'findByEmail',
+          },
+          mappingError
+        );
+
         if (mappingError instanceof InfrastructureError) {
           return err(mappingError);
         }
@@ -112,6 +124,15 @@ export class UserRepository
         );
       }
     } catch (error) {
+      this.logger.error(
+        {
+          message: `Failed to find user by email ${email.value}`,
+          email: email.value,
+          operation: 'findByEmail',
+        },
+        error
+      );
+
       const infraError = new InfrastructureError(`Failed to find user by email ${email.value}`, {
         cause: error instanceof Error ? error : undefined,
       });
@@ -148,6 +169,14 @@ export class UserRepository
           try {
             return ok(this._toDomain(record));
           } catch (mappingError) {
+            this.logger.error(
+              {
+                message: 'Failed to process record during findAll mapping',
+                operation: 'findAll',
+              },
+              mappingError
+            );
+
             return err(
               mappingError instanceof InfrastructureError
                 ? mappingError
@@ -171,6 +200,14 @@ export class UserRepository
       // Return the array of successfully mapped User entities
       return ok(usersResult.value);
     } catch (error) {
+      this.logger.error(
+        {
+          message: 'Failed to find all users',
+          operation: 'findAll',
+        },
+        error
+      );
+
       const infraError = new InfrastructureError('Failed to find all users', {
         cause: error instanceof Error ? error : undefined,
       });
@@ -178,40 +215,9 @@ export class UserRepository
     }
   }
 
-  /**
-   * Saves a user entity, performing email uniqueness check before saving.
-   * Overrides the base save method to add this specific behavior.
-   * @param entity The User domain entity.
-   * @returns A Result containing void or an InfrastructureError.
-   */
-  async save(entity: User): Promise<Result<void, InfrastructureError>> {
-    try {
-      // Emailの重複チェック
-      const existingUserResult = await this.findByEmail(entity.email);
-
-      if (existingUserResult.isOk() && existingUserResult.value) {
-        const existingUser = existingUserResult.value;
-
-        // 同じIDなら更新、異なるIDならエラー
-        if (!existingUser.id.equals(entity.id)) {
-          return err(
-            new InfrastructureError(`メールアドレス ${entity.email.value} は既に使用されています`, {
-              metadata: { code: ErrorCode.ConflictError },
-            })
-          );
-        }
-      }
-
-      // BaseRepositoryのsaveメソッドを使用
-      return super.save(entity);
-    } catch (error) {
-      return err(
-        new InfrastructureError(`Failed to save user data: ${entity.id.value}`, {
-          cause: error instanceof Error ? error : undefined,
-        })
-      );
-    }
-  }
+  // saveメソッドをBaseRepositoryに委任します。
+  // データベースのユニーク制約違反エラーは、BaseRepositoryのsaveメソッド内で
+  // ErrorCode.ConflictErrorとして処理されます。
 
   // findById, deleteはBaseRepositoryの実装を使用
 }

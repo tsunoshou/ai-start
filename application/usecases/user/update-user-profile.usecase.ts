@@ -12,6 +12,8 @@ import {
 import { UserMapper } from '@/infrastructure/mappers/user.mapper';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.interface';
 
 // Input: Requires the user ID and the fields to update (optional name for now)
 type UpdateUserProfileInput = {
@@ -31,7 +33,9 @@ type UpdateUserProfileOutput = UserDTO;
 export class UpdateUserProfileUsecase {
   constructor(
     @inject(UserRepositoryToken)
-    private readonly userRepository: UserRepositoryInterface
+    private readonly userRepository: UserRepositoryInterface,
+    @inject(LoggerToken)
+    private readonly logger: LoggerInterface
   ) {}
 
   /**
@@ -43,6 +47,12 @@ export class UpdateUserProfileUsecase {
     // 1. Validate Input ID (Create UserId VO)
     const userIdResult = UserId.create(input.userId);
     if (userIdResult.isErr()) {
+      this.logger.warn({
+        message: `Invalid user ID format: ${userIdResult.error.message}`,
+        userId: input.userId,
+        operation: 'updateUserProfile',
+      });
+
       return err(
         new AppError(
           ErrorCode.ValidationError,
@@ -56,8 +66,15 @@ export class UpdateUserProfileUsecase {
     const findResult = await this.userRepository.findById(userIdVo);
     if (findResult.isErr()) {
       // Infrastructure error during find
-      // TODO: Replace with injected logger
-      console.error('Failed to fetch user for update:', findResult.error);
+      this.logger.error(
+        {
+          message: 'Failed to retrieve user data for update',
+          userId: input.userId,
+          operation: 'updateUserProfile',
+        },
+        findResult.error
+      );
+
       return err(
         new AppError(ErrorCode.DatabaseError, 'Failed to retrieve user data for update', {
           cause: findResult.error,
@@ -66,6 +83,12 @@ export class UpdateUserProfileUsecase {
     }
     const currentUser = findResult.value;
     if (!currentUser) {
+      this.logger.warn({
+        message: `User with ID ${input.userId} not found.`,
+        userId: input.userId,
+        operation: 'updateUserProfile',
+      });
+
       return err(new AppError(ErrorCode.NotFound, `User with ID ${input.userId} not found.`));
     }
 
@@ -74,6 +97,13 @@ export class UpdateUserProfileUsecase {
     if (input.name !== undefined) {
       const nameResult = UserName.create(input.name);
       if (nameResult.isErr()) {
+        this.logger.warn({
+          message: `Invalid name format: ${nameResult.error.message}`,
+          userId: input.userId,
+          name: input.name,
+          operation: 'updateUserProfile',
+        });
+
         return err(
           new AppError(
             ErrorCode.ValidationError,
@@ -97,14 +127,27 @@ export class UpdateUserProfileUsecase {
     // 5. Save Updated User Entity
     const saveResult = await this.userRepository.save(updatedUser);
     if (saveResult.isErr()) {
-      // TODO: Replace with injected logger
-      console.error('Failed to save updated user:', saveResult.error);
+      this.logger.error(
+        {
+          message: 'Failed to save updated user profile',
+          userId: input.userId,
+          operation: 'updateUserProfile',
+        },
+        saveResult.error
+      );
+
       return err(
         new AppError(ErrorCode.DatabaseError, 'Failed to save updated user profile', {
           cause: saveResult.error,
         })
       );
     }
+
+    this.logger.info({
+      message: `Successfully updated user profile for user ${input.userId}`,
+      userId: input.userId,
+      operation: 'updateUserProfile',
+    });
 
     // 6. Map to DTO
     const output = UserMapper.toDTO(updatedUser);
