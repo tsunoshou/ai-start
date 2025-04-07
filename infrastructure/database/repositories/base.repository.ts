@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { eq, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgColumn, PgTable } from 'drizzle-orm/pg-core';
@@ -56,6 +55,7 @@ export abstract class BaseRepository<
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       const findResult = await this.db
         .select()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(this.schema as any)
         .where(eq(this.idColumn, id.value))
         .limit(1);
@@ -139,6 +139,7 @@ export abstract class BaseRepository<
       // drizzle-ormの型システム問題を回避するために型アサーションを使用
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       await this.db
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .insert(this.schema as any)
         .values(persistenceData)
         .onConflictDoUpdate({
@@ -147,6 +148,7 @@ export abstract class BaseRepository<
         });
 
       return ok(undefined); // Success
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.logger.error(
         {
@@ -189,6 +191,7 @@ export abstract class BaseRepository<
       // drizzle-ormの型システム問題を回避するために型アサーションを使用
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       const deleteResult = await this.db
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .delete(this.schema as any)
         .where(eq(this.idColumn, id.value));
 
@@ -242,6 +245,7 @@ export abstract class BaseRepository<
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       const result = await this.db
         .select({ count: sql<string>`count(*)` })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(this.schema as any)
         .where(eq(this.idColumn, id.value));
 

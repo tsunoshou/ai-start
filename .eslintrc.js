@@ -220,10 +220,7 @@ module.exports = {
     },
     // ロガー関連ファイルでのコンソール使用を許可
     {
-      files: [
-        '**/shared/logger/**/*.ts',
-        '**/infrastructure/database/repositories/__tests__/*.test.ts',
-      ],
+      files: ['**/shared/logger/**/*.ts', '**/__tests__/**/*.test.ts', '**/*.test.ts'],
       rules: {
         'no-console': 'off',
       },
