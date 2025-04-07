@@ -243,9 +243,22 @@ describe('UserMapper', () => {
 
     describe('toPersistence', () => {
       it('should convert a User entity to a database record', () => {
-        // テスト用のユーザーエンティティを作成
-        const testDate = '2024-01-07T10:00:00.000Z';
-        const { user, userId } = createTestUser('persist-test', testDate);
+        // テスト用のエンティティを準備
+        const userId = UserId.create('b7388346-8235-4e02-95e5-8cf9a25e99bb')._unsafeUnwrap();
+        const email = Email.create('test-persist-test@example.com')._unsafeUnwrap();
+        const name = UserName.create('Test User persist-test')._unsafeUnwrap();
+        const passwordHash = PasswordHash.create('hashedPassword-persist-test')._unsafeUnwrap();
+        const createdAt = DateTimeString.create('2024-01-07T10:00:00.000Z')._unsafeUnwrap();
+        const updatedAt = DateTimeString.create('2024-01-07T10:00:00.000Z')._unsafeUnwrap();
+
+        const user = User.reconstruct({
+          id: userId,
+          email,
+          name,
+          passwordHash,
+          createdAt,
+          updatedAt,
+        });
 
         // 変換実行
         const result = userMapper.toPersistence(user);
@@ -261,11 +274,9 @@ describe('UserMapper', () => {
             name: 'Test User persist-test',
             email: 'test-persist-test@example.com',
             passwordHash: 'hashedPassword-persist-test',
+            createdAt: new Date('2024-01-07T10:00:00.000Z'),
+            updatedAt: new Date('2024-01-07T10:00:00.000Z'),
           });
-
-          // データベース側で管理されるフィールドが含まれていないことを確認
-          expect(dbRecord).not.toHaveProperty('createdAt');
-          expect(dbRecord).not.toHaveProperty('updatedAt');
         }
       });
     });
