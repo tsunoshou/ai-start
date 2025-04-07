@@ -9,7 +9,6 @@ import type { UserId } from '@/domain/models/user/user-id.vo';
 import type { UserName } from '@/domain/models/user/user-name.vo';
 import { User } from '@/domain/models/user/user.entity';
 import { UserRepositoryInterface } from '@/domain/repositories/user.repository.interface';
-import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 import type { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
@@ -105,21 +104,21 @@ describe('ListUsersUsecase', () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       const userDTOs = result.value;
-      
+
       // 配列の長さが一致することを検証
       expect(userDTOs).toHaveLength(2);
-      
+
       // 各DTOの基本的な構造を検証
       expect(userDTOs[0]).toHaveProperty('id', '01234567-89ab-cdef-0123-456789abcdef');
       expect(userDTOs[0]).toHaveProperty('name', 'ユーザー1');
       expect(userDTOs[0]).toHaveProperty('email', 'user1@example.com');
       expect(userDTOs[0]).toHaveProperty('createdAt');
       expect(userDTOs[0]).toHaveProperty('updatedAt');
-      
+
       expect(userDTOs[1]).toHaveProperty('id', '12345678-9abc-def0-1234-56789abcdef0');
       expect(userDTOs[1]).toHaveProperty('name', 'ユーザー2');
       expect(userDTOs[1]).toHaveProperty('email', 'user2@example.com');
-      
+
       // モックが期待通り呼び出されたか検証
       expect(mockUserRepository.findAll).toHaveBeenCalledTimes(1);
       expect(mockUserRepository.findAll).toHaveBeenCalledWith({});
@@ -138,7 +137,7 @@ describe('ListUsersUsecase', () => {
 
     // 検証
     expect(result.isOk()).toBe(true);
-    
+
     // モックが期待通り呼び出されたか検証
     expect(mockUserRepository.findAll).toHaveBeenCalledTimes(1);
     expect(mockUserRepository.findAll).toHaveBeenCalledWith({ limit, offset });
@@ -164,7 +163,9 @@ describe('ListUsersUsecase', () => {
     // モックリポジトリの挙動を設定 - エラーを返す
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockUserRepository.findAll as Mock).mockResolvedValue(
-      err(new InfrastructureError('ユーザー一覧取得に失敗しました', { cause: new Error('DB error') }))
+      err(
+        new InfrastructureError('ユーザー一覧取得に失敗しました', { cause: new Error('DB error') })
+      )
     );
 
     // 実行
@@ -180,4 +181,4 @@ describe('ListUsersUsecase', () => {
     // モックが期待通り呼び出されたか検証
     expect(mockUserRepository.findAll).toHaveBeenCalledTimes(1);
   });
-}); 
+});

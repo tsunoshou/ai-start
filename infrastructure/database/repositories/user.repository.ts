@@ -1,22 +1,20 @@
-import { inject, injectable } from 'tsyringe';
 import { eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgColumn } from 'drizzle-orm/pg-core';
 import { Result, ok, err } from 'neverthrow';
+import { inject, injectable } from 'tsyringe';
 
-import { User } from '@/domain/models/user/user.entity';
 import { UserId } from '@/domain/models/user/user-id.vo';
+import { User } from '@/domain/models/user/user.entity';
 import { UserRepositoryInterface } from '@/domain/repositories/user.repository.interface';
 import { UserMapper } from '@/infrastructure/mappers/user.mapper';
-import { Email } from '@/shared/value-objects/email.vo';
-import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
-import * as DateTimeStringModule from '@/shared/value-objects/date-time-string.vo';
-import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
-import { UserName } from '@/domain/models/user/user-name.vo';
+import { InfrastructureError } from '@/shared/errors/infrastructure.error';
+import { Email } from '@/shared/value-objects/email.vo';
+
+import { users } from '../schema/users.schema';
 
 import { BaseRepository } from './base.repository';
-import { users } from '../schema/users.schema';
 
 // Drizzle schema selection/insertion types (adjust if schema file exports these)
 type UserDbSelect = typeof users.$inferSelect;
@@ -59,11 +57,11 @@ export class UserRepository
    */
   protected _toDomain(record: UserDbSelect): User {
     const userResult = this.userMapper.toDomain(record);
-    
+
     if (userResult.isErr()) {
       throw userResult.error;
     }
-    
+
     return userResult.value;
   }
 
@@ -76,11 +74,11 @@ export class UserRepository
    */
   protected _toPersistence(entity: User): UserDbInsert {
     const dataResult = this.userMapper.toPersistence(entity);
-    
+
     if (dataResult.isErr()) {
       throw dataResult.error;
     }
-    
+
     return dataResult.value;
   }
 
@@ -180,8 +178,8 @@ export class UserRepository
       // Return the array of successfully mapped User entities
       return ok(usersResult.value);
     } catch (error) {
-      const infraError = new InfrastructureError('Failed to find all users', { 
-        cause: error instanceof Error ? error : undefined 
+      const infraError = new InfrastructureError('Failed to find all users', {
+        cause: error instanceof Error ? error : undefined,
       });
       console.error(infraError.message, infraError.cause);
       return err(infraError);
@@ -215,8 +213,8 @@ export class UserRepository
           return err(mappingError);
         }
         return err(
-          new InfrastructureError(`Mapping failed for user ${id.value}`, { 
-            cause: mappingError instanceof Error ? mappingError : undefined 
+          new InfrastructureError(`Mapping failed for user ${id.value}`, {
+            cause: mappingError instanceof Error ? mappingError : undefined,
           })
         );
       }
@@ -233,38 +231,32 @@ export class UserRepository
     try {
       // Emailの重複チェック
       const existingUserResult = await this.findByEmail(entity.email);
-      
+
       if (existingUserResult.isOk() && existingUserResult.value) {
         const existingUser = existingUserResult.value;
-        
+
         // 同じIDなら更新、異なるIDならエラー
         if (!existingUser.id.equals(entity.id)) {
           return err(
             new InfrastructureError(`メールアドレス ${entity.email.value} は既に使用されています`, {
-              metadata: { code: ErrorCode.ConflictError }
+              metadata: { code: ErrorCode.ConflictError },
             })
           );
         }
       }
-      
+
       const persistenceData = this._toPersistence(entity);
-      
+
       // サブクラスで実装されるCRUD操作
-      await this.db
-        .insert(this.schema)
-        .values(persistenceData)
-        .onConflictDoUpdate({
-          target: this.idColumn,
-          set: persistenceData
-        });
+      await this.db.insert(this.schema).values(persistenceData).onConflictDoUpdate({
+        target: this.idColumn,
+        set: persistenceData,
+      });
 
       return ok(undefined); // Success
     } catch (error) {
       // Catch potential errors from _toPersistence
-      console.error(
-        `[UserRepository] Error during save for user ${entity.id.value}:`,
-        error
-      );
+      console.error(`[UserRepository] Error during save for user ${entity.id.value}:`, error);
       return err(
         new InfrastructureError(`Failed to save user data: ${entity.id.value}`, {
           cause: error instanceof Error ? error : undefined,
@@ -276,16 +268,14 @@ export class UserRepository
   async delete(id: UserId): Promise<Result<void, InfrastructureError>> {
     try {
       // Call helper function
-      const deleteResult = await this.db
-        .delete(this.schema)
-        .where(eq(this.schema.id, id.value));
+      const deleteResult = await this.db.delete(this.schema).where(eq(this.schema.id, id.value));
 
       if (deleteResult.rowCount === 0) {
         // User not found, return specific InfrastructureError
         console.warn(`[UserRepository] Attempted to delete non-existent user with id ${id.value}`);
         return err(
           new InfrastructureError(`User with id ${id.value} not found for deletion.`, {
-            metadata: { code: ErrorCode.NotFound }
+            metadata: { code: ErrorCode.NotFound },
           })
         );
       }

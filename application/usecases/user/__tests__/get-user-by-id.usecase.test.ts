@@ -9,7 +9,6 @@ import type { UserId } from '@/domain/models/user/user-id.vo';
 import type { UserName } from '@/domain/models/user/user-name.vo';
 import { User } from '@/domain/models/user/user.entity';
 import { UserRepositoryInterface } from '@/domain/repositories/user.repository.interface';
-import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 import type { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
@@ -92,14 +91,14 @@ describe('GetUserByIdUsecase', () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       const userDTO = result.value;
-      
+
       // DTOの基本的な構造を検証
       expect(userDTO).toHaveProperty('id', validUserId);
       expect(userDTO).toHaveProperty('name', 'テストユーザー');
       expect(userDTO).toHaveProperty('email', 'test@example.com');
       expect(userDTO).toHaveProperty('createdAt');
       expect(userDTO).toHaveProperty('updatedAt');
-      
+
       // モックが期待通り呼び出されたか検証
       expect(mockUserRepository.findById).toHaveBeenCalledTimes(1);
       // userIdがValueObjectとして渡されていることを検証
@@ -120,7 +119,7 @@ describe('GetUserByIdUsecase', () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value).toBeNull();
-      
+
       // モックが期待通り呼び出されたか検証
       expect(mockUserRepository.findById).toHaveBeenCalledTimes(1);
     }
@@ -164,4 +163,4 @@ describe('GetUserByIdUsecase', () => {
     // モックが期待通り呼び出されたか検証
     expect(mockUserRepository.findById).toHaveBeenCalledTimes(1);
   });
-}); 
+});
