@@ -24,9 +24,10 @@ export type UserDbInsert = typeof users.$inferInsert;
  * シングルトンとして利用されるため、injectableデコレータを使用しています。
  */
 @injectable()
-export class UserMapper extends BaseEntityMapper<User, UserDbSelect, UserDbInsert> {
+export class UserMapper extends BaseEntityMapper<User, UserDbSelect, UserDbInsert, UserDTO> {
   /**
    * ユーザーエンティティをUserDTOに変換するスタティックメソッド
+   * 後方互換性のために残しています。
    *
    * @param entity - ユーザードメインエンティティ
    * @returns UserDTO - アプリケーション層で利用するDTO
@@ -43,12 +44,63 @@ export class UserMapper extends BaseEntityMapper<User, UserDbSelect, UserDbInser
 
   /**
    * 複数のユーザーエンティティを配列でUserDTOに変換するスタティックメソッド
+   * 後方互換性のために残しています。
    *
    * @param entities - ユーザードメインエンティティの配列
    * @returns UserDTO[] - アプリケーション層で利用するDTOの配列
    */
   static toDTOs(entities: User[]): UserDTO[] {
     return entities.map(UserMapper.toDTO);
+  }
+
+  /**
+   * ユーザーエンティティをUserDTOに変換
+   *
+   * @param entity - ユーザードメインエンティティ
+   * @returns UserDTOを含むResult、または変換エラー
+   */
+  override toDTO(entity: User): Result<UserDTO, InfrastructureError> {
+    try {
+      if (!entity) {
+        return err(new InfrastructureError('ユーザーエンティティがnullまたはundefinedです'));
+      }
+
+      const idResult = this.safeGetValue(entity.id, 'id');
+      const nameResult = this.safeGetValue(entity.name, 'name');
+      const emailResult = this.safeGetValue(entity.email, 'email');
+      const createdAtResult = this.safeGetValue(entity.createdAt, 'createdAt');
+      const updatedAtResult = this.safeGetValue(entity.updatedAt, 'updatedAt');
+
+      const combinedResult = Result.combine([
+        idResult,
+        nameResult,
+        emailResult,
+        createdAtResult,
+        updatedAtResult,
+      ]);
+
+      if (combinedResult.isErr()) {
+        return err(combinedResult.error);
+      }
+
+      const [id, name, email, createdAt, updatedAt] = combinedResult.value;
+
+      const dto: UserDTO = {
+        id,
+        name,
+        email,
+        createdAt,
+        updatedAt,
+      };
+
+      return ok(dto);
+    } catch (error) {
+      return err(
+        new InfrastructureError('ユーザーエンティティのDTOへの変換に失敗しました', {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
   }
 
   /**
@@ -80,10 +132,8 @@ export class UserMapper extends BaseEntityMapper<User, UserDbSelect, UserDbInser
       const passwordHashResult = PasswordHash.create(record.passwordHash);
 
       // 日付の文字列への変換と値オブジェクト作成
-      const createdAtStr =
-        record.createdAt instanceof Date ? record.createdAt.toISOString() : record.createdAt;
-      const updatedAtStr =
-        record.updatedAt instanceof Date ? record.updatedAt.toISOString() : record.updatedAt;
+      const createdAtStr = this.dateToISOString(record.createdAt);
+      const updatedAtStr = this.dateToISOString(record.updatedAt);
 
       const createdAtResult = DateTimeStringModule.DateTimeString.create(createdAtStr);
       const updatedAtResult = DateTimeStringModule.DateTimeString.create(updatedAtStr);

@@ -37,8 +37,9 @@ export interface EntityMapperInterface<TEntity, TRecord, TData> {
  * @template TEntity - ドメインエンティティの型
  * @template TRecord - データベースレコード（select結果）の型
  * @template TData - データベース挿入/更新用データの型
+ * @template TDTO - DTOの型（オプション）
  */
-export abstract class BaseEntityMapper<TEntity, TRecord, TData>
+export abstract class BaseEntityMapper<TEntity, TRecord, TData, TDTO = Record<string, unknown>>
   implements EntityMapperInterface<TEntity, TRecord, TData>
 {
   /**
@@ -56,6 +57,54 @@ export abstract class BaseEntityMapper<TEntity, TRecord, TData>
    * @returns データベース挿入/更新用レコードを含むResult、または変換エラー
    */
   abstract toPersistence(entity: TEntity): Result<TData, InfrastructureError>;
+
+  /**
+   * ドメインエンティティからDTOへ変換（オプションでサブクラスがオーバーライド可能）
+   *
+   * @param entity - ドメインエンティティ
+   * @returns DTOを含むResult、または変換エラー
+   */
+  toDTO(_entity: TEntity): Result<TDTO, InfrastructureError> {
+    throw new Error('toDTO method not implemented for this entity');
+  }
+
+  /**
+   * 複数のドメインエンティティからDTO配列へ変換
+   *
+   * @param entities - ドメインエンティティの配列
+   * @returns DTO配列を含むResult、または変換エラー
+   */
+  toDTOs(entities: TEntity[]): Result<TDTO[], InfrastructureError> {
+    try {
+      const dtoResults = entities.map((entity) => this.toDTO(entity));
+      return Result.combine(dtoResults);
+    } catch (error) {
+      return err(
+        new InfrastructureError('エンティティ配列のDTO変換に失敗しました', {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
+  }
+
+  /**
+   * データベースレコード配列からドメインエンティティ配列へ変換
+   *
+   * @param records - データベースレコード配列
+   * @returns ドメインエンティティ配列を含むResult、または変換エラー
+   */
+  toDomainArray(records: TRecord[]): Result<TEntity[], InfrastructureError> {
+    try {
+      const entityResults = records.map((record) => this.toDomain(record));
+      return Result.combine(entityResults);
+    } catch (error) {
+      return err(
+        new InfrastructureError('レコード配列のドメインエンティティ変換に失敗しました', {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
+  }
 
   /**
    * レコードに必須プロパティが存在するか検証します
@@ -103,5 +152,15 @@ export abstract class BaseEntityMapper<TEntity, TRecord, TData>
     }
 
     return ok(valueObject.value);
+  }
+
+  /**
+   * Date型をISO文字列に変換します
+   *
+   * @param date - 変換する日付オブジェクトまたは日付文字列
+   * @returns ISO形式の日付文字列
+   */
+  protected dateToISOString(date: Date | string): string {
+    return date instanceof Date ? date.toISOString() : date;
   }
 }

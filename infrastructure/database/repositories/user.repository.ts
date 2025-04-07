@@ -98,14 +98,12 @@ export class UserRepository
       if (!result) {
         return ok(null);
       }
-      // Wrap _toDomain in a try-catch as it can throw
+
       try {
         return ok(this._toDomain(result));
       } catch (mappingError) {
-        // Log the mapping error specifically
-        console.error(`Failed to map record for email ${email.value}:`, mappingError);
         if (mappingError instanceof InfrastructureError) {
-          return err(mappingError); // Propagate as InfrastructureError
+          return err(mappingError);
         }
         return err(
           new InfrastructureError(`Failed to process record found for email ${email.value}`, {
@@ -117,9 +115,6 @@ export class UserRepository
       const infraError = new InfrastructureError(`Failed to find user by email ${email.value}`, {
         cause: error instanceof Error ? error : undefined,
       });
-      // Log the infrastructure error
-      console.error(infraError.message, infraError.cause);
-      // Return InfrastructureError directly as it provides more specific context
       return err(infraError);
     }
   }
@@ -151,10 +146,8 @@ export class UserRepository
       const usersResult = Result.combine(
         results.map((record) => {
           try {
-            // Use a Result-based mapping or wrap _toDomain
             return ok(this._toDomain(record));
           } catch (mappingError) {
-            console.error(`[UserRepository] Failed to map record in findAll:`, mappingError);
             return err(
               mappingError instanceof InfrastructureError
                 ? mappingError
@@ -181,52 +174,16 @@ export class UserRepository
       const infraError = new InfrastructureError('Failed to find all users', {
         cause: error instanceof Error ? error : undefined,
       });
-      console.error(infraError.message, infraError.cause);
       return err(infraError);
     }
   }
 
-  // --- Inherited methods (findById, save, delete) from BaseRepository ---
-  // No need to re-implement unless specific overrides are needed for User.
-
-  async findById(id: UserId): Promise<Result<User | null, InfrastructureError>> {
-    try {
-      // Call helper function
-      const findResult = await this.db
-        .select()
-        .from(this.schema)
-        .where(eq(this.schema.id, id.value))
-        .limit(1);
-
-      if (!findResult.length) {
-        return ok(null); // Not found is not an error in this context
-      }
-
-      // Map record to domain entity
-      try {
-        const user = this._toDomain(findResult[0]);
-        return ok(user);
-      } catch (mappingError) {
-        // Handle mapping errors (which might throw InfrastructureError directly)
-        console.error(`[UserRepository] Error mapping record for ID ${id.value}:`, mappingError);
-        if (mappingError instanceof InfrastructureError) {
-          return err(mappingError);
-        }
-        return err(
-          new InfrastructureError(`Mapping failed for user ${id.value}`, {
-            cause: mappingError instanceof Error ? mappingError : undefined,
-          })
-        );
-      }
-    } catch (error) {
-      return err(
-        new InfrastructureError(`Failed to find user by id ${id.value}`, {
-          cause: error instanceof Error ? error : undefined,
-        })
-      );
-    }
-  }
-
+  /**
+   * Saves a user entity, performing email uniqueness check before saving.
+   * Overrides the base save method to add this specific behavior.
+   * @param entity The User domain entity.
+   * @returns A Result containing void or an InfrastructureError.
+   */
   async save(entity: User): Promise<Result<void, InfrastructureError>> {
     try {
       // Emailの重複チェック
@@ -245,18 +202,9 @@ export class UserRepository
         }
       }
 
-      const persistenceData = this._toPersistence(entity);
-
-      // サブクラスで実装されるCRUD操作
-      await this.db.insert(this.schema).values(persistenceData).onConflictDoUpdate({
-        target: this.idColumn,
-        set: persistenceData,
-      });
-
-      return ok(undefined); // Success
+      // BaseRepositoryのsaveメソッドを使用
+      return super.save(entity);
     } catch (error) {
-      // Catch potential errors from _toPersistence
-      console.error(`[UserRepository] Error during save for user ${entity.id.value}:`, error);
       return err(
         new InfrastructureError(`Failed to save user data: ${entity.id.value}`, {
           cause: error instanceof Error ? error : undefined,
@@ -265,28 +213,5 @@ export class UserRepository
     }
   }
 
-  async delete(id: UserId): Promise<Result<void, InfrastructureError>> {
-    try {
-      // Call helper function
-      const deleteResult = await this.db.delete(this.schema).where(eq(this.schema.id, id.value));
-
-      if (deleteResult.rowCount === 0) {
-        // User not found, return specific InfrastructureError
-        console.warn(`[UserRepository] Attempted to delete non-existent user with id ${id.value}`);
-        return err(
-          new InfrastructureError(`User with id ${id.value} not found for deletion.`, {
-            metadata: { code: ErrorCode.NotFound },
-          })
-        );
-      }
-
-      return ok(undefined); // Success
-    } catch (error) {
-      return err(
-        new InfrastructureError(`Failed to delete user ${id.value}`, {
-          cause: error instanceof Error ? error : undefined,
-        })
-      );
-    }
-  }
+  // findById, deleteはBaseRepositoryの実装を使用
 }

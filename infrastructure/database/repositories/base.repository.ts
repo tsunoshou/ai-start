@@ -1,8 +1,10 @@
+import { eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgColumn, PgTable } from 'drizzle-orm/pg-core';
-import { Result } from 'neverthrow';
+import { Result, ok, err } from 'neverthrow';
 import { inject } from 'tsyringe';
 
+import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 import { Identifier } from '@/shared/types/common.types';
 import { EntityBase } from '@/shared/types/entity-base.interface';
@@ -42,25 +44,109 @@ export abstract class BaseRepository<
   protected abstract _toPersistence(entity: TDomain): TDbInsert;
 
   /**
-   * Finds an entity by its ID. Must be implemented by subclasses.
+   * Finds an entity by its ID.
    * @param id The ID of the entity to find.
    * @returns A Result containing the entity or null if not found, or an InfrastructureError.
    */
-  abstract findById(id: TID): Promise<Result<TDomain | null, InfrastructureError>>;
+  async findById(id: TID): Promise<Result<TDomain | null, InfrastructureError>> {
+    try {
+      // drizzle-ormの型システム問題を回避するために型アサーションを使用
+      const findResult = await this.db
+        .select()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from(this.schema as any)
+        .where(eq(this.idColumn, id.value))
+        .limit(1);
+
+      if (!findResult.length) {
+        return ok(null); // Not found is not an error in this context
+      }
+
+      // Map record to domain entity
+      try {
+        const entity = this._toDomain(findResult[0] as unknown as TDbSelect);
+        return ok(entity);
+      } catch (mappingError) {
+        // Handle mapping errors (which might throw InfrastructureError directly)
+        if (mappingError instanceof InfrastructureError) {
+          return err(mappingError);
+        }
+        return err(
+          new InfrastructureError(`Mapping failed for entity with ID ${id.value}`, {
+            cause: mappingError instanceof Error ? mappingError : undefined,
+          })
+        );
+      }
+    } catch (error) {
+      return err(
+        new InfrastructureError(`Failed to find entity by id ${id.value}`, {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
+  }
 
   /**
-   * Saves (inserts or updates) an entity to the database. Must be implemented by subclasses.
+   * Saves (inserts or updates) an entity to the database.
    * @param entity The domain entity to save.
    * @returns A Result containing void or an InfrastructureError.
    */
-  abstract save(entity: TDomain): Promise<Result<void, InfrastructureError>>;
+  async save(entity: TDomain): Promise<Result<void, InfrastructureError>> {
+    try {
+      const persistenceData = this._toPersistence(entity);
+
+      // drizzle-ormの型システム問題を回避するために型アサーションを使用
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await this.db
+        .insert(this.schema as any)
+        .values(persistenceData)
+        .onConflictDoUpdate({
+          target: this.idColumn,
+          set: persistenceData,
+        });
+
+      return ok(undefined); // Success
+    } catch (error) {
+      // Catch potential errors from _toPersistence
+      return err(
+        new InfrastructureError(`Failed to save entity data: ${entity.id.value}`, {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
+  }
 
   /**
-   * Deletes an entity by its ID. Must be implemented by subclasses.
+   * Deletes an entity by its ID.
    * @param id The ID of the entity to delete.
    * @returns A Result containing void or an InfrastructureError.
    */
-  abstract delete(id: TID): Promise<Result<void, InfrastructureError>>;
+  async delete(id: TID): Promise<Result<void, InfrastructureError>> {
+    try {
+      // drizzle-ormの型システム問題を回避するために型アサーションを使用
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deleteResult = await this.db
+        .delete(this.schema as any)
+        .where(eq(this.idColumn, id.value));
+
+      if (deleteResult.rowCount === 0) {
+        // Entity not found, return specific InfrastructureError
+        return err(
+          new InfrastructureError(`Entity with id ${id.value} not found for deletion.`, {
+            metadata: { code: ErrorCode.NotFound },
+          })
+        );
+      }
+
+      return ok(undefined); // Success
+    } catch (error) {
+      return err(
+        new InfrastructureError(`Failed to delete entity ${id.value}`, {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
+  }
 
   // --- Other common methods can be added here ---
 }
