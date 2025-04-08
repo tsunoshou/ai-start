@@ -1,17 +1,24 @@
 import 'reflect-metadata';
-import { ENV } from '../../config/environment';
+
+// 環境変数から直接取得（エッジランタイムでの互換性のため）
+const DEFAULT_LOCALE_ENV =
+  typeof process !== 'undefined' && process.env.DEFAULT_LOCALE ? process.env.DEFAULT_LOCALE : 'ja';
+const SUPPORTED_LOCALES_ENV =
+  typeof process !== 'undefined' && process.env.SUPPORTED_LOCALES
+    ? process.env.SUPPORTED_LOCALES
+    : 'ja,en';
 
 /**
  * デフォルトのロケール
  * @type {string}
  */
-export const DEFAULT_LOCALE = ENV.DEFAULT_LOCALE;
+export const DEFAULT_LOCALE = DEFAULT_LOCALE_ENV;
 
 /**
  * サポートされているロケールのリスト
  * @type {string[]}
  */
-export const SUPPORTED_LOCALES = ENV.SUPPORTED_LOCALES.split(',');
+export const SUPPORTED_LOCALES = SUPPORTED_LOCALES_ENV.split(',');
 
 /**
  * ロケールが有効かどうかを確認する
