@@ -1,6 +1,9 @@
 import bcrypt from 'bcrypt';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import { AppError } from '@/shared/errors/app.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
+
 import { hashPassword, verifyPassword } from '../password.utils';
 
 // Mock the bcrypt library
@@ -50,7 +53,8 @@ describe('Password Utils', () => {
       // Assert
       expect(bcrypt.hash).not.toHaveBeenCalled();
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr()).toBeInstanceOf(Error);
+      expect(result._unsafeUnwrapErr()).toBeInstanceOf(AppError);
+      expect((result._unsafeUnwrapErr() as AppError).code).toBe(ErrorCode.ValidationError);
       expect(result._unsafeUnwrapErr().message).toBe('Password cannot be empty');
     });
 
@@ -65,7 +69,9 @@ describe('Password Utils', () => {
       // Assert
       expect(bcrypt.hash).toHaveBeenCalledWith(plainPassword, saltRounds);
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr()).toBe(hashingError);
+      expect(result._unsafeUnwrapErr()).toBeInstanceOf(AppError);
+      expect((result._unsafeUnwrapErr() as AppError).code).toBe(ErrorCode.PasswordHashingFailed);
+      expect((result._unsafeUnwrapErr() as AppError).cause).toBe(hashingError);
     });
 
     it('should wrap non-Error thrown object into Error', async () => {
@@ -79,8 +85,13 @@ describe('Password Utils', () => {
       // Assert
       expect(bcrypt.hash).toHaveBeenCalledWith(plainPassword, saltRounds);
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr()).toBeInstanceOf(Error);
-      expect(result._unsafeUnwrapErr().message).toBe('Unknown error during password hashing');
+      expect(result._unsafeUnwrapErr()).toBeInstanceOf(AppError);
+      expect((result._unsafeUnwrapErr() as AppError).code).toBe(ErrorCode.PasswordHashingFailed);
+      expect(result._unsafeUnwrapErr().message).toBe('Error during password hashing');
+      expect((result._unsafeUnwrapErr() as AppError).cause).toBeInstanceOf(Error);
+      expect(((result._unsafeUnwrapErr() as AppError).cause as Error).message).toBe(
+        String(nonErrorObject)
+      );
     });
   });
 
@@ -146,7 +157,11 @@ describe('Password Utils', () => {
       // Assert
       expect(bcrypt.compare).toHaveBeenCalledWith(plainPassword, hashedPassword);
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr()).toBe(verificationError);
+      expect(result._unsafeUnwrapErr()).toBeInstanceOf(AppError);
+      expect((result._unsafeUnwrapErr() as AppError).code).toBe(
+        ErrorCode.PasswordVerificationFailed
+      );
+      expect((result._unsafeUnwrapErr() as AppError).cause).toBe(verificationError);
     });
 
     it('should wrap non-Error thrown object into Error', async () => {
@@ -160,8 +175,15 @@ describe('Password Utils', () => {
       // Assert
       expect(bcrypt.compare).toHaveBeenCalledWith(plainPassword, hashedPassword);
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr()).toBeInstanceOf(Error);
-      expect(result._unsafeUnwrapErr().message).toBe('Unknown error during password verification');
+      expect(result._unsafeUnwrapErr()).toBeInstanceOf(AppError);
+      expect((result._unsafeUnwrapErr() as AppError).code).toBe(
+        ErrorCode.PasswordVerificationFailed
+      );
+      expect(result._unsafeUnwrapErr().message).toBe('Error during password verification');
+      expect((result._unsafeUnwrapErr() as AppError).cause).toBeInstanceOf(Error);
+      expect(((result._unsafeUnwrapErr() as AppError).cause as Error).message).toBe(
+        String(nonErrorObject)
+      );
     });
   });
 });

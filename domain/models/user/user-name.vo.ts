@@ -1,8 +1,7 @@
 import { Result, ok, err } from 'neverthrow';
 import { z } from 'zod';
 
-import { BaseError } from '@/shared/errors/base.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
+import { ValidationError } from '@/shared/errors/validation.error';
 
 // Schema for user name validation (1 to 50 characters)
 const USER_NAME_SCHEMA = z
@@ -43,13 +42,20 @@ export class UserName {
    * Creates a UserName instance from a string.
    * Validates that the string meets the length constraints (1-50 characters after trimming).
    * @param {string} name - The user name string.
-   * @returns {Result<UserName, BaseError>} Ok with UserName instance or Err with BaseError.
+   * @returns {Result<UserName, ValidationError>} Ok with UserName instance or Err with ValidationError.
    */
-  public static create(name: unknown): Result<UserName, BaseError> {
+  public static create(name: unknown): Result<UserName, ValidationError> {
     const parseResult = USER_NAME_SCHEMA.safeParse(name);
     if (!parseResult.success) {
       const errorMessage = parseResult.error.errors[0]?.message || 'Invalid user name.';
-      return err(new BaseError(ErrorCode.ValidationError, errorMessage));
+      return err(
+        new ValidationError(errorMessage, {
+          cause: parseResult.error,
+          value: name,
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'UserName' },
+        })
+      );
     }
     // Use the validated (and potentially trimmed) data from Zod
     return ok(new UserName(parseResult.data));

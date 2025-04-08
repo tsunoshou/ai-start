@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { Result, ok, err } from 'neverthrow';
 import { beforeEach, describe, it, expect } from 'vitest';
 
+import { AppError } from '@/shared/errors/app.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 
 import {
@@ -19,9 +21,9 @@ interface TestIdProps {
 class TestId implements TestIdProps {
   private constructor(public readonly value: string) {}
 
-  static create(value: string): Result<TestId, Error> {
+  static create(value: string): Result<TestId, AppError> {
     if (!value) {
-      return err(new Error('IDは必須です'));
+      return err(new AppError(ErrorCode.ValidationError, 'IDは必須です'));
     }
     return ok(new TestId(value));
   }
@@ -34,9 +36,9 @@ interface TestNameProps {
 class TestName implements TestNameProps {
   private constructor(public readonly value: string) {}
 
-  static create(value: string): Result<TestName, Error> {
+  static create(value: string): Result<TestName, AppError> {
     if (!value || value.length < 3) {
-      return err(new Error('名前は3文字以上必要です'));
+      return err(new AppError(ErrorCode.ValidationError, '名前は3文字以上必要です'));
     }
     return ok(new TestName(value));
   }
@@ -74,11 +76,13 @@ class TestMapper extends BaseEntityMapper<TestEntity, TestDbRecord, TestDbRecord
   private readonly domainMappingConfig: DomainMappingConfig<TestEntity, TestDbRecord> = {
     valueObjects: {
       id: {
-        valueObject: TestId as unknown as { create: (value: unknown) => Result<unknown, Error> },
+        valueObject: TestId as unknown as { create: (value: unknown) => Result<unknown, AppError> },
         sourceField: 'id',
       },
       name: {
-        valueObject: TestName as unknown as { create: (value: unknown) => Result<unknown, Error> },
+        valueObject: TestName as unknown as {
+          create: (value: unknown) => Result<unknown, AppError>;
+        },
         sourceField: 'name',
       },
     },
@@ -156,12 +160,14 @@ describe('BaseEntityMapper', () => {
       // 値オブジェクト定義
       const definitions = {
         id: {
-          valueObject: TestId as unknown as { create: (value: unknown) => Result<unknown, Error> },
+          valueObject: TestId as unknown as {
+            create: (value: unknown) => Result<unknown, AppError>;
+          },
           sourceField: 'id',
         },
         name: {
           valueObject: TestName as unknown as {
-            create: (value: unknown) => Result<unknown, Error>;
+            create: (value: unknown) => Result<unknown, AppError>;
           },
           sourceField: 'name',
         },
@@ -189,12 +195,14 @@ describe('BaseEntityMapper', () => {
       // 値オブジェクト定義
       const definitions = {
         id: {
-          valueObject: TestId as unknown as { create: (value: unknown) => Result<unknown, Error> },
+          valueObject: TestId as unknown as {
+            create: (value: unknown) => Result<unknown, AppError>;
+          },
           sourceField: 'id',
         },
         name: {
           valueObject: TestName as unknown as {
-            create: (value: unknown) => Result<unknown, Error>;
+            create: (value: unknown) => Result<unknown, AppError>;
           },
           sourceField: 'name',
         },
@@ -206,8 +214,16 @@ describe('BaseEntityMapper', () => {
       // 検証
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('値オブジェクト作成に失敗しました');
-        expect((result.error.cause as Error)?.message).toContain('名前は3文字以上必要です');
+        expect(result.error.message).toContain('値オブジェクトの作成に失敗しました');
+        // cause が undefined であることを確認 (metadata に集約されるため)
+        expect(result.error.cause).toBeUndefined();
+        // metadata に元エラーの情報が含まれていることを確認 (任意)
+        expect(result.error.metadata).toHaveProperty('aggregatedErrors');
+        const aggregatedErrors = result.error.metadata?.aggregatedErrors as AppError[];
+        expect(aggregatedErrors).toBeInstanceOf(Array);
+        expect(aggregatedErrors.length).toBeGreaterThan(0);
+        expect(aggregatedErrors[0].message).toContain('名前は3文字以上必要です');
+        expect(aggregatedErrors[0].code).toBe(ErrorCode.ValidationError);
       }
     });
 
@@ -221,12 +237,14 @@ describe('BaseEntityMapper', () => {
       // 値オブジェクト定義（変換関数付き）
       const definitions = {
         id: {
-          valueObject: TestId as unknown as { create: (value: unknown) => Result<unknown, Error> },
+          valueObject: TestId as unknown as {
+            create: (value: unknown) => Result<unknown, AppError>;
+          },
           sourceField: 'id',
         },
         name: {
           valueObject: TestName as unknown as {
-            create: (value: unknown) => Result<unknown, Error>;
+            create: (value: unknown) => Result<unknown, AppError>;
           },
           sourceField: 'nameWithPrefix',
           transform: (value: unknown) => String(value).replace('prefix_', ''),

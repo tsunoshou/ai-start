@@ -110,24 +110,27 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
 
   test('1. POST /api/users - 新規ユーザーを作成できる', async ({ request }) => {
     // テスト用ユーザーデータ
+    const randomString = Math.random().toString(36).substring(7);
+    const uniqueEmail = `test-${Date.now()}-${randomString}@example.com`;
     const newUser = {
       name: 'テストユーザー',
-      email: `test-${Date.now()}@example.com`, // ユニークなメールアドレス
+      email: uniqueEmail,
       passwordPlainText: 'Password123!',
     };
 
-    // APIリクエスト実行
-    const response = await request.post(USER_API_BASE_URL, {
-      data: newUser,
-    });
+    let testUserId: string | null = null; // このテストで作成したユーザーIDを保持
 
-    // レスポンスの検証 - APIが不安定なため201または500を許容
-    expect([201, 500]).toContain(response.status());
+    try {
+      // APIリクエスト実行
+      const response = await request.post(USER_API_BASE_URL, {
+        data: newUser,
+      });
 
-    const responseData = await response.json();
+      // レスポンスの検証 - 成功(201)のみを期待
+      expect(response.status()).toBe(201);
 
-    // 201の場合はデータを検証、500の場合はエラーを検証
-    if (response.status() === 201) {
+      const responseData = await response.json();
+
       expect(responseData.success).toBe(true);
       expect(responseData.data).toHaveProperty('id');
       expect(responseData.data.name).toBe(newUser.name);
@@ -138,14 +141,20 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
       expect(responseData.data).not.toHaveProperty('passwordPlainText');
 
       // このテストで作成したユーザーのIDを保存
-      const testUserId = responseData.data.id;
-
-      // 一度作成したユーザーを削除しておく（他のテストに影響しないように）
-      await request.delete(`${USER_API_BASE_URL}/${testUserId}`);
-    } else {
-      // 500エラーの場合
-      expect(responseData.success).toBe(false);
-      expect(responseData.error).toHaveProperty('code', 'DATABASE_ERROR');
+      testUserId = responseData.data.id;
+    } finally {
+      // テスト終了時に、このテストで作成したユーザーがいれば削除する
+      if (testUserId) {
+        try {
+          await request.delete(`${USER_API_BASE_URL}/${testUserId}`);
+          console.log(`🧹 テスト1で作成したユーザー (${testUserId}) を削除しました。`);
+        } catch (deleteError) {
+          console.error(
+            `⚠️ テスト1で作成したユーザー (${testUserId}) の削除に失敗しました:`,
+            deleteError
+          );
+        }
+      }
     }
   });
 

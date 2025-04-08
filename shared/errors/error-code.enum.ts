@@ -31,6 +31,7 @@
  * @property PasswordHashingFailed - パスワードハッシュ化に失敗
  * @property DomainRuleViolation - ドメインルール違反
  * @property ConflictError - 既存リソースとの競合が発生
+ * @property PasswordVerificationFailed - パスワード検証に失敗
  */
 export enum ErrorCode {
   UnknownError = 'UNKNOWN_ERROR',
@@ -56,4 +57,5 @@ export enum ErrorCode {
   PasswordHashingFailed = 'PASSWORD_HASHING_FAILED',
   DomainRuleViolation = 'DOMAIN_RULE_VIOLATION',
   ConflictError = 'CONFLICT_ERROR',
+  PasswordVerificationFailed = 'PASSWORD_VERIFICATION_FAILED',
 }

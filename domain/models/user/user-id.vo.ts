@@ -13,8 +13,9 @@ import { Result, ok, err } from 'neverthrow';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
-import { BaseError } from '@/shared/errors/base.error';
+import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
+import { ValidationError } from '@/shared/errors/validation.error';
 import { BaseId } from '@/shared/value-objects/base-id.vo';
 
 // UUID v4 schema for validation
@@ -65,23 +66,30 @@ export class UserId extends BaseId<string> {
    * Creates a UserId instance from a string.
    * Validates that the string is a valid UUID v4.
    * @param {string} id - The UUID string.
-   * @returns {Result<UserId, BaseError>} Ok with UserId instance or Err with BaseError.
+   * @returns {Result<UserId, ValidationError>} Ok with UserId instance or Err with ValidationError.
    */
-  public static create(id: string): Result<UserId, BaseError> {
+  public static create(id: string): Result<UserId, ValidationError> {
     const validationResult = UUID_SCHEMA.safeParse(id);
     if (!validationResult.success) {
       // Use the first error message from Zod
       const errorMessage = validationResult.error.errors[0]?.message || 'Invalid UserId format.';
-      return err(new BaseError(ErrorCode.InvalidIdentifierFormat, errorMessage));
+      return err(
+        new ValidationError(errorMessage, {
+          cause: validationResult.error,
+          value: id,
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'UserId' },
+        })
+      );
     }
     return ok(new UserId(validationResult.data));
   }
 
   /**
    * Generates a new UserId with a v4 UUID.
-   * @returns {Result<UserId, BaseError>} Ok with the new UserId instance, or Err if UUID generation fails (unlikely).
+   * @returns {Result<UserId, AppError>} Ok with the new UserId instance, or Err if UUID generation fails (unlikely).
    */
-  public static generate(): Result<UserId, BaseError> {
+  public static generate(): Result<UserId, AppError> {
     try {
       const newUuid = uuidv4();
       // Assuming generateUUID always returns a valid UUID, bypass create validation for efficiency
@@ -89,8 +97,8 @@ export class UserId extends BaseId<string> {
     } catch (error) {
       // Handle potential errors during UUID generation, though standard libraries should be reliable
       return err(
-        new BaseError(ErrorCode.InternalServerError, 'Failed to generate new UserId', {
-          cause: error instanceof Error ? error : undefined,
+        new AppError(ErrorCode.InternalServerError, 'Failed to generate new UserId', {
+          cause: error instanceof Error ? error : new Error(String(error)),
         })
       );
     }

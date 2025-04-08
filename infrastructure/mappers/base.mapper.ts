@@ -1,5 +1,6 @@
 import { Result, ok, err } from 'neverthrow';
 
+import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 
@@ -11,7 +12,7 @@ import { InfrastructureError } from '@/shared/errors/infrastructure.error';
  */
 export interface ValueObjectMapping<TInput = unknown, TOutput = unknown> {
   /** 値オブジェクトのファクトリー関数を持つクラス参照 */
-  valueObject: { create: (value: TInput) => Result<TOutput, Error> };
+  valueObject: { create: (value: TInput) => Result<TOutput, AppError> };
 
   /** 変換元のフィールド名（省略時はキー名を使用） */
   sourceField?: string;
@@ -242,7 +243,7 @@ export abstract class BaseEntityMapper<
     definitions: Record<string, ValueObjectMapping>
   ): Result<Record<string, unknown>, InfrastructureError> {
     try {
-      const results: Record<string, Result<unknown, Error>> = {};
+      const results: Record<string, Result<unknown, AppError>> = {};
 
       for (const [key, def] of Object.entries(definitions)) {
         const sourceField = def.sourceField || key;
@@ -251,36 +252,41 @@ export abstract class BaseEntityMapper<
         results[key] = def.valueObject.create(transformedValue);
       }
 
-      // すべての結果を組み合わせる
-      const combinedResult = Result.combine(Object.values(results));
+      const errors: AppError[] = [];
 
-      if (combinedResult.isErr()) {
+      for (const [_key, result] of Object.entries(results)) {
+        if (result.isErr()) {
+          const error: AppError = result.error;
+          errors.push(
+            new InfrastructureError(
+              ErrorCode.ValidationError,
+              `値オブジェクト作成に失敗しました: ${error.message}`
+            )
+          );
+        }
+      }
+
+      if (errors.length > 0) {
         return err(
           new InfrastructureError(
             ErrorCode.InternalServerError,
-            '値オブジェクト作成に失敗しました',
-            {
-              cause: combinedResult.error,
-            }
+            `値オブジェクトの作成に失敗しました: ${errors.map((e) => e.message).join(', ')}`,
+            { metadata: { aggregatedErrors: errors.map((e) => e.toJSON()) } }
           )
         );
       }
 
-      // 成功結果をキーと値のオブジェクトに変換
-      const valueObjects: Record<string, unknown> = {};
-      Object.keys(results).forEach((key, index) => {
-        valueObjects[key] = combinedResult.value[index];
-      });
+      const createdValueObjects = Object.fromEntries(
+        Object.entries(results).map(([key, result]) => [key, result._unsafeUnwrap()])
+      );
 
-      return ok(valueObjects);
+      return ok(createdValueObjects);
     } catch (error) {
       return err(
         new InfrastructureError(
           ErrorCode.InternalServerError,
-          '値オブジェクト作成処理に失敗しました',
-          {
-            cause: error instanceof Error ? error : undefined,
-          }
+          '値オブジェクト作成中に予期せぬエラーが発生しました',
+          { cause: error instanceof Error ? error : undefined }
         )
       );
     }

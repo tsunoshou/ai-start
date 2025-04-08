@@ -1,5 +1,7 @@
 import { Result } from 'neverthrow';
 
+import { AppError } from '@/shared/errors/app.error';
+
 /**
  * 値オブジェクトをマッパーインターフェースに変換するヘルパー関数
  *
@@ -7,9 +9,9 @@ import { Result } from 'neverthrow';
  * @returns マッパーインターフェースに適合する形式に変換された値オブジェクト
  */
 export function asValueObjectMapper<T, R>(valueObject: {
-  create: (value: T) => Result<R, Error>;
-}): { create: (value: unknown) => Result<unknown, Error> } {
-  return valueObject as unknown as { create: (value: unknown) => Result<unknown, Error> };
+  create: (value: T) => Result<R, AppError>;
+}): { create: (value: unknown) => Result<unknown, AppError> } {
+  return valueObject as unknown as { create: (value: unknown) => Result<unknown, AppError> };
 }
 
 /**

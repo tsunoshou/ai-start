@@ -140,7 +140,7 @@ describe('CreateUserUsecase', () => {
   it('異常系: パスワードハッシュ化に失敗した場合エラーを返す', async () => {
     // passwordUtils.hashPasswordのモックをエラーを返すように設定
     vi.spyOn(passwordUtils, 'hashPassword').mockResolvedValue(
-      err(new Error('パスワードハッシュ化に失敗しました'))
+      err(new AppError(ErrorCode.PasswordHashingFailed, 'パスワードハッシュ化に失敗しました'))
     );
 
     // 実行

@@ -5,10 +5,12 @@
  *
  * @author tsunoshou
  * @date 2025-04-05
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import { Result, ok, err } from 'neverthrow';
+
+import { ValidationError } from '../errors/validation.error';
 
 /**
  * Emailアドレスを表す値オブジェクトクラス。
@@ -61,17 +63,44 @@ export class Email {
    * 入力文字列のバリデーションを行い、成功すれば Result.Ok を、失敗すれば Result.Err を返します。
    *
    * @param {string} value - メールアドレス文字列。
-   * @returns {Result<Email, Error>} 生成結果。成功時はEmailインスタンス、失敗時はErrorを含むResult。
+   * @returns {Result<Email, ValidationError>} 生成結果。成功時はEmailインスタンス、失敗時はValidationErrorを含むResult。
    */
-  public static create(value: string): Result<Email, Error> {
-    const trimmedValue = typeof value === 'string' ? value.trim() : '';
+  public static create(value: string): Result<Email, ValidationError> {
+    // create の引数で null や undefined が来るケースも考慮 (zod の string() は undefined を許容しないが、直接呼ばれる場合を想定)
+    if (value === null || value === undefined) {
+      return err(
+        new ValidationError('Input cannot be null or undefined.', {
+          value: value,
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'Email' },
+        })
+      );
+    }
+    // 型ガード: 文字列以外はエラー（実際には上記のチェックでほぼカバーされるが念のため）
+    if (typeof value !== 'string') {
+      return err(
+        new ValidationError('Input must be a string.', {
+          value: value,
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'Email' },
+        })
+      );
+    }
+
+    const trimmedValue = value.trim();
 
     if (!Email.isValid(trimmedValue)) {
       const errorMessage =
-        !trimmedValue && typeof value === 'string'
-          ? 'Email cannot be empty or just whitespace.'
-          : `Invalid email format: ${value}`;
-      return err(new Error(errorMessage));
+        trimmedValue === '' // 空文字列の場合も明確なエラーメッセージ
+          ? 'Email cannot be empty.'
+          : `Invalid email format: ${value}`; // 元の値をエラーメッセージに含める
+      return err(
+        new ValidationError(errorMessage, {
+          value: value, // 元の値を記録
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'Email' },
+        })
+      );
     }
     return ok(new Email(trimmedValue));
   }

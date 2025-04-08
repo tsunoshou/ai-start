@@ -3,6 +3,8 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgTable, PgColumn } from 'drizzle-orm/pg-core';
 import { Result, ok, err } from 'neverthrow';
 
+import { AppError } from '@/shared/errors/app.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
 
 /**
@@ -22,7 +24,7 @@ export async function findRecordById<TSelect extends Record<string, unknown>>(
   idColumn: PgColumn,
   idValue: string | number, // Allow number IDs as well
   logger: LoggerInterface
-): Promise<Result<TSelect | null, Error>> {
+): Promise<Result<TSelect | null, AppError>> {
   try {
     // Drizzle's select() without arguments defaults to select *,
     // which might not always match TSelect exactly. Explicit select might be safer if needed.
@@ -40,7 +42,13 @@ export async function findRecordById<TSelect extends Record<string, unknown>>(
       error
     );
 
-    return err(error instanceof Error ? error : new Error('Unknown database error'));
+    return err(
+      new AppError(
+        ErrorCode.DatabaseError,
+        `Database error during findRecordById for ${schema._.name}`,
+        { cause: error instanceof Error ? error : new Error(String(error)) }
+      )
+    );
   }
 }
 
@@ -61,7 +69,7 @@ export async function saveRecord<TInsert extends Record<string, unknown>>(
   idColumn: PgColumn,
   data: TInsert,
   logger: LoggerInterface
-): Promise<Result<void, Error>> {
+): Promise<Result<void, AppError>> {
   try {
     // Create a copy of the data excluding the ID field for the SET clause
     const setData = { ...data };
@@ -90,7 +98,13 @@ export async function saveRecord<TInsert extends Record<string, unknown>>(
       error
     );
 
-    return err(error instanceof Error ? error : new Error('Unknown database error'));
+    return err(
+      new AppError(
+        ErrorCode.DatabaseError,
+        `Database error during saveRecord for ${schema._.name}`,
+        { cause: error instanceof Error ? error : new Error(String(error)) }
+      )
+    );
   }
 }
 
@@ -110,7 +124,7 @@ export async function deleteRecordById(
   idColumn: PgColumn,
   idValue: string | number, // Allow number IDs as well
   logger: LoggerInterface
-): Promise<Result<number, Error>> {
+): Promise<Result<number, AppError>> {
   // Returns number of deleted rows
   try {
     const result = await db.delete(schema).where(eq(idColumn, idValue)).returning({ id: idColumn });
@@ -127,6 +141,12 @@ export async function deleteRecordById(
       error
     );
 
-    return err(error instanceof Error ? error : new Error('Unknown database error'));
+    return err(
+      new AppError(
+        ErrorCode.DatabaseError,
+        `Database error during deleteRecordById for ${schema._.name}`,
+        { cause: error instanceof Error ? error : new Error(String(error)) }
+      )
+    );
   }
 }

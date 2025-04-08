@@ -6,10 +6,12 @@
  *
  * @author tsunoshou
  * @date 2025-04-05
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import { Result, ok, err } from 'neverthrow';
+
+import { ValidationError } from '../errors/validation.error';
 
 /**
  * ISO 8601形式の日時文字列を表す値オブジェクトクラス。
@@ -78,17 +80,29 @@ export class DateTimeString {
    * 入力文字列のバリデーションを行い、成功すれば Result.Ok を、失敗すれば Result.Err を返します。
    *
    * @param {unknown} value - ISO 8601形式の可能性がある入力値。
-   * @returns {Result<DateTimeString, Error>} 生成結果。
+   * @returns {Result<DateTimeString, ValidationError>} 生成結果。
    */
-  public static create(value: unknown): Result<DateTimeString, Error> {
+  public static create(value: unknown): Result<DateTimeString, ValidationError> {
     // 型ガード: 文字列以外はエラー
     if (typeof value !== 'string') {
-      return err(new Error('Input must be a string.'));
+      return err(
+        new ValidationError('Input must be a string.', {
+          value: value,
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'DateTimeString' },
+        })
+      );
     }
 
     const trimmedValue = value.trim();
     if (!DateTimeString.isValid(trimmedValue)) {
-      return err(new Error(`Invalid ISO 8601 DateTime format: ${value}`));
+      return err(
+        new ValidationError(`Invalid ISO 8601 DateTime format: ${value}`, {
+          value: trimmedValue,
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'DateTimeString' },
+        })
+      );
     }
     return ok(new DateTimeString(trimmedValue));
   }

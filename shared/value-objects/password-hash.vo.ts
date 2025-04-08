@@ -1,8 +1,7 @@
 import { Result, ok, err } from 'neverthrow';
 import { z } from 'zod';
 
-import { BaseError } from '@/shared/errors/base.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
+import { ValidationError } from '@/shared/errors/validation.error';
 
 // Schema for password hash validation (non-empty string)
 // In a real app, might add length checks or format checks depending on the hashing algorithm output
@@ -40,13 +39,20 @@ export class PasswordHash {
    * Creates a PasswordHash instance from a string.
    * Validates that the string is not empty.
    * @param {string} hash - The password hash string.
-   * @returns {Result<PasswordHash, BaseError>} Ok with PasswordHash instance or Err with BaseError.
+   * @returns {Result<PasswordHash, ValidationError>} Ok with PasswordHash instance or Err with ValidationError.
    */
-  public static create(hash: unknown): Result<PasswordHash, BaseError> {
+  public static create(hash: unknown): Result<PasswordHash, ValidationError> {
     const parseResult = PASSWORD_HASH_SCHEMA.safeParse(hash);
     if (!parseResult.success) {
       const errorMessage = parseResult.error.errors[0]?.message || 'Invalid password hash.';
-      return err(new BaseError(ErrorCode.ValidationError, errorMessage));
+      return err(
+        new ValidationError(errorMessage, {
+          cause: parseResult.error,
+          value: hash,
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'PasswordHash' },
+        })
+      );
     }
     return ok(new PasswordHash(parseResult.data));
   }
