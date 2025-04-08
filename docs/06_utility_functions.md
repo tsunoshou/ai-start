@@ -384,59 +384,87 @@ shared/utils/
 
 ### エラー型定義 (`shared/utils/error/`, `shared/errors/`)
 
-1.  **エラー階層**:
-    -   基底エラークラス（BaseError in `shared/errors/`)
-    -   ドメインエラー：業務ロジックに関連するエラー (`shared/errors/`)
-    -   インフラストラクチャエラー：外部サービス・リソースに関連するエラー (`shared/errors/`)
-    -   検証エラー：入力データの問題に関連するエラー (`shared/errors/`)
-    -   アプリケーションエラー：内部的なアプリケーション問題 (`shared/errors/`)
+アプリケーション全体で一貫したエラー処理を行うために、標準化されたエラー型階層を定義します。これは `shared/errors/` ディレクトリ配下に実装されます。
 
-2.  **エラーメタデータ**:
-    -   エラーコード：一意の識別子
-    -   HTTP状態コード：対応するレスポンスステータス
-    -   エラー詳細：開発者向け情報
-    -   ユーザーメッセージ：エンドユーザー向け翻訳可能メッセージ
+1.  **基底エラークラス (`AppError`)**:
+    -   すべてのアプリケーション固有エラーの基底クラスとして `AppError` (`shared/errors/app.error.ts`) を定義します。
+    -   `AppError` は、エラーコード (`code`: `ErrorCode` 型 Enum)、メッセージ (`message`)、オプションのメタデータ (`metadata`)、および原因となったエラー (`cause`) を保持します。
+    -   これにより、エラーの種類をプログラムで識別し、構造化された情報に基づいて処理を分岐させることが可能になります。
 
-3.  **エラーシリアライズ**:
-    -   APIレスポンス用の一貫したエラー形式
-    -   安全なエラー情報の公開
-    -   デバッグ情報の条件付き含有
+2.  **主要なエラーサブクラス**:
+    -   `AppError` を継承し、特定のエラー状況を示すサブクラスを定義します。以下は主要な例です:
+        -   `ValidationError` (`shared/errors/validation.error.ts`): 入力値のバリデーションエラーを示します。メタデータには、どのフィールドでどのような検証エラーが発生したかの詳細情報を含みます。
+        -   `NotFoundError` (`shared/errors/not-found.error.ts`): 要求されたリソースが見つからなかった場合のエラーです。メタデータには、検索対象のエンティティタイプやIDなどを含めることがあります。
+        -   `ConflictError` (`shared/errors/conflict.error.ts`): データの一意性制約違反など、リソースの状態が原因で操作が失敗した場合のエラーです。メタデータには、競合したフィールドや制約名などを含みます。
+        -   `UnauthorizedError` (`shared/errors/unauthorized.error.ts`): 認証されていない、または操作に必要な権限がない場合のエラーです。
+        -   `InfrastructureError` (`shared/errors/infrastructure.error.ts`): データベース接続、外部API呼び出しなど、インフラストラクチャ層での問題を示すエラーです。
+        -   `InternalServerError` (`shared/errors/internal-server.error.ts`): 予期しないサーバー内部のエラーです。
+    -   これらのサブクラスは、それぞれ固有のエラーコード (`ErrorCode` Enum の値) を持ちます。
+    -   必要に応じて、さらに具体的なエラーサブクラスを定義することも可能です。
+
+3.  **エラーコード (`ErrorCode`)**:
+    -   エラーの種類を一意に識別するための Enum (`shared/errors/error-code.enum.ts`) を定義します。
+    -   例: `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT_ERROR`, `UNAUTHORIZED`, `DATABASE_ERROR`, `EXTERNAL_API_ERROR`, `INTERNAL_SERVER_ERROR` など。
+
+4.  **Result 型との連携**:
+    -   `neverthrow` の `Result<T, E>` 型のエラー部分 (`E`) には、原則として `AppError` またはそのサブクラスのインスタンスが入ります。
+
+    ```typescript
+    // 例: Result<User, NotFoundError | InfrastructureError>
+    function findUserById(id: string): Promise<Result<User, NotFoundError | InfrastructureError>> {
+      // ... 実装 ...
+    }
+    ```
+
+5.  **エラーメタデータ**: (`AppError` の `metadata` プロパティ)
+    -   エラーに関する追加情報を提供するために使用します。
+    -   `ValidationError` では検証エラーの詳細、`ConflictError` では競合フィールドなど、エラーの種類に応じて構造化されたデータを含めます。
+    -   これにより、エラーハンドリング（特にログ出力や API レスポンス生成）でより詳細な情報を提供できます。
 
 > **参照**: 具体的な実装例については「code_examples/06_utility_functions_examples.md」の「エラー型定義」セクションを参照してください。
 
 ### エラーハンドリング方針 (`shared/utils/error/`)
 
-1.  **エラー変換**:
-    -   外部APIエラーやライブラリエラーを、`InfrastructureError` や `ApplicationError` 等の標準エラー型にマッピングし、`Result.err` として返すユーティリティを提供します。
-    -   サードパーティライブラリのエラーラッピング。
-    -   AI APIエラーの特殊処理と回復戦略 (リトライやフォールバックを含む)。
+`AppError` 体系と `Result` 型を基盤とし、以下のエラーハンドリング方針を適用します。
 
-2.  **エラー伝播**:
-    -   `Result` 型をそのまま返すか、必要に応じて `mapErr` などで上位レイヤーのエラー型に変換して伝播させます。
-    -   エラーコンテキストの拡充を補助するユーティリティも検討します。
+1.  **エラー変換と生成**: (`AppError` の利用)
+    -   外部APIエラーやライブラリエラー（例: DBクライアントのエラー）は、可能な限り早期に適切な `AppError` サブクラス（例: `InfrastructureError`, `ConflictError`）に変換し、`Result.err` としてラップします。
+    -   これにより、アプリケーション内部のエラー処理を一貫した `AppError` 体系で行えるようにします。
+    -   ドメインロジックや入力バリデーションでエラーが発生した場合も、対応する `AppError` サブクラス (`ValidationError` など) を生成して `Result.err` で返します。
 
-3.  **処理戦略**:
-    -   **リトライ可能なエラーの識別**: 特定のエラーコードや種別に基づき、リトライが可能かを判定するヘルパー関数を提供します。
-    -   **指数バックオフ (Exponential Backoff)**: `network` ユーティリティとして、指数バックオフを用いた非同期処理のリトライ関数 (`retryWithBackoff`) を提供します (`shared/utils/network/`)。これは、一時的なネットワークエラーや外部APIのレート制限などに対応するために使用します。
-    -   フォールバック機構と優雅な縮退 (Graceful Degradation) の実装を支援します。
+2.  **エラー伝播**: (`Result` 型の活用)
+    -   関数は、下位の関数から返された `Result<T, AppError>` をそのまま上位に返すか、必要に応じて `mapErr` などでエラーコンテキストを追加したり、より適切な `AppError` サブクラスに変換したりして伝播させます。
+    -   `Result` 型のメソッド (`map`, `andThen`, `orElse`, `match` など) を活用し、エラーパスと成功パスの処理を明確に分離します。
+
+3.  **リトライ処理**: (`retryWithBackoff` ユーティリティ)
+    -   一時的なネットワークエラーや外部APIのレート制限など、リトライによって回復する可能性がある操作については、`retryWithBackoff` (`shared/utils/network/` などに配置想定) ユーティリティを使用します。
+    -   このユーティリティは、特定のエラータイプ (`InfrastructureError` など) が発生した場合に、指数バックオフ戦略を用いて処理を複数回試行します。
+
+4.  **最終的なエラー処理**: (レスポンスマッパーと `handleApiRequest`)
+    -   API Routes 層では、UseCase などから返された `Result<T, AppError>` は、最終的にレスポンスマッパー (`infrastructure/web/utils/response-mapper.ts` の `mapResultToApiResponse` など) に渡されます。
+    -   レスポンスマッパーが `AppError` の種類を判別し、適切な HTTP ステータスコードとレスポンスボディを生成します。
+    -   この一連の処理は `handleApiRequest` (`shared/utils/api.utils.ts`) ユーティリティによってカプセル化されます。
 
 #### エラー処理ユーティリティ (`shared/utils/error/`)
 
+`Result` 型や `AppError` を扱う上での共通処理を支援するユーティリティ関数を提供します。
+
 1.  **`Result` 型ヘルパー**:
     -   `mapResult(result, successFn, errorFn)`: `Result` の成功/失敗に応じて関数を適用します。
-    -   `unwrapResult(result)`: 成功値を安全に取り出すか、エラーをスローします (注意して使用)。
-    -   `combineResults([...results])`: 複数の `Result` を結合し、すべて成功なら成功値の配列、一つでも失敗なら最初のエラーを返します。
-    -   `okAsync`, `errAsync`: 非同期処理の結果を `ResultAsync` としてラップします。
+    -   `unwrapResult(result, errorMessage?)`: 成功値を安全に取り出すか、エラーをスローします (注意して使用)。
+    -   `combineResults([...results])`: 複数の `Result` を結合し、すべて成功なら成功値の配列、一つでも失敗なら最初の `AppError` を返します。
+    -   `Result.fromThrowable(fn, errorMapper)`: 例外を投げる可能性のある関数を `Result` に変換します。`errorMapper` で例外を `AppError` に変換します。
 
-2.  **カスタムエラーユーティリティ**:
-    -   `createDomainError(code, message, cause?)`: `DomainError` インスタンスを生成します。
-    -   `isDomainError(error)`: エラーが `DomainError` かを判定する型ガード関数。
-    -   (同様に `ApplicationError`, `InfrastructureError` 用のヘルパーも提供)
+2.  **`AppError` ユーティリティ**:
+    -   `createAppError(code, message, metadata?, cause?)`: 指定されたコードと情報で `AppError` インスタンスを生成します。（特定のサブクラス生成ヘルパー `createValidationError`, `createNotFoundError` 等も用意する場合があります）
+    -   `isAppError(error)`: オブジェクトが `AppError` のインスタンスであるかを判定する型ガード関数。
+    -   `isSpecificAppError(error, code)`: 特定のエラーコードを持つ `AppError` かを判定する関数。
 
 3.  **エラーロギング連携**:
-    -   `logErrorResult(result, logger)`: `Result` がエラーの場合に、指定されたロガー (`shared/utils/logging/`) を使ってエラー情報をログ出力します。
+    -   `logErrorResult(result, logger)`: `Result` が `err` の場合に、含まれる `AppError` を指定されたロガー (`shared/utils/logging/`) を使ってログ出力します。エラーメタデータもログに含めるようにします。
+    -   レスポンスマッパー内や `handleApiRequest` 内で、エラー発生時に自動的にロギングを行う仕組みを組み込みます。
 
-> **参照**: 具体的な実装例については「code_examples/06_utility_functions_examples.md」の「ログ出力、エラーハンドリング」セクションを参照してください。 **`Result` 型ヘルパーや `retryWithBackoff` の使用例も含まれます。**
+これらのユーティリティは、エラー処理の記述を簡潔にし、一貫性を保つのに役立ちます。
 
 ## セキュリティ関連 (`shared/utils/security/`)
 

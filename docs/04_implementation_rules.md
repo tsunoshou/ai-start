@@ -972,4 +972,111 @@ Next.js App Router におけるサーバーコンポーネント (Server Compone
 
 - 障害対応手順書 ([`10_deployment_implementation.md`](../10_deployment_implementation.md) の一部)
 
-</rewritten_file>
+## エラーハンドリング
+
+エラーハンドリングはアプリケーションの堅牢性と保守性を高める上で非常に重要です。以下のルールに従って一貫性のあるエラー処理を実装してください。
+
+### 1. `Result` 型の使用
+
+- 失敗する可能性のある操作（特に非同期操作、I/O、バリデーション）の戻り値には、`neverthrow` ライブラリの `Result<T, E extends AppError>` 型を使用します。
+- これにより、成功 (`Ok`) と失敗 (`Err`) の両方のケースを明示的に型レベルで表現し、`try-catch` に頼らないエラー処理を促進します。
+- **ルール:** `Result` のエラー型 `E` には、必ず `AppError` またはそのサブクラスを指定します。`Error` 型を直接使用しないでください。
+
+```typescript
+import { Result, ok, err } from 'neverthrow';
+import { AppError } from '@/shared/errors/app.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
+
+// OK例: AppError を使用
+async function fetchData(): Promise<Result<Data, AppError>> {
+  try {
+    const data = await externalApi.get();
+    return ok(data);
+  } catch (error) {
+    return err(new AppError(ErrorCode.ApiRequestFailed, 'Failed to fetch data', { cause: error }));
+  }
+}
+
+// NG例: Error を直接使用
+// async function fetchDataBad(): Promise<Result<Data, Error>> { ... }
+```
+
+### 2. `AppError` と `ErrorCode`
+
+- アプリケーション固有のエラーは、`shared/errors/app.error.ts` に定義された `AppError` クラス、またはそのサブクラスを使用します。
+- **ルール:** すべての `AppError` インスタンスには、`shared/errors/error-code.enum.ts` で定義された `ErrorCode` を必ず指定します。
+- `ErrorCode` はエラーの種類を分類し、ログ分析やエラーに応じた処理分岐を容易にします。
+- 必要に応じて、エラーの原因となった元のエラーオブジェクトを `cause` プロパティに、追加情報を `metadata` プロパティに含めます。
+
+```typescript
+// AppError の使用例
+if (conditionFails) {
+  return err(new AppError(ErrorCode.DomainRuleViolation, 'Specific domain rule violated.'));
+}
+
+try {
+  // ... DB 操作 ...
+} catch (dbError) {
+  return err(new AppError(ErrorCode.DatabaseError, 'Database operation failed.', { 
+    cause: dbError,
+    metadata: { query: 'SELECT ...', params: [...] }
+  }));
+}
+```
+
+### 3. `ValidationError`
+
+- 入力値のバリデーション（APIリクエスト、フォーム入力など）や値オブジェクトの生成時のバリデーションに失敗した場合は、`shared/errors/validation.error.ts` に定義された `ValidationError` を使用します。
+- `ValidationError` は `AppError` のサブクラスであり、`ErrorCode.ValidationError` が自動的に設定されます。
+- **ルール:** `ValidationError` を生成する際は、`metadata` に可能な限り詳細な情報（バリデーション対象の値 `value`、検証箇所 `validationTarget`、元のバリデーションエラー `cause` など）を含めてください。
+- 値オブジェクトの `create` 静的メソッドは、バリデーション失敗時に `Result<VO, ValidationError>` を返す必要があります。
+
+```typescript
+// ValidationError の使用例 (Value Object)
+import { Result, ok, err } from 'neverthrow';
+import { ValidationError } from '@/shared/errors/validation.error';
+
+class Email {
+  // ...
+  public static create(email: unknown): Result<Email, ValidationError> {
+    if (typeof email !== 'string' || !email.includes('@')) {
+      return err(new ValidationError('Invalid email format', {
+         value: email,
+         validationTarget: 'ValueObject',
+         metadata: { valueObjectName: 'Email' }
+       }));
+    }
+    return ok(new Email(email));
+  }
+}
+```
+
+### 4. `try-catch` の使用
+
+- 基本的に `Result` 型でエラーを伝播させることを推奨しますが、予期せぬエラー（ライブラリ内部のエラーなど）をキャッチする必要がある場合は `try-catch` を使用します。
+- **ルール:** `catch` ブロックで捕捉したエラーは、必ず `AppError` でラップし、適切な `ErrorCode`（多くの場合 `ErrorCode.InternalServerError` や関連するエラーコード）と `cause` を設定して再スローするか、`Result.err` として返却します。捕捉したエラーをそのまま放置したり、`console.error` だけで済ませたりしないでください。
+
+```typescript
+// try-catch で捕捉したエラーを AppError でラップする例
+try {
+  const result = someLibrary.doSomething();
+} catch (error) {
+  // 適切な ErrorCode と cause を設定して AppError を返す
+  return err(new AppError(
+    ErrorCode.InternalServerError, 
+    'Unexpected error in someLibrary', 
+    { cause: error }
+  ));
+  // または throw new AppError(...); も状況に応じて可
+}
+```
+
+### 5. API エラーレスポンス
+
+- API ルートハンドラー (`app/api/.../route.ts`) で発生したエラー（ユースケースから返された `AppError` や Zod バリデーションエラーなど）は、`shared/utils/api.utils.ts` の `handleApiError` 関数によって処理され、標準化された JSON 形式のエラーレスポンスに変換されます。
+- `handleApiError` は `AppError` の `ErrorCode` に基づいて適切な HTTP ステータスコードを決定します。
+- **ルール:** API ルートハンドラー内で直接 `NextResponse.json(...)` を使ってエラーレスポンスを生成せず、原則として `AppError` をスローするか `Result.err(AppError)` を返却し、`handleApiError` に処理を委譲してください。
+
+## API 設計ルール
+
+// ... (以降の内容)

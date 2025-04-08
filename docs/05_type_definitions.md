@@ -1,6 +1,6 @@
 # 共通型定義・DB型定義
 
-最終更新日: 2025-04-05
+最終更新日: 2025-04-08
 
 ## 本ドキュメントの目的と位置づけ
 
@@ -12,7 +12,7 @@
 
 ## 型定義の基本方針
 
-AiStartプロジェクトでは型安全性を最優先し、各レイヤーに適切な型定義を配置して、重複を避けつつ責務の明確な分離を実現します。Typescriptの型システム、**`neverthrow` ライブラリによる Result 型を用いたエラーハンドリング**、および **`tsyringe` による依存性注入** を活用して、ドメインの概念を明確に表現し、コンパイル時の型チェックによって多くのバグを未然に防ぎます。
+AiStartプロジェクトでは型安全性を最優先し、各レイヤーに適切な型定義を配置して、重複を避けつつ責務の明確な分離を実現します。Typescriptの型システム、**`neverthrow` ライブラリによる Result 型を用いたエラーハンドリング（`AppError` とそのサブクラスを使用）**、および **`tsyringe` による依存性注入** を活用して、ドメインの概念を明確に表現し、コンパイル時の型チェックによって多くのバグを未然に防ぎます。
 
 ### 型の階層構造
 
@@ -40,8 +40,8 @@ AiStartプロジェクトでは型安全性を最優先し、各レイヤーに�
 
 【共有リソース層】
 ├── ユーティリティ型
-├── エラー型（名詞+Error）
-│   └── 列挙型（Enum、例: `ExportFormat`, `SupportedLanguage`）
+├── エラー型（名詞+Error、**主に `AppError` とそのサブクラス `ValidationError` などを使用**）
+│   └── 列挙型（Enum、例: `ErrorCode`, `ExportFormat`, `SupportedLanguage`）
 └── 共通レスポンスラッパー型
     └── QueryObject/ReadModel 型
 
@@ -232,14 +232,114 @@ interface Repository<T extends EntityBase> {
 }
 
 // タイプエイリアス例
-type Result<T> = 
-  | { status: 'success'; data: T; }
-  | { status: 'error'; error: Error; };
+type AppResult<T, E extends AppError = AppError> = Result<T, E>; // neverthrow の Result のエイリアス（AppError をデフォルトエラー型に）
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 ```
 
-#### フロントエンド固有型
+### エラーハンドリング: Result と AppError
+
+**方針**
+- 失敗する可能性のある操作（特にI/O操作やビジネスルールの検証）は `neverthrow` の `Result<T, E extends AppError>` 型を返す。
+- エラー型 `E` には、原則として `AppError` またはそのサブクラス（例: `ValidationError`, `InfrastructureError`）を使用する。
+- `Error` 型を直接 `Result` のエラー型として使用することは避ける。
+- 各エラーには、識別のための `ErrorCode` enum メンバーを必ず含める。
+- 必要に応じて、エラーの原因 (`cause`) や追加情報 (`metadata`) を `AppError` に含める。
+- バリデーションエラーには、専用の `ValidationError` を使用し、どの値がどのような理由で不正だったかの情報を含める。
+
+**`AppError` の基本構造**
+- `code`: `ErrorCode` enum の値。
+- `message`: エラーメッセージ（人間が読める形式）。
+- `metadata` (optional): エラーに関する追加情報（オブジェクト形式）。バリデーションエラーの詳細、エンティティIDなど。
+- `cause` (optional): 元となったエラーオブジェクト。
+
+**`ValidationError` の構造** (`AppError` を継承)
+- `code`: `ErrorCode.ValidationError` 固定。
+- `message`: バリデーションエラーメッセージ。
+- `metadata`: `cause` (ZodErrorなど)、`value` (検証対象の値)、`validationTarget` (どこでの検証か)、`valueObjectName` などを含む。
+
+**使い分け**
+- **`AppError`**: 一般的なアプリケーションエラー（DBエラー、設定エラー、予期せぬ内部エラーなど）。
+- **`ValidationError`**: 入力値や値オブジェクトのバリデーション失敗時。
+- **その他の `AppError` サブクラス**: 必要に応じて、特定のレイヤーや種類の エラー（例: `InfrastructureError`）を表すために作成する。
+
+```typescript
+// Result と AppError の使用例 (Usecase)
+import { Result, ok, err } from 'neverthrow';
+import { AppError } from '@/shared/errors/app.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
+import { UserDTO } from '@/application/dtos/user.dto';
+import { userRepository, userMapper } from './dependencies'; // 依存関係は適宜解決
+
+async function findUser(userId: string): Promise<Result<UserDTO, AppError>> {
+  try {
+    const userResult = await userRepository.findById(userId);
+    if (userResult.isErr()) {
+      // findById が返す AppError をそのまま返すか、必要ならラップする
+      return err(userResult.error);
+    }
+    if (!userResult.value) {
+      return err(new AppError(ErrorCode.NotFound, `User with ID ${userId} not found.`));
+    }
+    const user = userResult.value;
+    const dtoResult = userMapper.toDTO(user);
+    if (dtoResult.isErr()) {
+      // マッパーエラーをラップ
+      return err(new AppError(ErrorCode.InternalServerError, 'Failed to map user to DTO', { cause: dtoResult.error }));
+    }
+    return ok(dtoResult.value);
+  } catch (error) {
+    // 予期せぬエラーをラップ
+    return err(new AppError(ErrorCode.InternalServerError, 'Unexpected error fetching user', { cause: error }));
+  }
+}
+
+// Result と ValidationError の使用例 (Value Object)
+import { Result, ok, err } from 'neverthrow';
+import { ValidationError } from '@/shared/errors/validation.error';
+
+class Email {
+  readonly value: string;
+
+  private constructor(email: string) {
+    this.value = email;
+  }
+
+  public static create(email: unknown): Result<Email, ValidationError> {
+    if (typeof email !== 'string' || !email.includes('@')) { // Simple validation
+      return err(new ValidationError('Invalid email format', {
+         value: email,
+         validationTarget: 'ValueObject',
+         metadata: { valueObjectName: 'Email' }
+       }));
+    }
+    return ok(new Email(email));
+  }
+}
+```
+
+### `ErrorCode` enum
+
+アプリケーション全体で共通のエラーコードを `shared/errors/error-code.enum.ts` に定義します。エラーの種類に応じて適切なコードを選択してください。
+
+**主要なエラーコード:**
+- `UnknownError`: 未特定のエラー
+- `ValidationError`: バリデーション失敗
+- `NotFound`: リソースが見つからない
+- `Unauthorized`: 認証失敗
+- `Forbidden`: アクセス権限なし
+- `InternalServerError`: サーバー内部エラー
+- `DatabaseError`: DB操作エラー
+- `PasswordHashingFailed`: パスワードハッシュ化失敗
+- `PasswordVerificationFailed`: パスワード検証失敗 (**New!**)
+- `ConflictError`: リソース競合 (例: Email重複)
+- `DbUniqueConstraintViolation`: DB一意性制約違反 (リポジトリ層でConflictErrorに変換されることが多い)
+- `InvalidIdentifierFormat`: ID形式不正
+- ... その他、必要に応じて追加 (例: `NetworkError`, `ConfigurationError`, `AiServiceError`)
+
+新しい種類のエラーが発生した場合は、適切な `ErrorCode` を追加してください。
+
+### フロントエンド固有型
 
 **Props型**
 - **意図**: コンポーネント間のデータ・コールバック受け渡しを型安全に行う

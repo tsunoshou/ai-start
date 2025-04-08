@@ -214,15 +214,23 @@ describe('BaseEntityMapper', () => {
       // 検証
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('値オブジェクトの作成に失敗しました');
-        // cause が undefined であることを確認 (metadata に集約されるため)
+        // エラーが InfrastructureError であることを確認
+        expect(result.error).toBeInstanceOf(InfrastructureError);
+        // エラーコードが ValidationError であることを確認
+        expect(result.error.code).toBe(ErrorCode.ValidationError);
+        expect(result.error.message).toContain('値オブジェクトの作成に失敗しました。');
+        // cause が undefined であることを確認
         expect(result.error.cause).toBeUndefined();
-        // metadata に元エラーの情報が含まれていることを確認 (任意)
+        // metadata に元エラーの情報が含まれていることを確認
         expect(result.error.metadata).toHaveProperty('aggregatedErrors');
+        // aggregatedErrors が AppError の配列であることを確認
         const aggregatedErrors = result.error.metadata?.aggregatedErrors as AppError[];
         expect(aggregatedErrors).toBeInstanceOf(Array);
         expect(aggregatedErrors.length).toBeGreaterThan(0);
+        // 最初の元エラーが AppError (または ValidationError) であることを確認
+        expect(aggregatedErrors[0]).toBeInstanceOf(AppError);
         expect(aggregatedErrors[0].message).toContain('名前は3文字以上必要です');
+        // 元エラーのコードが ValidationError であることを確認
         expect(aggregatedErrors[0].code).toBe(ErrorCode.ValidationError);
       }
     });

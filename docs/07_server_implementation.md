@@ -379,12 +379,12 @@ throw new AppError(ErrorCode.ValidationError, 'Invalid input')
      - パフォーマンス測定の詳細
      - 例：`"ユーザーリポジトリ呼び出し - 入力パラメータ: {...}"`, `"処理時間: 45ms"`
 
-5. **一貫したコンテキスト情報**：
+5.  **一貫したコンテキスト情報**：
    - エンティティ操作には `entityType`, `entityId`, `operation` などの情報を含めます。
    - ユーザー関連操作には `userId` を含めます（個人情報は含めない）。
    - API関連では `endpoint`, `method`, `statusCode` などを含めます。
 
-6. **エラーログには詳細情報を含める**：
+6.  **エラーログには詳細情報を含める**：
    - `logger.error()` の第2引数にエラーオブジェクトを渡し、スタックトレースを保持します。
    - `AppError` のメタデータを活用して、エラーの詳細情報をログに含めます。
    ```typescript
@@ -545,115 +545,34 @@ export class UserRepository implements UserRepositoryInterface {
 
 ### エラーハンドリング (`neverthrow` 利用)
 
-[04_implementation_rules.md](/docs/restructuring/04_implementation_rules.md) および [05_type_definitions.md](/docs/restructuring/05_type_definitions.md) で定義されたエラーハンドリング方針に基づき、`neverthrow` の `Result` 型を全面的に採用します。
+サーバーサイドにおけるエラーハンドリングは、アプリケーションの堅牢性と保守性を高める上で非常に重要です。AiStartプロジェクトでは、[04_implementation_rules.md](../04_implementation_rules.md) および [05_type_definitions.md](../05_type_definitions.md) で定義されたエラーハンドリング方針に基づき、以下の原則を採用しています。
 
-1.  **関数の戻り値**:
-    -   失敗する可能性のある操作（DBアクセス、外部API呼び出し、ビジネスルール検証など）を行う関数は、原則として `Promise<Result<T, E>>` または `Result<T, E>` を返します。
-    -   `T` は成功時の値の型、`E` は失敗時のエラー型（`BaseError` のサブクラス）です。
+1.  **`Result` 型による明示的なエラー処理**:
+    -   `neverthrow` ライブラリの `Result<T, E>` 型を全面的に利用し、成功と失敗のパスを明確に分離します。
+    -   失敗する可能性のある操作（DBアクセス、外部API呼び出し、ビジネスルール検証、バリデーションなど）を行う関数は、原則として `Promise<Result<T, AppError>>` または `Result<T, AppError>` を返します。
+    -   `T` は成功時の値の型、`E` は失敗時のエラー型であり、原則として後述する `AppError` またはそのサブクラスのインスタンスが入ります。
 
-2.  **エラーの生成**:
-    -   各レイヤーで発生したエラーは、適切なエラー型（`DomainError`, `ApplicationError`, `InfrastructureError`）のインスタンスとして生成し、`err()` でラップして返します。
-    -   エラーの原因（`cause`）を可能な限り含め、スタックトレースを保持します。
+2.  **カスタムエラークラス (`AppError` 体系) による分類**:
+    -   アプリケーション固有のエラー状況を体系的に表現するために、`AppError` (`shared/errors/app.error.ts`) を基底クラスとするカスタムエラー階層を定義します。
+    -   具体的なエラータイプとして、入力値の検証エラーを示す `ValidationError` (`shared/errors/validation.error.ts`)、リソースが見つからない場合の `NotFoundError` (`shared/errors/not-found.error.ts`)、データ競合時の `ConflictError` (`shared/errors/conflict.error.ts`)、認証・認可エラーを示す `UnauthorizedError` (`shared/errors/unauthorized.error.ts`) などを用意します。
+    -   各エラークラスは、エラーコード (`code`) や追加情報 (`metadata`) を保持し、エラーの原因や種類を明確にします。
+    -   各レイヤー（ドメイン、アプリケーション、インフラストラクチャ）で発生したエラーは、この `AppError` 体系の適切なクラスのインスタンスとして生成され、`err()` でラップして返されます。
 
-3.  **エラーの伝播と処理**:
-    -   呼び出し元（例: ユースケース層）は、リポジトリやサービスから返された `Result` を受け取り、`match` メソッドや `map`, `mapErr`, `asyncMap` などを使って適切に処理します。
-    -   UI層に返す前に、エラーは標準化されたエラーレスポンス形式に変換されます。
+3.  **レスポンスマッパーによるエラー集約と HTTP レスポンス生成**:
+    -   API Routes (`app/api/...`) 層でのエラー処理の最終段階として、UseCase などから返された `Result<T, AppError>` オブジェクトを HTTP レスポンスに変換する役割は、専用のレスポンスマッパーユーティリティ (`infrastructure/web/utils/response-mapper.ts` の `mapResultToApiResponse` など) が担当します。
+    -   レスポンスマッパーは、受け取った `Result` が成功 (`ok`) か失敗 (`err`) かを判断します。
+    -   成功 (`ok`) の場合は、成功時のデータを含む JSON レスポンス（または No Content）を適切なステータスコード (例: 200 OK, 201 Created, 204 No Content) と共に生成します。
+    -   失敗 (`err`) の場合は、含まれる `AppError` インスタンスの種類 (`instanceof` で判定) を識別します。
+    -   エラーの種類に応じて、適切な HTTP ステータスコード (例: `ValidationError` なら 400, `NotFoundError` なら 404, `ConflictError` なら 409, `UnauthorizedError` なら 401, それ以外は 500 など) と、標準化されたエラー情報（エラーコード、メッセージ、詳細など）を含む JSON レスポンスボディを生成します。
+    -   これにより、API Routes のハンドラー関数から、エラーの種類に応じた具体的なレスポンス生成ロジックを分離し、コードの重複を排除し、一貫性を保ちます。
 
-```typescript
-    // 例: infrastructure/database/repositories/ProjectRepository.ts
-    // (注: 以下の例は BaseRepository + ヘルパー関数利用のパターンを反映するように修正)
-    import { Result, ok, err } from 'neverthrow';
-    import { Project } from '@/domain/models/entities/Project'; // 仮のパス
-    import { ProjectId } from '@/domain/models/value-objects/ProjectId'; // 仮のパス
-    import { IProjectRepository } from '@/domain/repositories/IProjectRepository'; // 仮のパス
-    import { PrismaClient } from '@prisma/client'; // Prismaの代わりにDrizzle想定だが例として残す
-    import { InfrastructureError } from '@/shared/errors/InfrastructureError';
-    import { inject, injectable } from 'tsyringe';
-    import { BaseRepository } from './base.repository'; // BaseRepository を継承
-    import { projects } from '../schema/projects.schema'; // 仮のスキーマパス
-    import { findRecordById, saveRecord, deleteRecordById } from '../helpers/crud.helpers'; // ヘルパー関数をインポート
-    import { PgColumn } from 'drizzle-orm/pg-core';
+4.  **`handleApiRequest` ユーティリティによる定型処理の集約**:
+    -   API Routes におけるリクエスト処理の定型的な流れ（リクエストボディのパースとバリデーション、ロギング、UseCase/QueryService の呼び出し、レスポンスマッパーの適用による最終レスポンス生成）は、`handleApiRequest` (`shared/utils/api.utils.ts`) ユーティリティ関数に集約されます。
+    -   API Route ハンドラーは、`handleApiRequest` にビジネスロジックを実行する非同期関数（UseCase/QueryService を呼び出し `Result<T, AppError>` を返す部分）と、成功時のステータスコードを渡すだけで済みます。
+    -   `handleApiRequest` が内部でレスポンスマッパー (`mapResultToApiResponse`) を呼び出し、成功・失敗に応じた最終的な `NextResponse` を返します。
 
-    // 仮のDB型
-    type ProjectDbSelect = typeof projects.$inferSelect;
-    type ProjectDbInsert = typeof projects.$inferInsert;
-
-    @injectable()
-    export class ProjectRepository
-      extends BaseRepository<ProjectId, Project, ProjectDbSelect, ProjectDbInsert, typeof projects>
-      implements IProjectRepository
-    {
-      // スキーマとIDカラムを定義 (BaseRepository の抽象プロパティ実装)
-      protected readonly schema = projects;
-      protected readonly idColumn: PgColumn = projects.id;
-
-      constructor(@inject('Database') db: NodePgDatabase) { // Drizzle DB想定
-        super(db);
-      }
-
-      // マッピングメソッド (BaseRepository の抽象メソッド実装)
-      protected _toDomain(record: ProjectDbSelect): Project {
-          // DBレコードからドメインエンティティへのマッピングロジック
-          // Value Object の生成などを含む
-          // 例: return Project.reconstruct({...});
-          throw new Error('Method not implemented.'); // 要実装
-      }
-      protected _toPersistence(entity: Project): ProjectDbInsert {
-          // ドメインエンティティからDBレコード形式へのマッピングロジック
-          // Value Object からプリミティブ値への変換などを含む
-          // 例: return { id: entity.id.value, ... };
-          throw new Error('Method not implemented.'); // 要実装
-      }
-
-      // findById (BaseRepository の抽象メソッド実装、ヘルパー利用)
-      async findById(id: ProjectId): Promise<Result<Project | null, InfrastructureError>> {
-        const findResult = await findRecordById<ProjectDbSelect>(this.db, this.schema, this.idColumn, id.value);
-        if (findResult.isErr()) {
-            return err(new InfrastructureError(`Failed to find project by id: ${id.value}`, { cause: findResult.error }));
-        }
-        const record = findResult.value;
-        if (!record) return ok(null);
-        try {
-            return ok(this._toDomain(record));
-        } catch (mappingError) {
-            return err(new InfrastructureError(`Mapping failed for project ${id.value}`, { cause: mappingError }));
-        }
-      }
-
-      // save (BaseRepository の抽象メソッド実装、ヘルパー利用)
-      async save(project: Project): Promise<Result<void, InfrastructureError>> {
-          try {
-            const persistenceData = this._toPersistence(project);
-            const saveResult = await saveRecord(this.db, this.schema, this.idColumn, persistenceData);
-            if (saveResult.isErr()) {
-                return err(new InfrastructureError(`Failed to save project: ${project.id.value}`, { cause: saveResult.error }));
-            }
-            return ok(undefined);
-          } catch (mappingError) {
-             return err(new InfrastructureError(`Failed to prepare project data for saving: ${project.id.value}`, { cause: mappingError }));
-          }
-      }
-
-       // delete (BaseRepository の抽象メソッド実装、ヘルパー利用)
-       async delete(id: ProjectId): Promise<Result<void, InfrastructureError>> {
-            const deleteResult = await deleteRecordById(this.db, this.schema, this.idColumn, id.value);
-            if (deleteResult.isErr()) {
-                return err(new InfrastructureError(`Failed to delete project ${id.value}`, { cause: deleteResult.error }));
-            }
-            if (deleteResult.value === 0) {
-                return err(new InfrastructureError(`[NOT_FOUND] Project with id ${id.value} not found for deletion.`));
-            }
-            return ok(undefined);
-       }
-
-       // ... 他の Project 固有のリポジトリメソッド (findByUserId など) ...
-    }
-    ```
-
-4.  **プレゼンテーション層での処理**:
-    -   API Routes や Server Actions のハンドラーは、ユースケースから返された `Result` を受け取ります。
-    -   `match` メソッドを使用して成功時と失敗時のレスポンスを分岐させます。
-    -   失敗時には、エラーオブジェクト (`ApplicationError`, `InfrastructureError` など) の情報をもとに、ユーザーフレンドリーなメッセージと適切なHTTPステータスコードを持つ標準エラーレスポンスを生成します ([`handleApiError`](#apiエラーハンドリングユーティリティ) ユーティリティなどを利用)。
+このエラーハンドリング戦略により、エラーの発生源から API レスポンスまでの流れが明確になり、各層の責務が分離され、一貫性のあるエラー処理とレスポンス生成が実現されます。
+具体的なコード例については、[`docs/code_examples/07_server_implementation_examples.md`](./code_examples/07_server_implementation_examples.md) のエラーハンドリングセクションを参照してください。
 
 ## APIエンドポイント一覧
 

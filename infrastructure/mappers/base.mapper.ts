@@ -256,22 +256,18 @@ export abstract class BaseEntityMapper<
 
       for (const [_key, result] of Object.entries(results)) {
         if (result.isErr()) {
-          const error: AppError = result.error;
-          errors.push(
-            new InfrastructureError(
-              ErrorCode.ValidationError,
-              `値オブジェクト作成に失敗しました: ${error.message}`
-            )
-          );
+          errors.push(result.error);
         }
       }
 
       if (errors.length > 0) {
         return err(
           new InfrastructureError(
-            ErrorCode.InternalServerError,
-            `値オブジェクトの作成に失敗しました: ${errors.map((e) => e.message).join(', ')}`,
-            { metadata: { aggregatedErrors: errors.map((e) => e.toJSON()) } }
+            ErrorCode.ValidationError,
+            `値オブジェクトの作成に失敗しました。`,
+            {
+              metadata: { aggregatedErrors: errors },
+            }
           )
         );
       }
