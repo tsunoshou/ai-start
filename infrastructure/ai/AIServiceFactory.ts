@@ -20,9 +20,8 @@ export class AIServiceFactory {
   /**
    * 指定されたプロバイダーのAIサービスを作成して返す
    * @param provider AIプロバイダー
-   * @param apiKey APIキー
    */
-  static createService(provider: AIProvider, apiKey: string): AIService {
+  static createService(provider: AIProvider): AIService {
     switch (provider) {
       case AIProvider.OPENAI:
         return container.resolve(OpenAIService);
@@ -51,7 +50,7 @@ export class AIServiceFactory {
 
     // 利用可能なAPIキーを持つプロバイダーで最初に見つかったものを使用
     if (openaiKey) {
-      return this.createService(AIProvider.OPENAI, openaiKey);
+      return this.createService(AIProvider.OPENAI);
     } else if (anthropicKey) {
       // Anthropicサービスの実装（未実装）
       throw new Error('Anthropic service is not implemented yet');

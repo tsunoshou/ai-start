@@ -133,8 +133,19 @@ module.exports = {
         format: ['UPPER_CASE'],
         filter: {
           // 既存の例外に加えて、末尾が Schema の変数を UPPER_CASE 強制から除外
-          regex: '^(metadata|config|React|.*Schema)$',
+          // さらに logger のような非プリミティブなオブジェクトも除外
+          regex: '^(metadata|config|React|.*Schema|logger|.*[cC]lient|.*[sS]ervice|.*[rR]epository|.*[mM]apper)$',
           match: false,
+        },
+      },
+      // loggerなどのオブジェクト変数に対する特別ルール
+      {
+        selector: 'variable',
+        modifiers: ['const'],
+        format: ['camelCase'],
+        filter: {
+          regex: '^(logger|.*[cC]lient|.*[sS]ervice|.*[rR]epository|.*[mM]apper)$',
+          match: true,
         },
       },
       // Reactのようなライブラリインポートは例外として許可

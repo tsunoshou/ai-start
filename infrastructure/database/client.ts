@@ -101,8 +101,8 @@ export async function testConnection() {
     const result = await QUERY_CLIENT`SELECT NOW() as current_time`;
     logger.info({
       message: 'データベース接続成功',
-      current_time: result[0].current_time,
-      connection_type: IS_POOLER ? '接続プーラー' : '直接接続'
+      currentTime: result[0].current_time,
+      connectionType: IS_POOLER ? '接続プーラー' : '直接接続'
     });
     return true;
   } catch (error) {
