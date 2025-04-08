@@ -4,7 +4,8 @@ import type { Result } from 'neverthrow';
 import type { Mock } from 'vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import type { UserDTO } from '@/application/dtos/user.dto';
+// Import only the schema and derive the type implicitly where needed
+import { userDtoSchema } from '@/application/dtos/user.dto';
 import type { UserId } from '@/domain/models/user/user-id.vo';
 import type { UserName } from '@/domain/models/user/user-name.vo';
 import { User } from '@/domain/models/user/user.entity';
@@ -23,8 +24,6 @@ import { CreateUserUsecase } from '../create-user.usecase';
 // 未使用型宣言の抑制 - ESLint対策
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
 type _Result = Result<unknown, unknown>;
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
-type _UserDTO = UserDTO;
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
 type _UserId = UserId;
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
@@ -96,12 +95,22 @@ describe('CreateUserUsecase', () => {
     if (result.isOk()) {
       const userDTO = result.value;
 
-      // DTOの基本的な構造を検証
+      // Validate the structure and types using the Zod schema
+      const validationResult = userDtoSchema.safeParse(userDTO);
+      expect(validationResult.success).toBe(true); // Ensure DTO matches the schema
+      if (!validationResult.success) {
+        console.error('DTO validation failed:', validationResult.error.format());
+      }
+
+      // DTOの基本的なプロパティを検証 (Zodスキーマで型は保証される)
       expect(userDTO).toHaveProperty('id');
+      expect(typeof userDTO.id).toBe('string');
       expect(userDTO).toHaveProperty('name', validInput.name);
       expect(userDTO).toHaveProperty('email', validInput.email);
       expect(userDTO).toHaveProperty('createdAt');
+      expect(typeof userDTO.createdAt).toBe('string');
       expect(userDTO).toHaveProperty('updatedAt');
+      expect(typeof userDTO.updatedAt).toBe('string');
 
       // モックが期待通り呼び出されたか検証
       expect(passwordUtils.hashPassword).toHaveBeenCalledWith(
