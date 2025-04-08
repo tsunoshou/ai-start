@@ -4,6 +4,7 @@ import { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import { Result, ok, err } from 'neverthrow';
 import { inject } from 'tsyringe';
 
+import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
@@ -111,7 +112,7 @@ export abstract class BaseRepository<
    * @param entity The domain entity to save.
    * @returns A Result containing void or an InfrastructureError.
    */
-  async save(entity: TDomain): Promise<Result<void, InfrastructureError>> {
+  async save(entity: TDomain): Promise<Result<void, InfrastructureError | AppError>> {
     let persistenceData: TDbInsert;
 
     try {
@@ -162,14 +163,37 @@ export abstract class BaseRepository<
 
       // PostgreSQLのユニーク制約違反エラーコード: 23505
       if (error?.code === '23505') {
+        // 制約違反のフィールド名を抽出する試み
+        // PostgreSQLのエラーメッセージからフィールド名を解析
+        // 例: 'Key (email)=(test@example.com) already exists.'
+        let conflictField = 'unknown';
+        try {
+          const detailMatch = error.detail?.match(/Key \(([^)]+)\)=/i);
+          if (detailMatch && detailMatch[1]) {
+            conflictField = detailMatch[1];
+          }
+        } catch (parseErr) {
+          // 解析エラーは無視し、デフォルト値を使用
+        }
+
+        // AppErrorを使用してより明確なエラーを返す
         return err(
-          new InfrastructureError(
-            `Unique constraint violation during save of entity ${entity.id.value}.`,
-            {
-              cause: error,
-              metadata: { code: ErrorCode.ConflictError },
-            }
+          new AppError(
+            ErrorCode.ConflictError,
+            `Unique constraint violation during save of entity: duplicate ${conflictField} value.`
           )
+            .withEntityContext(
+              // エンティティの種類を示す情報 (例: 'user', 'product' など)
+              // subclass で具体的なエンティティ名がわかる場合は上書きすることを想定
+              'entity',
+              entity.id.value,
+              'save'
+            )
+            .withMetadata({
+              conflictField,
+              constraint: error.constraint,
+              detail: error.detail,
+            })
         );
       }
 
@@ -185,6 +209,7 @@ export abstract class BaseRepository<
    * Deletes an entity by its ID.
    * @param id The ID of the entity to delete.
    * @returns A Result containing void or an InfrastructureError.
+   * @remarks エンティティが存在しない場合も成功として扱います（冪等性のため）。
    */
   async delete(id: TID): Promise<Result<void, InfrastructureError>> {
     try {
@@ -197,17 +222,13 @@ export abstract class BaseRepository<
 
       if (deleteResult.rowCount === 0) {
         this.logger.info({
-          message: `Entity with id ${id.value} not found for deletion.`,
+          message: `Entity with id ${id.value} not found for deletion, but treated as success.`,
           entityId: id.value,
           operation: 'delete',
         });
 
-        // Entity not found, return specific InfrastructureError
-        return err(
-          new InfrastructureError(`Entity with id ${id.value} not found for deletion.`, {
-            metadata: { code: ErrorCode.NotFound },
-          })
-        );
+        // エンティティが見つからなくても成功として扱う（冪等性を保証）
+        return ok(undefined);
       }
 
       this.logger.info({

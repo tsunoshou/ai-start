@@ -182,6 +182,49 @@ import { z } from 'zod';
     }
     ```
 
+### リポジトリの実装とエラーハンドリング
+
+リポジトリインターフェースは `domain/repositories` に、その実装は `infrastructure/database/repositories` に配置され、`BaseRepository` クラスを通じて共通操作が提供されます。
+
+各リポジトリメソッドの標準動作として以下が定義されています：
+
+1. **`findById` / `findByXXX` メソッド**: 
+   - エンティティが見つからない場合は `ok(null)` を返します。これは「見つからない」ことは正常系として扱い、呼び出し側でnullチェックを行うことを意味します。
+   - 技術的エラー（DB接続失敗など）の場合のみ `err(new InfrastructureError(...))` を返します。
+
+2. **`delete` メソッド**:
+   - 冪等性を保証するため、対象エンティティが存在しない場合でも **成功 (`ok(undefined)`)** として扱います。
+   - これにより、同一IDに対する複数回の削除操作が安全に行えます。
+   - 技術的エラー（DB接続失敗など）の場合のみ `err(new InfrastructureError(...))` を返します。
+
+3. **`save` メソッド（作成/更新）**:
+   - ユニーク制約違反（例: 既存のメールアドレスで新規ユーザー作成）の場合：
+     - `AppError(ErrorCode.ConflictError, ...)` を返します。
+     - エラーは `withMetadata()` メソッドを使用し、競合したフィールド名など、詳細情報を含めます。
+   - 技術的エラー（DB接続失敗など）の場合は `err(new InfrastructureError(...))` を返します。
+
+これらの挙動は `BaseRepository` クラスで標準化されており、子クラスでオーバーライドしない限り一貫して適用されます。
+
+#### エラーコンテキスト情報の追加
+
+`AppError` クラスは、エラーデバッグに役立つコンテキスト情報（メタデータ）を追加するための便利なメソッドを提供します：
+
+```typescript
+// エンティティ関連エラーにコンテキストを追加する例
+throw new AppError(ErrorCode.NotFound, 'User not found')
+  .withEntityContext('user', userId, 'find');
+
+// カスタムメタデータの追加例
+throw new AppError(ErrorCode.ValidationError, 'Invalid input')
+  .withMetadata({ 
+    field: 'email', 
+    value: inputEmail,
+    validationRule: 'email-format'
+  });
+```
+
+ロギング時にこれらのメタデータを含めることで、エラーの原因分析が容易になります。
+
 ### エラーハンドリング (`neverthrow` 利用)
 
 [04_implementation_rules.md](/docs/restructuring/04_implementation_rules.md) および [05_type_definitions.md](/docs/restructuring/05_type_definitions.md) で定義されたエラーハンドリング方針に基づき、`neverthrow` の `Result` 型を全面的に採用します。
@@ -293,53 +336,6 @@ import { z } from 'zod';
     -   API Routes や Server Actions のハンドラーは、ユースケースから返された `Result` を受け取ります。
     -   `match` メソッドを使用して成功時と失敗時のレスポンスを分岐させます。
     -   失敗時には、エラーオブジェクト (`ApplicationError`, `InfrastructureError` など) の情報をもとに、ユーザーフレンドリーなメッセージと適切なHTTPステータスコードを持つ標準エラーレスポンスを生成します ([`handleApiError`](#apiエラーハンドリングユーティリティ) ユーティリティなどを利用)。
-
-### リポジトリパターン実装
-
-[02_architecture_design.md](/docs/restructuring/02_architecture_design.md) で定義された通り、データ永続化の責務はリポジトリパターンを用いて抽象化されます。
-
-1.  **インターフェース定義 (ドメイン層)**:
-    -   `domain/repositories/` ディレクトリに、各集約ルート（例: `User`, `Project`）に対応するリポジトリインターフェース (`IUserRepository`, `IProjectRepository` など) を定義します。
-    -   基本的なCRUD操作は `domain/repositories/base.repository.interface.ts` で定義された `BaseRepositoryInterface` を継承します。
-
-2.  **実装クラス (インフラストラクチャ層)**:
-    -   `infrastructure/database/repositories/` ディレクトリに、各インターフェースの具象実装クラス (`UserRepository`, `ProjectRepository` など) を配置します。
-    -   **`BaseRepository` の利用**: 実装クラスは `infrastructure/database/repositories/base.repository.ts` で定義された抽象クラス `BaseRepository` を継承します。`BaseRepository` は Drizzle の DB インスタンスへのアクセス、スキーマ・IDカラム定義の強制、マッピングメソッド (`_toDomain`, `_toPersistence`) の抽象定義を提供します。
-    -   **CRUD メソッドの実装**: `findById`, `save`, `delete` などの基本的な CRUD 操作は `BaseRepository` では抽象メソッドとして定義されているため、各サブクラスで実装する必要があります。実装においては、コードの重複を避けるため `infrastructure/database/helpers/crud.helpers.ts` で提供される共通ヘルパー関数を利用します。これは、Drizzle の厳密な型システムとジェネリックな `BaseRepository` との互換性問題を回避するための設計です。
-    -   **マッピングロジック**: `_toDomain` と `_toPersistence` メソッドを実装し、ドメインモデルとデータベーススキーマ間の変換を行います。Value Object の生成やプリミティブ値への変換はこの層の責務です。
-    -   **依存性注入**: 実装クラスには `@injectable()` デコレータを付与し、コンストラクタで `Database` インスタンス (`NodePgDatabase`) を `@inject('Database')` で注入します。
-    -   DIコンテナにはインターフェース（トークン）と実装クラスを紐付けて登録します。
-
-```typescript
-    // UserRepository の例 (抜粋)
-    @injectable()
-    export class UserRepository
-      extends BaseRepository<UserId, User, UserDbSelect, UserDbInsert, typeof users>
-      implements IUserRepository // ドメイン層のインターフェースを実装
-    {
-      protected readonly schema = users;
-      protected readonly idColumn: PgColumn = users.id;
-
-      constructor(@inject('Database') db: NodePgDatabase) { super(db); }
-
-      protected _toDomain(record: UserDbSelect): User { /* ...マッピング... */ }
-      protected _toPersistence(entity: User): UserDbInsert { /* ...マッピング... */ }
-
-      async findById(id: UserId): Promise<Result<User | null, InfrastructureError>> {
-        // crud.helpers の findRecordById を利用
-        // Result を処理し、_toDomain でマッピング
-      }
-      async save(entity: User): Promise<Result<void, InfrastructureError>> {
-        // _toPersistence で変換し、crud.helpers の saveRecord を利用
-      }
-      async delete(id: UserId): Promise<Result<void, InfrastructureError>> {
-        // crud.helpers の deleteRecordById を利用し、結果を処理
-      }
-      async findByEmail(email: Email): Promise<Result<User | null, InfrastructureError>> {
-        // 固有メソッドは Drizzle を直接利用
-      }
-    }
-    ```
 
 ## APIエンドポイント一覧
 
