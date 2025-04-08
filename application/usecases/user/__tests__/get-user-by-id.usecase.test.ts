@@ -1,37 +1,21 @@
 import 'reflect-metadata';
 import { ok, err } from 'neverthrow';
-import type { Result } from 'neverthrow';
 import type { Mock } from 'vitest';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import type { UserDTO } from '@/application/dtos/user.dto';
-import type { UserId } from '@/domain/models/user/user-id.vo';
-import type { UserName } from '@/domain/models/user/user-name.vo';
+import { UserDTO } from '@/application/dtos/user.dto';
+import { UserId } from '@/domain/models/user/user-id.vo';
+import { UserName } from '@/domain/models/user/user-name.vo';
 import { User } from '@/domain/models/user/user.entity';
 import { UserRepositoryInterface } from '@/domain/repositories/user.repository.interface';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
-import type { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
-import type { Email } from '@/shared/value-objects/email.vo';
-import type { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
+import { Email } from '@/shared/value-objects/email.vo';
+import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
 
 import { GetUserByIdUsecase } from '../get-user-by-id.usecase';
-
-// 未使用型宣言の抑制 - ESLint対策
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
-type _Result = Result<unknown, unknown>;
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
-type _UserDTO = UserDTO;
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
-type _UserId = UserId;
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
-type _UserName = UserName;
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
-type _DateTimeString = DateTimeString;
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
-type _Email = Email;
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars
-type _PasswordHash = PasswordHash;
 
 describe('GetUserByIdUsecase', () => {
   // モックの準備
@@ -41,6 +25,14 @@ describe('GetUserByIdUsecase', () => {
     findByEmail: vi.fn(),
     delete: vi.fn(),
     findAll: vi.fn(),
+  };
+
+  // ロガーのモック
+  const mockLogger: LoggerInterface = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   };
 
   // テスト対象のユースケース
@@ -73,7 +65,7 @@ describe('GetUserByIdUsecase', () => {
     vi.clearAllMocks();
 
     // ユースケースのインスタンスを作成
-    getUserByIdUsecase = new GetUserByIdUsecase(mockUserRepository);
+    getUserByIdUsecase = new GetUserByIdUsecase(mockUserRepository, mockLogger);
 
     // User.createをスパイするが、実際の実装を使う
     vi.spyOn(User, 'create');

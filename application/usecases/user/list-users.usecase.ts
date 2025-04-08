@@ -9,6 +9,8 @@ import {
 import { UserMapper } from '@/infrastructure/mappers/user.mapper';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.interface';
 
 // Input: Optional pagination/filtering parameters
 type ListUsersInput = {
@@ -28,7 +30,9 @@ type ListUsersOutput = UserDTO[];
 export class ListUsersUsecase {
   constructor(
     @inject(UserRepositoryToken)
-    private readonly userRepository: UserRepositoryInterface
+    private readonly userRepository: UserRepositoryInterface,
+    @inject(LoggerToken)
+    private readonly logger: LoggerInterface
   ) {}
 
   /**
@@ -47,8 +51,16 @@ export class ListUsersUsecase {
     });
 
     if (findAllResult.isErr()) {
-      // TODO: Replace with injected logger
-      console.error('Failed to list users:', findAllResult.error);
+      this.logger.error(
+        {
+          message: 'Failed to list users',
+          operation: 'listUsers',
+          limit: input.limit,
+          offset: input.offset,
+        },
+        findAllResult.error
+      );
+
       // Assuming the error from repository is already InfrastructureError
       return err(
         new AppError(ErrorCode.DatabaseError, 'Failed to retrieve user list', {
@@ -61,6 +73,14 @@ export class ListUsersUsecase {
 
     // 3. Map to DTOs
     const output: ListUsersOutput = UserMapper.toDTOs(users);
+
+    this.logger.info({
+      message: `Successfully retrieved ${users.length} users`,
+      count: users.length,
+      operation: 'listUsers',
+      limit: input.limit,
+      offset: input.offset,
+    });
 
     return ok(output);
   }

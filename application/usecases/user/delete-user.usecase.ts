@@ -8,6 +8,8 @@ import {
 } from '@/domain/repositories/user.repository.interface';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.interface';
 
 // Input: Requires the user ID to delete
 type DeleteUserInput = {
@@ -25,7 +27,9 @@ type DeleteUserOutput = void;
 export class DeleteUserUsecase {
   constructor(
     @inject(UserRepositoryToken)
-    private readonly userRepository: UserRepositoryInterface
+    private readonly userRepository: UserRepositoryInterface,
+    @inject(LoggerToken)
+    private readonly logger: LoggerInterface
   ) {}
 
   /**
@@ -52,8 +56,15 @@ export class DeleteUserUsecase {
 
     // 3. Error Handling
     if (deleteResult.isErr()) {
-      // TODO: Replace with injected logger
-      console.error('Failed to delete user:', deleteResult.error);
+      this.logger.error(
+        {
+          message: `Failed to delete user: ${userIdVo.value}`,
+          userId: userIdVo.value,
+          operation: 'deleteUser',
+        },
+        deleteResult.error
+      );
+
       // Assuming the error from repository is already InfrastructureError
       return err(
         new AppError(ErrorCode.DatabaseError, 'Failed to delete user', {
@@ -61,6 +72,12 @@ export class DeleteUserUsecase {
         })
       );
     }
+
+    this.logger.info({
+      message: `User successfully deleted: ${userIdVo.value}`,
+      userId: userIdVo.value,
+      operation: 'deleteUser',
+    });
 
     // If deletion was successful (or user didn't exist), return ok
     return ok(undefined);

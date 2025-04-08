@@ -4,13 +4,13 @@ import type { Result } from 'neverthrow';
 import type { Mock } from 'vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import type { UserId } from '@/domain/models/user/user-id.vo';
+import { UserId } from '@/domain/models/user/user-id.vo';
 import type { UserName } from '@/domain/models/user/user-name.vo';
 import { User } from '@/domain/models/user/user.entity';
 import { UserRepositoryInterface } from '@/domain/repositories/user.repository.interface';
-import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import type { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
 import type { Email } from '@/shared/value-objects/email.vo';
 import type { PasswordHash } from '@/shared/value-objects/password-hash.vo';
@@ -41,6 +41,14 @@ describe('DeleteUserUsecase', () => {
     findAll: vi.fn(),
   };
 
+  // ロガーのモック
+  const mockLogger: LoggerInterface = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  };
+
   // テスト対象のユースケース
   let deleteUserUsecase: DeleteUserUsecase;
 
@@ -59,64 +67,58 @@ describe('DeleteUserUsecase', () => {
     vi.clearAllMocks();
 
     // ユースケースのインスタンスを作成
-    deleteUserUsecase = new DeleteUserUsecase(mockUserRepository);
+    deleteUserUsecase = new DeleteUserUsecase(mockUserRepository, mockLogger);
   });
 
-  it('正常系: ユーザーを正常に削除する', async () => {
-    // モックリポジトリの挙動を設定
-    // findByIdは使用しないので、モックを削除
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  it('正常系: 存在するユーザーIDでユーザーを削除できる', async () => {
+    // 有効なユーザーID
+    const validUseId = '550e8400-e29b-41d4-a716-446655440000';
+
+    // モックリポジトリの挙動を設定 - 削除に成功
     (mockUserRepository.delete as Mock).mockResolvedValue(ok(undefined));
 
-    // 実行 - オブジェクト形式で入力
-    const userId = '01234567-89ab-cdef-0123-456789abcdef';
-    const result = await deleteUserUsecase.execute({ userId });
+    // 実行
+    const result = await deleteUserUsecase.execute({ userId: validUseId });
 
     // 検証
     expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      // 戻り値はundefined
-      expect(result.value).toBeUndefined();
-      
-      // findByIdは呼ばれない
-      expect(mockUserRepository.findById).not.toHaveBeenCalled();
-      
-      // deleteが呼ばれる
-      expect(mockUserRepository.delete).toHaveBeenCalledTimes(1);
-      expect(mockUserRepository.delete).toHaveBeenCalledWith({ value: userId });
-    }
+
+    // モックが期待通り呼び出されたか検証
+    const userIdArg = (mockUserRepository.delete as Mock).mock.calls[0][0];
+    expect(userIdArg).toBeInstanceOf(UserId); // 適切なValueObjectに変換されている
+    expect(userIdArg.value).toBe(validUseId); // 正しい値が設定されている
+    expect(mockLogger.info).toHaveBeenCalled();
   });
 
-  it('異常系: 無効なユーザーIDを指定した場合', async () => {
-    // 無効なID
-    const invalidUserId = 'invalid-id-format';
+  it('異常系: 不正な形式のユーザーIDでエラーを返す', async () => {
+    // 不正なユーザーID形式
+    const invalidUserId = 'not-a-uuid';
 
-    // 実行 - オブジェクト形式で入力
+    // 実行
     const result = await deleteUserUsecase.execute({ userId: invalidUserId });
 
     // 検証
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error).toBeInstanceOf(AppError);
       expect(result.error.code).toBe(ErrorCode.ValidationError);
       expect(result.error.message).toContain('Invalid user ID format');
     }
 
-    // モックが呼ばれていないことを検証
-    expect(mockUserRepository.findById).not.toHaveBeenCalled();
+    // リポジトリのdeleteメソッドが呼ばれていないことを検証
     expect(mockUserRepository.delete).not.toHaveBeenCalled();
   });
 
-  it('異常系: リポジトリからのdeleteでエラーが発生した場合', async () => {
-    // モックリポジトリの挙動を設定 - deleteでエラー
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  it('異常系: データベース操作に失敗した場合エラーを返す', async () => {
+    // 有効なユーザーID
+    const validUseId = '550e8400-e29b-41d4-a716-446655440000';
+
+    // モックリポジトリの挙動を設定 - 削除に失敗
     (mockUserRepository.delete as Mock).mockResolvedValue(
-      err(new InfrastructureError('ユーザー削除に失敗しました', { cause: new Error('DB error') }))
+      err(new InfrastructureError('削除に失敗しました', { cause: new Error('DB error') }))
     );
 
-    // 実行 - オブジェクト形式で入力
-    const userId = '01234567-89ab-cdef-0123-456789abcdef';
-    const result = await deleteUserUsecase.execute({ userId });
+    // 実行
+    const result = await deleteUserUsecase.execute({ userId: validUseId });
 
     // 検証
     expect(result.isErr()).toBe(true);
@@ -125,9 +127,7 @@ describe('DeleteUserUsecase', () => {
       expect(result.error.message).toContain('Failed to delete user');
     }
 
-    // findByIdは呼ばれない
-    expect(mockUserRepository.findById).not.toHaveBeenCalled();
-    // deleteが呼ばれる
-    expect(mockUserRepository.delete).toHaveBeenCalledTimes(1);
+    // エラーログが呼び出されたことを検証
+    expect(mockLogger.error).toHaveBeenCalled();
   });
-}); 
+});

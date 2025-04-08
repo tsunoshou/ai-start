@@ -12,6 +12,7 @@ import { UserRepositoryInterface } from '@/domain/repositories/user.repository.i
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import * as passwordUtils from '@/shared/utils/security/password.utils';
 import type { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
 import type { Email } from '@/shared/value-objects/email.vo';
@@ -45,6 +46,14 @@ describe('CreateUserUsecase', () => {
     findAll: vi.fn(),
   };
 
+  // ロガーのモック
+  const mockLogger: LoggerInterface = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  };
+
   // テスト対象のユースケース
   let createUserUsecase: CreateUserUsecase;
 
@@ -63,7 +72,7 @@ describe('CreateUserUsecase', () => {
     vi.clearAllMocks();
 
     // ユースケースのインスタンスを作成
-    createUserUsecase = new CreateUserUsecase(mockUserRepository);
+    createUserUsecase = new CreateUserUsecase(mockUserRepository, mockLogger);
 
     // passwordUtils.hashPasswordのモック
     vi.spyOn(passwordUtils, 'hashPassword').mockResolvedValue(ok(hashedPassword));
@@ -98,6 +107,7 @@ describe('CreateUserUsecase', () => {
       expect(passwordUtils.hashPassword).toHaveBeenCalledWith(validInput.passwordPlainText);
       expect(User.create).toHaveBeenCalledTimes(1);
       expect(mockUserRepository.save).toHaveBeenCalledTimes(1);
+      expect(mockLogger.info).toHaveBeenCalled();
     }
   });
 

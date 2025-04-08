@@ -11,6 +11,8 @@ import {
 import { UserMapper } from '@/infrastructure/mappers/user.mapper';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.interface';
 
 // Application Layer
 
@@ -32,7 +34,9 @@ type GetUserByIdOutput = UserDTO | null;
 export class GetUserByIdUsecase {
   constructor(
     @inject(UserRepositoryToken)
-    private readonly userRepository: UserRepositoryInterface
+    private readonly userRepository: UserRepositoryInterface,
+    @inject(LoggerToken)
+    private readonly logger: LoggerInterface
   ) {}
 
   /**
@@ -58,8 +62,15 @@ export class GetUserByIdUsecase {
 
     if (findResult.isErr()) {
       // リポジトリのエラーをラップ
-      // TODO: Replace with injected logger
-      console.error('Failed to find user by ID:', findResult.error);
+      this.logger.error(
+        {
+          message: `Failed to find user by ID: ${userIdVo.value}`,
+          userId: userIdVo.value,
+          operation: 'getUserById',
+        },
+        findResult.error
+      );
+
       return err(
         new AppError(ErrorCode.DatabaseError, 'Failed to retrieve user data', {
           cause: findResult.error,
@@ -72,6 +83,20 @@ export class GetUserByIdUsecase {
     const userEntity = findResult.value;
     // Map to DTO if user exists, otherwise keep null
     const output: GetUserByIdOutput = userEntity ? UserMapper.toDTO(userEntity) : null;
+
+    if (output) {
+      this.logger.info({
+        message: `Successfully retrieved user: ${userIdVo.value}`,
+        userId: userIdVo.value,
+        operation: 'getUserById',
+      });
+    } else {
+      this.logger.info({
+        message: `User not found with ID: ${userIdVo.value}`,
+        userId: userIdVo.value,
+        operation: 'getUserById',
+      });
+    }
 
     // 4. Error Handling (already handled)
 

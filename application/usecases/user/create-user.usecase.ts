@@ -15,6 +15,8 @@ import { UserMapper } from '@/infrastructure/mappers/user.mapper';
 import { AppError } from '@/shared/errors/app.error';
 import { BaseError } from '@/shared/errors/base.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.interface';
 import { hashPassword } from '@/shared/utils/security/password.utils';
 import { Email } from '@/shared/value-objects/email.vo';
 import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
@@ -43,7 +45,9 @@ type CreateUserOutput = UserDTO;
 export class CreateUserUsecase {
   constructor(
     @inject(UserRepositoryToken)
-    private readonly userRepository: UserRepositoryInterface
+    private readonly userRepository: UserRepositoryInterface,
+    @inject(LoggerToken)
+    private readonly logger: LoggerInterface
   ) {}
 
   /**
@@ -66,7 +70,14 @@ export class CreateUserUsecase {
         return err(new AppError(ErrorCode.ValidationError, `Invalid input: ${errorMessages}`));
       } else {
         // Fallback for unexpected error format (should not happen with combine)
-        console.error('Unexpected validation error format:', errors);
+        this.logger.error(
+          {
+            message: 'Unexpected validation error format',
+            operation: 'createUser',
+            email: input.email,
+          },
+          errors
+        );
         return err(
           new AppError(ErrorCode.InternalServerError, 'Unexpected validation error format')
         );
@@ -77,8 +88,14 @@ export class CreateUserUsecase {
     // 2. Password Hashing
     const hashedPasswordResult = await hashPassword(input.passwordPlainText);
     if (hashedPasswordResult.isErr()) {
-      // TODO: Replace with injected logger
-      console.error('Password hashing failed:', hashedPasswordResult.error);
+      this.logger.error(
+        {
+          message: 'Password hashing failed',
+          operation: 'createUser',
+          email: input.email,
+        },
+        hashedPasswordResult.error
+      );
       return err(
         // Use specific error code
         new AppError(ErrorCode.PasswordHashingFailed, 'Failed to process password', {
@@ -88,8 +105,14 @@ export class CreateUserUsecase {
     }
     const passwordHashVoResult = PasswordHash.create(hashedPasswordResult.value);
     if (passwordHashVoResult.isErr()) {
-      // TODO: Replace with injected logger
-      console.error('Password hash VO creation failed:', passwordHashVoResult.error);
+      this.logger.error(
+        {
+          message: 'Password hash VO creation failed',
+          operation: 'createUser',
+          email: input.email,
+        },
+        passwordHashVoResult.error
+      );
       return err(
         // This might still be an internal server error if hash generation is broken
         new AppError(ErrorCode.InternalServerError, 'Invalid password hash format generated', {
@@ -107,9 +130,14 @@ export class CreateUserUsecase {
     });
 
     if (userCreateResult.isErr()) {
-      // Use specific error code
-      // TODO: Replace with injected logger
-      console.error('User domain creation failed:', userCreateResult.error);
+      this.logger.error(
+        {
+          message: 'User domain creation failed',
+          operation: 'createUser',
+          email: emailVo.value,
+        },
+        userCreateResult.error
+      );
       return err(
         new AppError(
           ErrorCode.DomainRuleViolation,
@@ -123,14 +151,29 @@ export class CreateUserUsecase {
     // 4. Repository Interaction (save)
     const saveResult = await this.userRepository.save(userEntity);
     if (saveResult.isErr()) {
-      // TODO: Replace with injected logger
-      console.error('User save failed:', saveResult.error);
+      this.logger.error(
+        {
+          message: 'User save failed',
+          operation: 'createUser',
+          userId: userEntity.id.value,
+          email: userEntity.email.value,
+        },
+        saveResult.error
+      );
       return err(
         new AppError(ErrorCode.DatabaseError, 'Failed to save user data', {
           cause: saveResult.error,
         })
       );
     }
+
+    // ユーザー作成成功をログに記録
+    this.logger.info({
+      message: 'User created successfully',
+      operation: 'createUser',
+      userId: userEntity.id.value,
+      email: userEntity.email.value,
+    });
 
     // 5. Output Mapping (to DTO if necessary)
     // Map the created User entity to UserDTO

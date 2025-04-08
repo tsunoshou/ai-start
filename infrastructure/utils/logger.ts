@@ -1,4 +1,33 @@
 /**
+ * @deprecated このロガーユーティリティは非推奨です。
+ * 代わりに @/shared/logger/logger.interface から LoggerInterface を import し、
+ * DIコンテナから注入されたロガーを使用してください。
+ *
+ * ```typescript
+ * // 非推奨:
+ * import logger from '@/infrastructure/utils/logger';
+ * logger.info('メッセージ');
+ *
+ * // 推奨:
+ * import { inject, injectable } from 'tsyringe';
+ * import { LoggerInterface, LoggerToken } from '@/shared/logger/logger.interface';
+ *
+ * @injectable()
+ * export class SomeService {
+ *   constructor(@inject(LoggerToken) private readonly logger: LoggerInterface) {}
+ *
+ *   someMethod() {
+ *     this.logger.info('メッセージ');
+ *     // または構造化ログとして
+ *     this.logger.info({ message: 'メッセージ', additionalData: 'データ' });
+ *   }
+ * }
+ * ```
+ *
+ * このファイルは後方互換性のためにしばらく維持されますが、将来のリリースで削除される予定です。
+ */
+
+/**
  * ロギングユーティリティ
  *
  * 環境に応じたログ出力を提供し、console直接使用の警告を回避します

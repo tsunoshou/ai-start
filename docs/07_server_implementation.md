@@ -225,6 +225,252 @@ throw new AppError(ErrorCode.ValidationError, 'Invalid input')
 
 ロギング時にこれらのメタデータを含めることで、エラーの原因分析が容易になります。
 
+### ロギングの実装とベストプラクティス
+
+アプリケーション全体で一貫したロギングを実現するために、`LoggerInterface` を中心としたロギング機構を採用しています。このインターフェースはDIコンテナを通じて注入され、各クラスで一貫したロギング方法を提供します。
+
+##### ロガーの構造
+
+1. **インターフェース定義**:
+   ```typescript
+   // @/shared/logger/logger.interface.ts
+   export interface LoggerInterface {
+     info(data: LogData | string): void;
+     warn(data: LogData | string): void;
+     error(data: LogData | string, error?: unknown): void;
+     debug(data: LogData | string): void;
+   }
+   
+   export interface LogData {
+     message: string;
+     [key: string]: unknown; // 任意の構造化データ
+   }
+   ```
+
+2. **DI設定**:
+   - `LoggerToken` シンボルを使用してDIコンテナに登録
+   - デフォルト実装として `ConsoleLogger` クラスを提供
+   ```typescript
+   // config/container.config.ts
+   container.register<LoggerInterface>(LoggerToken, {
+     useClass: ConsoleLogger,
+   });
+   ```
+
+3. **ロガーのインジェクション**:
+   ```typescript
+   @injectable()
+   export class SomeService {
+     constructor(
+       @inject(LoggerToken) private readonly logger: LoggerInterface
+     ) {}
+     
+     someMethod() {
+       this.logger.info({
+         message: '操作が成功しました',
+         operation: 'someMethod',
+         additionalData: 'データ'
+       });
+     }
+   }
+   ```
+
+##### ロギングのガイドライン
+
+1. **直接 `console.*` を使用しない**：
+   - コード内で直接 `console.log`, `console.error` などを使用せず、必ず `LoggerInterface` 経由でログを出力します。
+   - 旧式の `/infrastructure/utils/logger.ts` ユーティリティも非推奨であり、代わりにDIコンテナから注入された `LoggerInterface` を使用してください。
+   - これにより、環境に応じたログレベルのフィルタリングや、構造化ログの一貫した形式が保証されます。
+
+2. **クラス作成時に `LoggerInterface` をインジェクトする**:
+   - サービス、リポジトリ、ユースケースなどのクラスを作成する際は、常にコンストラクタで `LoggerInterface` をインジェクトします。
+   - 特にエラー処理やデータアクセスを行うクラスでは、ロガーは必須の依存関係です。
+
+3. **構造化ログを優先する**：
+   - 単純な文字列より、構造化オブジェクトを使ったログを優先します。
+   - 常に `message` プロパティを含め、関連するコンテキスト情報も追加します。
+   ```typescript
+   // 非推奨:
+   this.logger.info(`ユーザー ${userId} を作成しました`);
+   
+   // 推奨:
+   this.logger.info({
+     message: 'ユーザーを作成しました',
+     userId: userId,
+     operation: 'createUser'
+   });
+   ```
+
+4. **適切なログレベルの使用**：
+   - `info`: 通常の操作情報（ユーザーログイン、リソース作成など）
+   - `warn`: 注意が必要だが即時対応は不要な状況（非推奨APIの使用、遅いクエリなど）
+   - `error`: エラー状態（例外、失敗した操作）
+   - `debug`: 開発時のみ有用な詳細情報（変数値、処理の内部状態など）
+
+5. **一貫したコンテキスト情報**：
+   - エンティティ操作には `entityType`, `entityId`, `operation` などの情報を含めます。
+   - ユーザー関連操作には `userId` を含めます（個人情報は含めない）。
+   - API関連では `endpoint`, `method`, `statusCode` などを含めます。
+
+6. **エラーログには詳細情報を含める**：
+   - `logger.error()` の第2引数にエラーオブジェクトを渡し、スタックトレースを保持します。
+   - `AppError` のメタデータを活用して、エラーの詳細情報をログに含めます。
+   ```typescript
+   try {
+     // 何らかの操作
+   } catch (error) {
+     this.logger.error({
+       message: 'ユーザー作成中にエラーが発生しました',
+       userId: request.email,
+       operation: 'createUser'
+     }, error); // エラーオブジェクトを第2引数に渡す
+     
+     throw new AppError(ErrorCode.InternalServerError, 'ユーザー作成中にエラーが発生しました', {
+       cause: error instanceof Error ? error : undefined
+     });
+   }
+   ```
+
+7. **ヘルパー関数を使用する場合もロガーを渡す**:
+   - ユーティリティやヘルパー関数を作成する場合は、パラメータとして `logger` を受け取るようにします。
+   ```typescript
+   export async function someHelper(data: SomeData, logger: LoggerInterface): Promise<Result<void, Error>> {
+     try {
+       // 実装
+       logger.info({
+         message: 'ヘルパー関数が成功しました',
+         operation: 'someHelper'
+       });
+       return ok(undefined);
+     } catch (error) {
+       logger.error({
+         message: 'ヘルパー関数でエラーが発生しました',
+         operation: 'someHelper'
+       }, error);
+       return err(error);
+     }
+   }
+   ```
+
+#### 実装例（ユースケースクラス）
+
+```typescript
+@injectable()
+export class CreateUserUsecase {
+  constructor(
+    @inject(UserRepositoryToken)
+    private readonly userRepository: UserRepositoryInterface,
+    @inject(LoggerToken)
+    private readonly logger: LoggerInterface
+  ) {}
+
+  async execute(input: CreateUserInput): Promise<Result<UserDTO, AppError>> {
+    // Email検証
+    const emailResult = Email.create(input.email);
+    if (emailResult.isErr()) {
+      this.logger.warn({
+        message: `Invalid email format: ${input.email}`,
+        email: input.email,
+        operation: 'createUser'
+      });
+      
+      return err(
+        new AppError(ErrorCode.ValidationError, `Invalid email format: ${emailResult.error.message}`)
+      );
+    }
+    
+    // ユーザー作成ロジック
+    
+    try {
+      // 新しいユーザーの保存
+      const saveResult = await this.userRepository.save(newUser);
+      if (saveResult.isErr()) {
+        this.logger.error({
+          message: `Failed to save new user: ${input.email}`,
+          email: input.email,
+          operation: 'createUser'
+        }, saveResult.error);
+        
+        return err(
+          new AppError(ErrorCode.DatabaseError, 'Failed to create user account', {
+            cause: saveResult.error,
+          })
+        );
+      }
+      
+      this.logger.info({
+        message: `User created successfully: ${input.email}`,
+        userId: newUser.id.value,
+        email: input.email,
+        operation: 'createUser'
+      });
+      
+      // 成功
+      return ok(UserMapper.toDTO(newUser));
+    } catch (error) {
+      this.logger.error({
+        message: 'Unexpected error during user creation',
+        email: input.email,
+        operation: 'createUser'
+      }, error);
+      
+      return err(
+        new AppError(ErrorCode.InternalServerError, 'An unexpected error occurred', {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
+  }
+}
+```
+
+#### 実装例（リポジトリクラス）
+
+```typescript
+@injectable()
+export class UserRepository implements UserRepositoryInterface {
+  constructor(
+    @inject('Database') private readonly db: NodePgDatabase,
+    @inject(LoggerToken) private readonly logger: LoggerInterface
+  ) {}
+
+  async findById(id: UserId): Promise<Result<User | null, InfrastructureError>> {
+    try {
+      this.logger.debug({
+        message: 'ユーザー検索を実行します',
+        userId: id.value,
+        operation: 'findById'
+      });
+      
+      // DB操作
+      
+      if (!user) {
+        this.logger.info({
+          message: 'ユーザーが見つかりませんでした',
+          userId: id.value,
+          operation: 'findById'
+        });
+        return ok(null);
+      }
+      
+      return ok(user);
+    } catch (error) {
+      this.logger.error({
+        message: 'ユーザー検索に失敗しました',
+        userId: id.value,
+        operation: 'findById'
+      }, error);
+      
+      return err(
+        new InfrastructureError(`Failed to find user by ID: ${id.value}`, {
+          cause: error instanceof Error ? error : undefined
+        })
+      );
+    }
+  }
+}
+```
+
 ### エラーハンドリング (`neverthrow` 利用)
 
 [04_implementation_rules.md](/docs/restructuring/04_implementation_rules.md) および [05_type_definitions.md](/docs/restructuring/05_type_definitions.md) で定義されたエラーハンドリング方針に基づき、`neverthrow` の `Result` 型を全面的に採用します。
