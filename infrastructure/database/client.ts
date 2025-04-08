@@ -1,11 +1,17 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
+import { container } from 'tsyringe';
+
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
 
 import { getDatabaseUrl } from '../../config/environment';
-import logger from '../utils/logger';
 
 import * as schema from './schema';
+
+// DIコンテナからロガーを取得
+const logger = container.resolve<LoggerInterface>(LoggerToken);
 
 /**
  * 環境変数からデータベース接続文字列を取得
@@ -23,7 +29,9 @@ if (!CONNECTION_STRING) {
 const IS_POOLER =
   CONNECTION_STRING.includes('pooler.supabase.com') || CONNECTION_STRING.includes('pgbouncer=true');
 
-logger.info(`データベース接続タイプ: ${IS_POOLER ? '接続プーラー' : '直接接続'}`);
+logger.info({
+  message: `データベース接続タイプ: ${IS_POOLER ? '接続プーラー' : '直接接続'}`
+});
 
 /**
  * マイグレーション用の一時的なSQL接続を作成
@@ -42,13 +50,16 @@ const MIGRATION_CLIENT = postgres(CONNECTION_STRING, {
  */
 export async function runMigrations() {
   try {
-    logger.info('データベースマイグレーションを開始します...');
+    logger.info({ message: 'データベースマイグレーションを開始します...' });
     await migrate(drizzle(MIGRATION_CLIENT), {
       migrationsFolder: './infrastructure/database/migrations',
     });
-    logger.info('マイグレーション完了');
+    logger.info({ message: 'マイグレーション完了' });
   } catch (error) {
-    logger.error('マイグレーション中にエラーが発生しました:', error);
+    logger.error({
+      message: 'マイグレーション中にエラーが発生しました',
+      error
+    });
     throw error;
   } finally {
     await MIGRATION_CLIENT.end();
@@ -88,11 +99,17 @@ export async function testConnection() {
   try {
     // 単純なSELECT文を実行してデータベース接続をテスト
     const result = await QUERY_CLIENT`SELECT NOW() as current_time`;
-    logger.info('データベース接続成功:', result[0].current_time);
-    logger.info(`接続タイプ: ${IS_POOLER ? '接続プーラー' : '直接接続'}`);
+    logger.info({
+      message: 'データベース接続成功',
+      current_time: result[0].current_time,
+      connection_type: IS_POOLER ? '接続プーラー' : '直接接続'
+    });
     return true;
   } catch (error) {
-    logger.error('データベース接続エラー:', error);
+    logger.error({
+      message: 'データベース接続エラー',
+      error
+    });
     return false;
   }
 }
@@ -116,17 +133,23 @@ export async function runMigrationToSpecificDB(connectionString: string) {
   });
 
   try {
-    logger.info(
-      `データベース ${connectionString.split('@')[1]?.split('/')[0] || '不明'} へのマイグレーションを開始します...`
-    );
+    const dbInfo = connectionString.split('@')[1]?.split('/')[0] || '不明';
+    logger.info({
+      message: `データベース ${dbInfo} へのマイグレーションを開始します...`
+    });
+    
     await migrate(drizzle(migrationClient), {
       migrationsFolder: './infrastructure/database/migrations',
     });
-    logger.info(
-      `データベース ${connectionString.split('@')[1]?.split('/')[0] || '不明'} へのマイグレーション完了`
-    );
+    
+    logger.info({
+      message: `データベース ${dbInfo} へのマイグレーション完了`
+    });
   } catch (error) {
-    logger.error('マイグレーション中にエラーが発生しました:', error);
+    logger.error({
+      message: 'マイグレーション中にエラーが発生しました',
+      error
+    });
     throw error;
   } finally {
     await migrationClient.end();

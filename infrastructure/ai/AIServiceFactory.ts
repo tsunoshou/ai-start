@@ -1,8 +1,15 @@
+import { container } from 'tsyringe';
+
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
+
 import { ENV } from '../../config/environment';
 import { AIProvider, AIService } from '../../domain/services/ai/AIService';
-import logger from '../utils/logger';
 
 import { OpenAIService } from './OpenAIService';
+
+// DIコンテナからロガーを取得
+const logger = container.resolve<LoggerInterface>(LoggerToken);
 
 /**
  * AIサービスファクトリークラス
@@ -18,7 +25,7 @@ export class AIServiceFactory {
   static createService(provider: AIProvider, apiKey: string): AIService {
     switch (provider) {
       case AIProvider.OPENAI:
-        return new OpenAIService(apiKey);
+        return container.resolve(OpenAIService);
       case AIProvider.ANTHROPIC:
         // Anthropicサービスの実装（未実装）
         throw new Error('Anthropic service is not implemented yet');
@@ -54,9 +61,10 @@ export class AIServiceFactory {
     }
 
     // デフォルトはダミーのOpenAIサービス（警告を表示）
-    logger.warn(
-      'No AI provider API key found in environment variables. Using dummy OpenAI service.'
-    );
-    return new OpenAIService('dummy-key');
+    logger.warn({
+      message: 'No AI provider API key found in environment variables. Using dummy OpenAI service.'
+    });
+    
+    return container.resolve(OpenAIService);
   }
 }

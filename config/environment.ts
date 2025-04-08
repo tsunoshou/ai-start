@@ -1,18 +1,15 @@
-import * as dotenv from 'dotenv';
+import { config } from 'dotenv';
+import { container } from 'tsyringe';
 import { z } from 'zod';
 
-import logger from '../infrastructure/utils/logger';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
 
-// Next.jsはサーバーサイドでは自動的に.env.local等を読み込むため、
-// Edge Runtimeでは明示的なdotenv.config()を使用しない
-if (
-  typeof window === 'undefined' &&
-  typeof process !== 'undefined' &&
-  process.env.NEXT_RUNTIME !== 'edge'
-) {
-  // Edge Runtimeでない場合のみdotenvを使用
-  dotenv.config({ path: '.env.local' });
-}
+// DIコンテナからロガーを取得
+const logger = container.resolve<LoggerInterface>(LoggerToken);
+
+// .env ファイルを読み込む
+config();
 
 // 環境変数のスキーマ定義
 // eslint-disable-next-line @typescript-eslint/naming-convention

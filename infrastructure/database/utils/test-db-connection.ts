@@ -1,9 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import postgres from 'postgres';
+import { container } from 'tsyringe';
 
 import { ENV } from '@/config/environment';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
 
-import logger from '../../utils/logger';
+// DIコンテナからロガーを取得
+const logger = container.resolve<LoggerInterface>(LoggerToken);
 
 /**
  * 接続テスト結果の型
@@ -52,7 +56,10 @@ export async function testDatabaseConnection(): Promise<ConnectionTestResult> {
       await sql.end();
     }
   } catch (error) {
-    logger.error('データベース接続エラー:', error);
+    logger.error({
+      message: 'データベース接続エラー',
+      error
+    });
     return createResult(false, 'データベース接続エラー');
   }
 }
@@ -75,13 +82,19 @@ export async function testSupabaseConnection(): Promise<ConnectionTestResult> {
     const { data, error } = await supabase.auth.getSession();
 
     if (error) {
-      logger.error('Supabase接続エラー:', error);
+      logger.error({
+        message: 'Supabase接続エラー',
+        error
+      });
       return createResult(false, 'Supabase接続テスト失敗');
     }
 
     return createResult(true, 'Supabase接続成功');
   } catch (error) {
-    logger.error('Supabase接続エラー:', error);
+    logger.error({
+      message: 'Supabase接続エラー',
+      error
+    });
     return createResult(false, 'Supabase接続エラー');
   }
 }
@@ -107,13 +120,19 @@ export async function testOpenAIConnection(): Promise<ConnectionTestResult> {
 
     if (!response.ok) {
       const error = await response.text();
-      logger.error('OpenAI接続エラー:', error);
+      logger.error({
+        message: 'OpenAI接続エラー',
+        error
+      });
       return createResult(false, 'OpenAI接続テスト失敗');
     }
 
     return createResult(true, 'OpenAI接続成功');
   } catch (error) {
-    logger.error('OpenAI接続エラー:', error);
+    logger.error({
+      message: 'OpenAI接続エラー',
+      error
+    });
     return createResult(false, 'OpenAI接続エラー');
   }
 }

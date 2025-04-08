@@ -1,8 +1,14 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { container } from 'tsyringe';
+
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
 
 import { getDatabaseUrl } from '../../../config/environment';
-import logger from '../../utils/logger';
+
+// DIコンテナからロガーを取得
+const logger = container.resolve<LoggerInterface>(LoggerToken);
 
 // 環境変数からデータベース接続情報を取得
 const DATABASE_URL = getDatabaseUrl();
@@ -37,10 +43,13 @@ export async function testConnection(): Promise<boolean> {
   try {
     // 単純なクエリでデータベース接続をテスト
     const result = await SQL`SELECT 1 as test`;
-    logger.info('PostgreSQL接続テスト成功');
+    logger.info({ message: 'PostgreSQL接続テスト成功' });
     return result.length > 0 && result[0].test === 1;
   } catch (error) {
-    logger.error('PostgreSQL接続エラー:', error);
+    logger.error({
+      message: 'PostgreSQL接続エラー',
+      error
+    });
     return false;
   }
 }

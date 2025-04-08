@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
+import { container } from 'tsyringe';
 
 import {
   testDatabaseConnection,
   testSupabaseConnection,
   testOpenAIConnection,
 } from '@/infrastructure/database/utils/test-db-connection';
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
 
-import logger from '../../../infrastructure/utils/logger';
+// DIコンテナからロガーを取得
+const logger = container.resolve<LoggerInterface>(LoggerToken);
 
 // API接続テスト結果
 export async function GET() {
@@ -25,7 +29,11 @@ export async function GET() {
       openai,
     });
   } catch (error) {
-    logger.error('接続テスト実行中にエラー:', error);
+    logger.error({
+      message: '接続テスト実行中にエラー',
+      error
+    });
+    
     return NextResponse.json(
       { error: '接続テストエラー', timestamp: new Date().toISOString() },
       { status: 500 }

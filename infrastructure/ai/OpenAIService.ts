@@ -1,3 +1,8 @@
+import { inject, injectable } from 'tsyringe';
+
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
+
 import {
   AIService,
   AIModel,
@@ -8,11 +13,11 @@ import {
   AIConversationResponse,
   MessageRole,
 } from '../../domain/services/ai/AIService';
-import logger from '../../infrastructure/utils/logger';
 
 /**
  * OpenAIサービスの実装クラス
  */
+@injectable()
 export class OpenAIService implements AIService {
   private apiKey: string;
   private availableModels: AIModel[] = [
@@ -42,7 +47,10 @@ export class OpenAIService implements AIService {
     },
   ];
 
-  constructor(apiKey: string) {
+  constructor(
+    apiKey: string,
+    @inject(LoggerToken) private readonly logger: LoggerInterface
+  ) {
     this.apiKey = apiKey;
   }
 
@@ -72,7 +80,10 @@ export class OpenAIService implements AIService {
   ): Promise<AIConversationResponse> {
     // 実際の実装では、OpenAI APIを呼び出す処理を実装
     // この部分はOpenAI SDKを使用して実装
-    logger.info('OpenAI chat called with model:', options.model);
+    this.logger.info({
+      message: 'OpenAI chat called with model',
+      model: options.model
+    });
 
     // ダミーのレスポンスを返す（実際の実装では削除）
     return {
@@ -100,7 +111,10 @@ export class OpenAIService implements AIService {
   ): Promise<AIConversationResponse> {
     // 実際の実装では、OpenAI APIをストリーミングモードで呼び出す処理を実装
     // この部分はOpenAI SDKを使用して実装
-    logger.info('OpenAI chat stream called with model:', options.model);
+    this.logger.info({
+      message: 'OpenAI chat stream called with model',
+      model: options.model
+    });
 
     // ダミーのストリーミング（実際の実装では削除）
     const chunks = ['これは', 'OpenAI API', 'のダミー', 'ストリーミング', 'レスポンスです。'];
