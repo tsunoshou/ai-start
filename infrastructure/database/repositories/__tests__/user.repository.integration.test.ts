@@ -384,4 +384,132 @@ describe('UserRepository 統合テスト', () => {
     expect(offsetUsers.length).toBe(1);
     expect(paginatedUsers.length).toBe(1);
   });
+
+  it('ユーザー情報を更新できる', async () => {
+    // 準備: 初期ユーザー作成
+    const initialEmail = Email.create('update.initial@example.com')._unsafeUnwrap();
+    const initialName = UserName.create('Initial User')._unsafeUnwrap();
+    const initialHash = PasswordHash.create('initialHash123')._unsafeUnwrap();
+    const userResult = User.create({
+      email: initialEmail,
+      name: initialName,
+      passwordHash: initialHash,
+    });
+    if (userResult.isErr()) fail('初期ユーザー作成失敗');
+    const initialUser = userResult.value;
+    await userRepository.save(initialUser);
+
+    // 準備: 更新後のデータ
+    const updatedName = UserName.create('Updated User Name')._unsafeUnwrap();
+    const updatedEmail = Email.create('update.final@example.com')._unsafeUnwrap(); // Emailも更新してみる
+
+    // 実行: ユーザー情報を更新 (reconstruct を使用して更新されたエンティティを作成)
+    // 注意: DBから取得せずに更新する場合、createdAt は元の値を維持、updatedAtは更新する必要がある
+    // DBから取得する方がより現実的だが、ここでは reconstruct でシミュレート
+    const userToUpdate = User.reconstruct({
+      id: initialUser.id,
+      email: updatedEmail, // Emailを更新
+      name: updatedName, // 名前を更新
+      passwordHash: initialUser.passwordHash, // パスワードは変更しない
+      createdAt: initialUser.createdAt,
+      updatedAt: DateTimeString.now(), // updatedAtを更新
+    });
+
+    const saveResult = await userRepository.save(userToUpdate);
+    expect(saveResult.isOk()).toBe(true);
+
+    // 検証: 更新されたユーザーを ID で再取得
+    const foundAfterUpdateResult = await userRepository.findById(initialUser.id);
+    expect(foundAfterUpdateResult.isOk()).toBe(true);
+    const foundUser = foundAfterUpdateResult.unwrapOr(null);
+
+    expect(foundUser).not.toBeNull();
+    if (foundUser) {
+      expect(foundUser.id.equals(initialUser.id)).toBe(true);
+      expect(foundUser.name.equals(updatedName)).toBe(true); // 名前が更新されている
+      expect(foundUser.email.equals(updatedEmail)).toBe(true); // Emailが更新されている
+      expect(foundUser.passwordHash.equals(initialHash)).toBe(true); // パスワードは同じ
+      expect(foundUser.createdAt.equals(initialUser.createdAt)).toBe(true); // createdAt は変わらない
+      // updatedAt は更新されているはずだが、ミリ秒単位での完全一致は難しいため、型と存在を確認
+      expect(foundUser.updatedAt).toBeInstanceOf(DateTimeString);
+      // 更新時刻が作成時刻より後であることを確認 (より厳密なテスト)
+      expect(new Date(foundUser.updatedAt.value) >= new Date(foundUser.createdAt.value)).toBe(true);
+    }
+  });
+
+  it('ユーザーを削除できる', async () => {
+    // 準備: 削除対象ユーザー作成
+    const email = Email.create('delete.me@example.com')._unsafeUnwrap();
+    const name = UserName.create('Delete User')._unsafeUnwrap();
+    const hash = PasswordHash.create('deleteHash123')._unsafeUnwrap();
+    const userResult = User.create({ email, name, passwordHash: hash });
+    if (userResult.isErr()) fail('削除対象ユーザー作成失敗');
+    const userToDelete = userResult.value;
+    await userRepository.save(userToDelete);
+
+    // 実行: ユーザーを削除
+    const deleteResult = await userRepository.delete(userToDelete.id);
+
+    // 検証: 削除が成功したか
+    expect(deleteResult.isOk()).toBe(true);
+
+    // 検証: 削除されたユーザーを検索してnullが返るか
+    const findResult = await userRepository.findById(userToDelete.id);
+    expect(findResult.isOk()).toBe(true);
+    expect(findResult.unwrapOr(null)).toBeNull();
+  });
+
+  it('存在しないユーザーを削除しようとしてもエラーにならない', async () => {
+    // 準備: 存在しないランダムなID
+    const nonExistentUserId = UserId.generate()._unsafeUnwrap();
+
+    // 実行: 存在しないユーザーを削除
+    const deleteResult = await userRepository.delete(nonExistentUserId);
+
+    // 検証: エラーなく完了する（okが返る）
+    expect(deleteResult.isOk()).toBe(true);
+  });
+
+  // --- findAll tests --- //
+
+  // 複数のユーザーを作成するヘルパー関数
+  const createMultipleUsers = async (count: number): Promise<User[]> => {
+    const _createdUsers: User[] = [];
+    for (let i = 0; i < count; i++) {
+      const uniqueEmail = Email.create(`user${i}@example.com`)._unsafeUnwrap();
+      const name = UserName.create(`User ${i}`)._unsafeUnwrap();
+      const hash = PasswordHash.create(`passwordHash${i}`)._unsafeUnwrap();
+      const userResult = User.create({ email: uniqueEmail, name, passwordHash: hash });
+      if (userResult.isErr()) fail(`テストユーザー作成失敗: ${userResult.error.message}`);
+      const user = userResult.value;
+      // reconstruct を使って createdAt, updatedAt を設定
+      const now = DateTimeString.now();
+      const userWithDates = User.reconstruct({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        passwordHash: user.passwordHash,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await userRepository.save(userWithDates);
+      _createdUsers.push(userWithDates);
+    }
+    return _createdUsers;
+  };
+
+  it('すべてのユーザーをページネーションなしで取得できること', async () => {
+    // Arrange: 5人のユーザーを作成
+    await createMultipleUsers(5);
+
+    // Act: ページネーションなしで全ユーザーを取得
+    const result = await userRepository.findAll({
+      // No pagination parameters needed for this test
+    });
+
+    // Assert: 取得したユーザーの数が正しいか
+    expect(result.isOk()).toBe(true);
+    const allUsers = result.unwrapOr([]);
+    expect(allUsers.length).toBe(5);
+  });
 });

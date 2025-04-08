@@ -158,6 +158,45 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
     }
   });
 
+  test('1.1 POST /api/users - 無効なデータ（名前が空）で400エラー', async ({ request }) => {
+    const invalidUserData = {
+      name: '', // 空の名前
+      email: `invalid-name-${Date.now()}@example.com`,
+      passwordPlainText: 'Password123!',
+    };
+    const response = await request.post(USER_API_BASE_URL, { data: invalidUserData });
+    expect(response.status()).toBe(400);
+    const responseData = await response.json();
+    expect(responseData.success).toBe(false);
+    expect(responseData.error).toHaveProperty('code', 'VALIDATION_ERROR');
+  });
+
+  test('1.2 POST /api/users - 無効なデータ（不正なメール形式）で400エラー', async ({ request }) => {
+    const invalidUserData = {
+      name: 'Invalid Email User',
+      email: 'invalid-email-format', // 不正なメール形式
+      passwordPlainText: 'Password123!',
+    };
+    const response = await request.post(USER_API_BASE_URL, { data: invalidUserData });
+    expect(response.status()).toBe(400);
+    const responseData = await response.json();
+    expect(responseData.success).toBe(false);
+    expect(responseData.error).toHaveProperty('code', 'VALIDATION_ERROR');
+  });
+
+  test('1.3 POST /api/users - 無効なデータ（短いパスワード）で400エラー', async ({ request }) => {
+    const invalidUserData = {
+      name: 'Short Password User',
+      email: `short-pw-${Date.now()}@example.com`,
+      passwordPlainText: 'short', // 短いパスワード
+    };
+    const response = await request.post(USER_API_BASE_URL, { data: invalidUserData });
+    expect(response.status()).toBe(400);
+    const responseData = await response.json();
+    expect(responseData.success).toBe(false);
+    expect(responseData.error).toHaveProperty('code', 'VALIDATION_ERROR');
+  });
+
   test('2. GET /api/users - ユーザー一覧を取得できる', async ({ request }) => {
     const response = await request.get(USER_API_BASE_URL);
 
@@ -177,6 +216,89 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
       expect(firstUser).toHaveProperty('name');
       expect(firstUser).toHaveProperty('email');
     }
+  });
+
+  test('2.1 GET /api/users - ページネーション（limitとoffset）', async ({ request }) => {
+    // テスト用に複数ユーザーを作成 (例として3ユーザー)
+    const userEmails = [];
+    for (let i = 0; i < 3; i++) {
+      const email = `pagination-${Date.now()}-${i}@example.com`;
+      const createResponse = await request.post(USER_API_BASE_URL, {
+        data: {
+          name: `Pagination User ${i}`,
+          email: email,
+          passwordPlainText: 'Password123!',
+        },
+      });
+      if (createResponse.status() === 201) {
+        userEmails.push(email);
+      }
+    }
+    expect(userEmails.length).toBe(3); // 3ユーザー作成できたことを確認
+
+    // limit=2, offset=1 で取得
+    const response = await request.get(`${USER_API_BASE_URL}?limit=2&offset=1`);
+    expect(response.status()).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.success).toBe(true);
+    expect(Array.isArray(responseData.data)).toBe(true);
+
+    expect(responseData.data.length).toBe(2);
+    // offset=1なので、2番目と3番目のユーザーが含まれるはず (作成順に依存)
+    // emailでの確認（より確実）-> DB全体の状態に依存するため、件数チェックのみにする
+    // const returnedEmails = responseData.data.map((user: { email: string }) => user.email);
+    // expect(returnedEmails).toContain(userEmails[1]);
+    // expect(returnedEmails).toContain(userEmails[2]);
+    // expect(returnedEmails).not.toContain(userEmails[0]);
+
+    // 後片付け: 作成したユーザーを削除
+    for (const email of userEmails) {
+      // ユーザーIDを取得するためにemailで検索が必要だが、E2EテストではID直接指定が望ましい
+      // ここでは簡略化のため削除処理を省略（または別途IDを取得する実装が必要）
+      console.warn(
+        `ページネーションテストで作成したユーザー(${email})の削除処理は実装されていません`
+      );
+    }
+  });
+
+  test('2.2 GET /api/users - ページネーション（limitのみ）', async ({ request }) => {
+    const response = await request.get(`${USER_API_BASE_URL}?limit=1`);
+    expect(response.status()).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.success).toBe(true);
+    expect(responseData.data.length).toBe(1);
+  });
+
+  test('2.3 GET /api/users - ページネーション（offsetのみ）', async ({ request }) => {
+    // 全件取得して総数を把握
+    const allUsersResponse = await request.get(USER_API_BASE_URL);
+    const totalUsers = (await allUsersResponse.json()).data.length;
+
+    if (totalUsers > 1) {
+      const offset = 1;
+      const response = await request.get(`${USER_API_BASE_URL}?offset=${offset}`);
+      expect(response.status()).toBe(200);
+      const responseData = await response.json();
+      expect(responseData.success).toBe(true);
+      // 期待される件数は totalUsers - offset
+      expect(responseData.data.length).toBe(totalUsers - offset);
+    }
+  });
+
+  test('2.4 GET /api/users - ページネーション（不正なlimit）', async ({ request }) => {
+    const response = await request.get(`${USER_API_BASE_URL}?limit=-1`);
+    expect(response.status()).toBe(400);
+    const responseData = await response.json();
+    expect(responseData.success).toBe(false);
+    expect(responseData.error).toHaveProperty('code', 'VALIDATION_ERROR');
+  });
+
+  test('2.5 GET /api/users - ページネーション（不正なoffset）', async ({ request }) => {
+    const response = await request.get(`${USER_API_BASE_URL}?offset=-1`);
+    expect(response.status()).toBe(400);
+    const responseData = await response.json();
+    expect(responseData.success).toBe(false);
+    expect(responseData.error).toHaveProperty('code', 'VALIDATION_ERROR');
   });
 
   test('3. GET /api/users/:id - 特定のユーザーを取得できる', async ({ request }) => {
@@ -204,6 +326,15 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
     expect(responseData.error).toHaveProperty('code', 'NOT_FOUND');
   });
 
+  test('4.1 GET /api/users/:id - 無効なID形式でエラー', async ({ request }) => {
+    const invalidId = 'invalid-uuid';
+    const response = await request.get(`${USER_API_BASE_URL}/${invalidId}`);
+    expect(response.status()).toBe(400); // AppErrorが返されることを期待
+    const responseData = await response.json();
+    expect(responseData.success).toBe(false);
+    expect(responseData.error).toHaveProperty('code', 'VALIDATION_ERROR');
+  });
+
   test('5. PATCH /api/users/:id - ユーザー情報を更新できる', async ({ request }) => {
     // テスト前に必ずユーザーが存在することを確認
     await ensureTestUserExists(request);
@@ -222,6 +353,57 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
     expect(responseData.success).toBe(true);
     expect(responseData.data.id).toBe(createdUserId);
     expect(responseData.data.name).toBe(updateData.name);
+  });
+
+  test('5.1 PATCH /api/users/:id - 無効なデータ（名前が空）で400エラー', async ({ request }) => {
+    await ensureTestUserExists(request);
+    const invalidUpdateData = {
+      name: '', // 空の名前
+    };
+    const response = await request.patch(`${USER_API_BASE_URL}/${createdUserId}`, {
+      data: invalidUpdateData,
+    });
+    expect(response.status()).toBe(400);
+    const responseData = await response.json();
+    expect(responseData.success).toBe(false);
+    expect(responseData.error).toHaveProperty('code', 'VALIDATION_ERROR');
+  });
+
+  test('5.2 PATCH /api/users/:id - 空のリクエストボディで400エラー', async ({ request }) => {
+    await ensureTestUserExists(request);
+    const response = await request.patch(`${USER_API_BASE_URL}/${createdUserId}`, {
+      data: {}, // 空のボディ
+    });
+    expect(response.status()).toBe(400);
+    const responseData = await response.json();
+    expect(responseData.success).toBe(false);
+    expect(responseData.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    // refine のエラーメッセージを検証 (実装依存)
+    // expect(responseData.error.message.toLowerCase()).toContain('at least one field');
+  });
+
+  test('5.3 PATCH /api/users/:id - 無効なID形式でエラー', async ({ request }) => {
+    const invalidId = 'invalid-uuid';
+    const updateData = { name: 'Update attempt' };
+    const response = await request.patch(`${USER_API_BASE_URL}/${invalidId}`, {
+      data: updateData,
+    });
+    expect(response.status()).toBe(400); // AppErrorが返されることを期待
+    const responseData = await response.json();
+    expect(responseData.success).toBe(false);
+    expect(responseData.error).toHaveProperty('code', 'VALIDATION_ERROR');
+  });
+
+  test('5.4 PATCH /api/users/:id - 存在しないIDで404エラー', async ({ request }) => {
+    const nonExistentId = '00000000-0000-4000-a000-000000000001'; // 存在する可能性が低いUUID
+    const updateData = { name: 'Update Non Existent' };
+    const response = await request.patch(`${USER_API_BASE_URL}/${nonExistentId}`, {
+      data: updateData,
+    });
+    expect(response.status()).toBe(404);
+    const responseData = await response.json();
+    expect(responseData.success).toBe(false);
+    expect(responseData.error).toHaveProperty('code', 'NOT_FOUND');
   });
 
   test('6. DELETE /api/users/:id - ユーザーを削除できる', async ({ request }) => {
@@ -252,6 +434,23 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
       // ユーザー作成に失敗した場合はテストをスキップ
       test.skip(true, 'ユーザー作成に失敗したためテストをスキップします');
     }
+  });
+
+  test('6.1 DELETE /api/users/:id - 無効なID形式でエラー', async ({ request }) => {
+    const invalidId = 'invalid-uuid';
+    const response = await request.delete(`${USER_API_BASE_URL}/${invalidId}`);
+    // 期待されるステータスコード。バリデーションがどこで行われるかによって400または他のエラーコードになる可能性がある
+    expect(response.status()).toBe(400);
+    const responseData = await response.json();
+    expect(responseData.success).toBe(false);
+    expect(responseData.error).toHaveProperty('code', 'VALIDATION_ERROR'); // または NOT_FOUND など実装による
+  });
+
+  test('6.2 DELETE /api/users/:id - 存在しないIDで204(冪等性)', async ({ request }) => {
+    const nonExistentId = '00000000-0000-4000-a000-000000000002'; // 存在する可能性が低いUUID
+    const response = await request.delete(`${USER_API_BASE_URL}/${nonExistentId}`);
+    // 冪等性のため、存在しないリソースの削除も成功(204)として扱われる
+    expect(response.status()).toBe(204);
   });
 
   // 失敗系のテスト
