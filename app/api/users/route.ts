@@ -25,23 +25,26 @@ const listUsersQuerySchema = z.object({
     (val) => (val ? parseInt(String(val), 10) : undefined),
     z.number().int().nonnegative().optional()
   ),
+  email: z.string().email('Invalid email format').optional(),
 });
 
 // Zodのパース結果の型
-type QueryParams = z.infer<typeof listUsersQuerySchema>;
+// eslint-disable-next-line @typescript-eslint/naming-convention
+type ListUsersQueryParams = z.infer<typeof listUsersQuerySchema>;
 
 /**
  * GET /api/users
- * Retrieves a list of users. Supports optional limit and offset query parameters.
+ * Retrieves a list of users. Supports optional limit, offset and email query parameters.
  */
 export async function GET(request: NextRequest) {
   return processApiRequest(request, {
-    querySchema: listUsersQuerySchema as z.ZodType<QueryParams>,
-    handler: async (queryParams: QueryParams) => {
+    querySchema: listUsersQuerySchema as z.ZodType<ListUsersQueryParams>,
+    handler: async (queryParams: ListUsersQueryParams) => {
       const listUsersUsecase = container.resolve(ListUsersUsecase);
       const result = await listUsersUsecase.execute({
         limit: queryParams.limit,
         offset: queryParams.offset,
+        email: queryParams.email,
       });
 
       if (result.isErr()) {

@@ -8,6 +8,7 @@ import { UserId } from '@/domain/models/user/user-id.vo';
 import { UserName } from '@/domain/models/user/user-name.vo';
 import { User } from '@/domain/models/user/user.entity';
 import { UserRepositoryInterface } from '@/domain/repositories/user.repository.interface';
+import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
@@ -148,6 +149,99 @@ describe('ListUsersUsecase', () => {
     if (result.isOk()) {
       expect(result.value).toEqual([]);
       expect(result.value).toHaveLength(0);
+    }
+  });
+
+  it('正常系: emailパラメータを指定して特定のユーザーを取得する', async () => {
+    // モックの準備
+    const emailToFind = 'user1@example.com';
+    const emailVo = Email.create(emailToFind)._unsafeUnwrap(); // unwrapでOK (テストなので)
+    const userFound = mockUsers[0]; // emailが一致するユーザーをモックから取得
+
+    // findByEmail が呼ばれたときのモックの挙動を設定
+    (mockUserRepository.findByEmail as Mock).mockResolvedValue(ok(userFound));
+
+    // 実行
+    const result = await listUsersUsecase.execute({ email: emailToFind });
+
+    // 検証
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const userDTOs = result.value;
+      expect(userDTOs).toHaveLength(1);
+      expect(userDTOs[0].email).toBe(emailToFind);
+
+      // findByEmail が正しい引数で呼ばれたか検証
+      expect(mockUserRepository.findByEmail).toHaveBeenCalledTimes(1);
+      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(emailVo);
+      // findAll は呼ばれないことを確認
+      expect(mockUserRepository.findAll).not.toHaveBeenCalled();
+    }
+  });
+
+  it('正常系: 存在しないemailを指定した場合、空の配列を返す', async () => {
+    const nonExistentEmail = 'notfound@example.com';
+    const emailVo = Email.create(nonExistentEmail)._unsafeUnwrap();
+
+    // findByEmail が null を返すようにモックを設定
+    (mockUserRepository.findByEmail as Mock).mockResolvedValue(ok(null));
+
+    // 実行
+    const result = await listUsersUsecase.execute({ email: nonExistentEmail });
+
+    // 検証
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual([]);
+      // findByEmail が呼ばれたか検証
+      expect(mockUserRepository.findByEmail).toHaveBeenCalledTimes(1);
+      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(emailVo);
+      expect(mockUserRepository.findAll).not.toHaveBeenCalled();
+    }
+  });
+
+  it('異常系: 不正なemail形式を指定した場合、ValidationErrorを返す', async () => {
+    const invalidEmail = 'invalid-email-format';
+
+    // 実行
+    const result = await listUsersUsecase.execute({ email: invalidEmail });
+
+    // 検証
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(AppError);
+      expect(result.error.code).toBe(ErrorCode.ValidationError);
+      expect(result.error.message).toContain('Invalid email format for filtering');
+      // リポジトリメソッドは呼ばれないことを確認
+      expect(mockUserRepository.findByEmail).not.toHaveBeenCalled();
+      expect(mockUserRepository.findAll).not.toHaveBeenCalled();
+    }
+  });
+
+  it('異常系: findByEmailでリポジトリエラーが発生した場合、エラーを返す', async () => {
+    const emailToFind = 'error@example.com';
+    const emailVo = Email.create(emailToFind)._unsafeUnwrap();
+    const dbError = new InfrastructureError(ErrorCode.DatabaseError, 'DB connection error');
+
+    // findByEmail がエラーを返すようにモックを設定
+    (mockUserRepository.findByEmail as Mock).mockResolvedValue(err(dbError));
+
+    // 実行
+    const result = await listUsersUsecase.execute({ email: emailToFind });
+
+    // 検証
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(AppError);
+      // AppErrorでラップされているか、元のエラーかを確認
+      expect(result.error.code).toBe(ErrorCode.DatabaseError);
+      // expect(result.error.message).toContain('Failed to search user by email');
+      // InfrastructureErrorがAppErrorを継承しているため、元のエラーメッセージがそのまま返される
+      expect(result.error.message).toBe('DB connection error');
+      // findByEmail が呼ばれたか検証
+      expect(mockUserRepository.findByEmail).toHaveBeenCalledTimes(1);
+      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(emailVo);
+      expect(mockUserRepository.findAll).not.toHaveBeenCalled();
     }
   });
 

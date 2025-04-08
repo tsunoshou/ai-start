@@ -220,7 +220,8 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
 
   test('2.1 GET /api/users - ページネーション（limitとoffset）', async ({ request }) => {
     // テスト用に複数ユーザーを作成 (例として3ユーザー)
-    const userEmails = [];
+    const userEmails: string[] = [];
+    const userIdsToDelete: string[] = []; // 削除用にIDを保持
     for (let i = 0; i < 3; i++) {
       const email = `pagination-${Date.now()}-${i}@example.com`;
       const createResponse = await request.post(USER_API_BASE_URL, {
@@ -232,9 +233,17 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
       });
       if (createResponse.status() === 201) {
         userEmails.push(email);
+        const responseData = await createResponse.json();
+        if (responseData.success && responseData.data && responseData.data.id) {
+          userIdsToDelete.push(responseData.data.id);
+        }
+      } else {
+        console.warn(
+          `⚠️ ページネーションテスト用ユーザー作成失敗 (Email: ${email}, Status: ${createResponse.status()})`
+        );
       }
     }
-    expect(userEmails.length).toBe(3); // 3ユーザー作成できたことを確認
+    expect(userIdsToDelete.length).toBe(3); // 3ユーザー作成・ID取得できたことを確認
 
     // limit=2, offset=1 で取得
     const response = await request.get(`${USER_API_BASE_URL}?limit=2&offset=1`);
@@ -242,22 +251,27 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
     const responseData = await response.json();
     expect(responseData.success).toBe(true);
     expect(Array.isArray(responseData.data)).toBe(true);
-
     expect(responseData.data.length).toBe(2);
-    // offset=1なので、2番目と3番目のユーザーが含まれるはず (作成順に依存)
-    // emailでの確認（より確実）-> DB全体の状態に依存するため、件数チェックのみにする
-    // const returnedEmails = responseData.data.map((user: { email: string }) => user.email);
-    // expect(returnedEmails).toContain(userEmails[1]);
-    // expect(returnedEmails).toContain(userEmails[2]);
-    // expect(returnedEmails).not.toContain(userEmails[0]);
 
-    // 後片付け: 作成したユーザーを削除
-    for (const email of userEmails) {
-      // ユーザーIDを取得するためにemailで検索が必要だが、E2EテストではID直接指定が望ましい
-      // ここでは簡略化のため削除処理を省略（または別途IDを取得する実装が必要）
-      console.warn(
-        `ページネーションテストで作成したユーザー(${email})の削除処理は実装されていません`
-      );
+    // 後片付け: 作成したユーザーを削除 (IDリストを使用)
+    for (const userId of userIdsToDelete) {
+      try {
+        const deleteResponse = await request.delete(`${USER_API_BASE_URL}/${userId}`);
+        if (deleteResponse.status() === 204) {
+          console.log(
+            `🧹 ページネーションテストで作成したユーザー (ID: ${userId}) を削除しました。`
+          );
+        } else {
+          console.error(
+            `⚠️ ページネーションテストユーザー (ID: ${userId}) の削除に失敗しました (ステータス: ${deleteResponse.status()})。`
+          );
+        }
+      } catch (error) {
+        console.error(
+          `⚠️ ページネーションテストユーザー (ID: ${userId}) の削除中にエラーが発生しました:`,
+          error
+        );
+      }
     }
   });
 
@@ -299,6 +313,76 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
     const responseData = await response.json();
     expect(responseData.success).toBe(false);
     expect(responseData.error).toHaveProperty('code', 'VALIDATION_ERROR');
+  });
+
+  test('2.6 GET /api/users - emailフィルタリング', async ({ request }) => {
+    const testEmail = `filter-test-${Date.now()}@example.com`;
+    let userIdToClean: string | null = null;
+
+    // 1. テスト用ユーザー作成
+    const createResponse = await request.post(USER_API_BASE_URL, {
+      data: {
+        name: 'Filter Test User',
+        email: testEmail,
+        passwordPlainText: 'PasswordFilter!',
+      },
+    });
+    expect(createResponse.status()).toBe(201);
+    const createData = await createResponse.json();
+    expect(createData.success).toBe(true);
+    expect(createData.data).toHaveProperty('id');
+    userIdToClean = createData.data.id; // 削除用にIDを保存
+
+    try {
+      // 2. 作成したユーザーのemailでフィルタリング
+      const filterResponse = await request.get(`${USER_API_BASE_URL}?email=${testEmail}`);
+      expect(filterResponse.status()).toBe(200);
+      const filterData = await filterResponse.json();
+      expect(filterData.success).toBe(true);
+      expect(Array.isArray(filterData.data)).toBe(true);
+      expect(filterData.data.length).toBe(1); // 1件のみ返されるはず
+      expect(filterData.data[0].email).toBe(testEmail);
+      expect(filterData.data[0].id).toBe(userIdToClean);
+      expect(filterData.data[0].name).toBe('Filter Test User');
+
+      // 3. 存在しないemailでフィルタリング
+      const nonExistentEmail = `nonexistent-${Date.now()}@example.com`;
+      const noResultResponse = await request.get(`${USER_API_BASE_URL}?email=${nonExistentEmail}`);
+      expect(noResultResponse.status()).toBe(200);
+      const noResultData = await noResultResponse.json();
+      expect(noResultData.success).toBe(true);
+      expect(Array.isArray(noResultData.data)).toBe(true);
+      expect(noResultData.data.length).toBe(0); // 結果は0件のはず
+
+      // 4. 不正なemail形式でフィルタリング (400エラーを期待)
+      const invalidEmail = 'invalid-email-format';
+      const invalidResponse = await request.get(`${USER_API_BASE_URL}?email=${invalidEmail}`);
+      expect(invalidResponse.status()).toBe(400);
+      const invalidData = await invalidResponse.json();
+      expect(invalidData.success).toBe(false);
+      expect(invalidData.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    } finally {
+      // 5. 後片付け: 作成したユーザーを削除
+      if (userIdToClean) {
+        try {
+          const deleteResponse = await request.delete(`${USER_API_BASE_URL}/${userIdToClean}`);
+          if (deleteResponse.status() === 204) {
+            console.log(
+              `🧹 Emailフィルターテストで作成したユーザー (ID: ${userIdToClean}) を削除しました。`
+            );
+          } else {
+            console.error(
+              `⚠️ Emailフィルターテストユーザー (ID: ${userIdToClean}) の削除に失敗 (ステータス: ${deleteResponse.status()})。`
+            );
+          }
+        } catch (deleteError) {
+          console.error(
+            `⚠️ Emailフィルターテストユーザー (ID: ${userIdToClean}) の削除中にエラー発生:`,
+            deleteError
+          );
+        }
+      }
+    }
   });
 
   test('3. GET /api/users/:id - 特定のユーザーを取得できる', async ({ request }) => {
