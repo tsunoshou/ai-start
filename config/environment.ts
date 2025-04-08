@@ -1,13 +1,6 @@
 import 'reflect-metadata';
 import { config } from 'dotenv';
-import { container } from 'tsyringe';
 import { z } from 'zod';
-
-import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.token';
-
-// DIコンテナからロガーを取得
-const logger = container.resolve<LoggerInterface>(LoggerToken);
 
 // .env ファイルを読み込む
 config();
@@ -310,20 +303,20 @@ export const getDatabaseUrl = (): string => {
   // 利用可能なURLからプーラー接続を優先
   if (envSpecificUrl) {
     if (isPoolerUrl(envSpecificUrl)) {
-      logger.info(`${ENV.APP_ENV}環境用の接続プーラーを使用します`);
+      console.info(`${ENV.APP_ENV}環境用の接続プーラーを使用します`);
       return envSpecificUrl;
     }
 
-    logger.info(`${ENV.APP_ENV}環境用の直接接続を使用します`);
+    console.info(`${ENV.APP_ENV}環境用の直接接続を使用します`);
     return envSpecificUrl;
   }
 
   // デフォルトの接続設定
   if (ENV.DATABASE_URL) {
     if (isPoolerUrl(ENV.DATABASE_URL)) {
-      logger.info('デフォルトの接続プーラーを使用します');
+      console.info('デフォルトの接続プーラーを使用します');
     } else {
-      logger.info('デフォルトの直接接続を使用します');
+      console.info('デフォルトの直接接続を使用します');
     }
     return ENV.DATABASE_URL;
   }
