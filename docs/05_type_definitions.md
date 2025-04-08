@@ -1,6 +1,6 @@
 # 共通型定義・DB型定義
 
-最終更新日: 2025-04-08
+最終更新日: 2025-04-09
 
 ## 本ドキュメントの目的と位置づけ
 
@@ -13,6 +13,8 @@
 ## 型定義の基本方針
 
 AiStartプロジェクトでは型安全性を最優先し、各レイヤーに適切な型定義を配置して、重複を避けつつ責務の明確な分離を実現します。Typescriptの型システム、**`neverthrow` ライブラリによる Result 型を用いたエラーハンドリング（`AppError` とそのサブクラスを使用）**、および **`tsyringe` による依存性注入** を活用して、ドメインの概念を明確に表現し、コンパイル時の型チェックによって多くのバグを未然に防ぎます。
+
+**共通の `Result` 型エイリアスとして `AppResult<T>` を使用します。これは `Result<T, AppError>` のエイリアスであり、コードの記述を簡潔にし、標準のエラー型が `AppError` であることを明確にします。**
 
 ### 型の階層構造
 
@@ -147,33 +149,43 @@ AiStartプロジェクトでは、様々な種類の型が存在します。そ�
 - **意図**: レイヤー間のデータ転送に特化し、ドメインロジックを持たない単純なデータ構造
 - **特徴**: 読み取り専用で不変、最小限の検証のみ、プレゼンテーション向けに最適化
 - **使用場面**: API応答、レイヤー間のデータ交換、UI表示用データ
+- **現状**: **DTO (`application/dtos/*.dto.ts`) は `zod` スキーマを使用して定義され、`z.infer` によって型が導出されます。これにより、型の定義とバリデーションルールが一元管理され、一貫性が保たれます。例えば `UserDTO` は以下のように定義されます。**
 
 ```typescript
-// エンティティ例（ビジネスルールを含む）
-interface User extends EntityBase {
-  id: UserId;
-  email: Email;
-  role: UserRole;
-  
-  // ビジネスメソッド
-  canAccessResource(resource: Resource): boolean;
-  upgradeToAdmin(): void;
-}
+// DTO例（Zodスキーマと型推論を使用）
+import { z } from 'zod';
 
-// DTO例（単純なデータ構造）
-interface UserDTO {
-  readonly id: string;
-  readonly email: string;
-  readonly role: string;
-  readonly createdAt: string;
-}
+// Zodスキーマ定義 (application/dtos/user.dto.ts 参照)
+export const userDtoSchema = z.object({
+  id: z.string().uuid({ message: 'User ID must be a valid UUID.' }),
+  name: z
+    .string()
+    .min(1, 'User name cannot be empty.')
+    .max(50, 'User name must be 50 characters or less.'),
+  email: z.string().email({ message: 'Invalid email format.' }),
+  createdAt: z.string().datetime({ message: 'Invalid ISO 8601 format for createdAt.' }),
+  updatedAt: z.string().datetime({ message: 'Invalid ISO 8601 format for updatedAt.' }),
+  // パスワードハッシュなどは意図的に除外
+}).describe('Data Transfer Object for User entity');
+
+// スキーマから型を推論
+export type UserDTO = z.infer<typeof userDtoSchema>;
+
+// --- 旧 UserDTO インターフェース定義 (参考) ---
+// interface UserDTO {
+//   readonly id: string;
+//   readonly email: string;
+//   readonly name: string;
+//   readonly createdAt: string; // ISODateTimeString が望ましい
+//   readonly updatedAt: string; // ISODateTimeString が望ましい
+// }
 ```
 
 #### 値オブジェクト vs プリミティブ型
 
 **値オブジェクト**
 - **意図**: 概念的に単一の値を表現し、ドメイン固有のルールをカプセル化する
-- **特徴**: 不変性を持ち、等価性は値に基づく、自己検証機能を持つ
+- **特徴**: 不変性を持ち、等価性は値に基づく、自己検証機能を持つ。**`BaseValueObject` または `BaseId` 抽象クラスを継承し、コンストラクタでの直接インスタンス化を防ぎ、`create` 静的ファクトリメソッド内で `zod` スキーマを利用してバリデーションを行う。**
 - **使用場面**: 複雑なドメイン概念表現、ドメイン固有ルールの適用
 
 **プリミティブ型（+型エイリアス）**
@@ -182,32 +194,30 @@ interface UserDTO {
 - **使用場面**: 単純な値の表現、パフォーマンスクリティカルな処理
 
 ```typescript
-// 値オブジェクト例
-class EmailAddress {
-  private readonly value: string;
-  
-  constructor(email: string) {
-    if (!this.isValid(email)) {
-      throw new Error('Invalid email format');
-    }
-    this.value = email;
-  }
-  
-  private isValid(email: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-  
-  toString(): string {
-    return this.value;
-  }
-  
-  equals(other: EmailAddress): boolean {
-    return this.value === other.value;
-  }
-}
+// 値オブジェクト例 (BaseValueObject/zod 利用)
+import { Result, ok, err } from 'neverthrow';
+import { z } from 'zod';
+import { BaseValueObject } from '@/shared/value-objects/base.vo';
+import { ValidationError } from '@/shared/errors/validation.error';
 
-// 型エイリアス例
-type Email = string;
+const EMAIL_SCHEMA = z.string().email();
+type EmailValue = z.infer<typeof EMAIL_SCHEMA>;
+
+export class Email extends BaseValueObject<EmailValue> {
+  private constructor(value: EmailValue) {
+    super(value);
+  }
+
+  public static create(email: unknown): Result<Email, ValidationError> {
+    const parseResult = EMAIL_SCHEMA.safeParse(email);
+    if (!parseResult.success) {
+      return err(new ValidationError('Invalid email format.', { cause: parseResult.error, value: email }));
+    }
+    return ok(new Email(parseResult.data));
+  }
+  // equals メソッドは BaseValueObject から継承
+}
+// ... (旧 EmailAddress の例は削除) ...
 ```
 
 #### インターフェース vs タイプエイリアス
@@ -225,14 +235,14 @@ type Email = string;
 ```typescript
 // インターフェース例
 interface Repository<T extends EntityBase> {
-  findById(id: string): Promise<T | null>;
-  findAll(): Promise<T[]>;
-  save(entity: T): Promise<T>;
-  delete(id: string): Promise<boolean>;
+  findById(id: string): Promise<AppResult<T | null>>; // Result -> AppResult に変更
+  findAll(): Promise<AppResult<T[]>>; // Result -> AppResult に変更
+  save(entity: T): Promise<AppResult<T>>; // Result -> AppResult に変更
+  delete(id: string): Promise<AppResult<boolean>>; // Result -> AppResult に変更
 }
 
 // タイプエイリアス例
-type AppResult<T, E extends AppError = AppError> = Result<T, E>; // neverthrow の Result のエイリアス（AppError をデフォルトエラー型に）
+type AppResult<T> = Result<T, AppError>; // neverthrow の Result のエイリアス（AppError をデフォルトエラー型に）
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 ```
@@ -240,12 +250,12 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 ### エラーハンドリング: Result と AppError
 
 **方針**
-- 失敗する可能性のある操作（特にI/O操作やビジネスルールの検証）は `neverthrow` の `Result<T, E extends AppError>` 型を返す。
+- 失敗する可能性のある操作（特にI/O操作やビジネスルールの検証）は、共通の型エイリアス **`AppResult<T>`** (`Result<T, AppError>`) を返す。
 - エラー型 `E` には、原則として `AppError` またはそのサブクラス（例: `ValidationError`, `InfrastructureError`）を使用する。
 - `Error` 型を直接 `Result` のエラー型として使用することは避ける。
 - 各エラーには、識別のための `ErrorCode` enum メンバーを必ず含める。
 - 必要に応じて、エラーの原因 (`cause`) や追加情報 (`metadata`) を `AppError` に含める。
-- バリデーションエラーには、専用の `ValidationError` を使用し、どの値がどのような理由で不正だったかの情報を含める。
+- バリデーションエラーには、専用の `ValidationError` を使用し、どの値がどのような理由で不正だったかの情報を含める。**値オブジェクトの `create` メソッドはバリデーション失敗時に `ValidationError` を返す。**
 
 **`AppError` の基本構造**
 - `code`: `ErrorCode` enum の値。
