@@ -3,7 +3,10 @@
  * アプリケーション全体で一貫したログ出力方法を提供します。
  */
 
-export const LoggerToken = Symbol('LoggerInterface');
+import { LoggerToken } from './logger.token';
+
+// LoggerToken定義を削除し、exportを再エクスポート
+export { LoggerToken };
 
 /**
  * ログデータの形式を定義します。

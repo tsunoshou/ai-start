@@ -10,7 +10,7 @@ import { UserRepositoryInterface } from '@/domain/repositories/user.repository.i
 import { UserMapper } from '@/infrastructure/mappers/user.mapper';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
 import { Email } from '@/shared/value-objects/email.vo';
 
 import { users } from '../schema/users.schema';

@@ -75,6 +75,7 @@ describe('DeleteUserUsecase', () => {
     const validUseId = '550e8400-e29b-41d4-a716-446655440000';
 
     // モックリポジトリの挙動を設定 - 削除に成功
+    (mockUserRepository.findById as Mock).mockResolvedValue(ok({}));
     (mockUserRepository.delete as Mock).mockResolvedValue(ok(undefined));
 
     // 実行
@@ -112,7 +113,8 @@ describe('DeleteUserUsecase', () => {
     // 有効なユーザーID
     const validUseId = '550e8400-e29b-41d4-a716-446655440000';
 
-    // モックリポジトリの挙動を設定 - 削除に失敗
+    // モックリポジトリの挙動を設定 - findByIdは成功、削除に失敗
+    (mockUserRepository.findById as Mock).mockResolvedValue(ok({}));
     (mockUserRepository.delete as Mock).mockResolvedValue(
       err(new InfrastructureError('削除に失敗しました', { cause: new Error('DB error') }))
     );

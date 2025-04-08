@@ -16,7 +16,7 @@ import { AppError } from '@/shared/errors/app.error';
 import { BaseError } from '@/shared/errors/base.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
 import { hashPassword } from '@/shared/utils/security/password.utils';
 import { Email } from '@/shared/value-objects/email.vo';
 import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
@@ -86,7 +86,7 @@ export class CreateUserUsecase {
     const [nameVo, emailVo] = validationResult.value;
 
     // 2. Password Hashing
-    const hashedPasswordResult = await hashPassword(input.passwordPlainText);
+    const hashedPasswordResult = await hashPassword(input.passwordPlainText, this.logger);
     if (hashedPasswordResult.isErr()) {
       this.logger.error(
         {

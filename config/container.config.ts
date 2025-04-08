@@ -20,7 +20,8 @@ import {
 } from '@/domain/repositories/user.repository.interface';
 import { UserRepository } from '@/infrastructure/database/repositories/user.repository';
 import { ConsoleLogger } from '@/shared/logger/console.logger';
-import { LoggerToken, LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
 
 // --- Dependency Registration ---
 

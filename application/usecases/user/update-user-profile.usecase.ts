@@ -13,7 +13,7 @@ import { UserMapper } from '@/infrastructure/mappers/user.mapper';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
 
 // Input: Requires the user ID and the fields to update (optional name for now)
 type UpdateUserProfileInput = {
@@ -44,19 +44,29 @@ export class UpdateUserProfileUsecase {
    * @returns A Result containing the updated UserDTO or an AppError.
    */
   async execute(input: UpdateUserProfileInput): Promise<Result<UpdateUserProfileOutput, AppError>> {
+    this.logger.debug({
+      message: 'ユーザープロフィール更新リクエスト開始',
+      operation: 'updateUserProfile',
+      entityType: 'User',
+      entityId: input.userId,
+    });
+
     // 1. Validate Input ID (Create UserId VO)
     const userIdResult = UserId.create(input.userId);
     if (userIdResult.isErr()) {
       this.logger.warn({
-        message: `Invalid user ID format: ${userIdResult.error.message}`,
-        userId: input.userId,
+        message: '無効なユーザーID形式',
         operation: 'updateUserProfile',
+        entityType: 'User',
+        entityId: input.userId,
+        errorDetail: userIdResult.error.message,
       });
 
       return err(
         new AppError(
           ErrorCode.ValidationError,
-          `Invalid user ID format: ${userIdResult.error.message}`
+          `Invalid user ID format: ${userIdResult.error.message}`,
+          { cause: userIdResult.error }
         )
       );
     }
@@ -68,28 +78,30 @@ export class UpdateUserProfileUsecase {
       // Infrastructure error during find
       this.logger.error(
         {
-          message: 'Failed to retrieve user data for update',
-          userId: input.userId,
+          message: 'ユーザー検索中にエラーが発生しました',
           operation: 'updateUserProfile',
+          entityType: 'User',
+          entityId: input.userId,
         },
         findResult.error
       );
 
       return err(
-        new AppError(ErrorCode.DatabaseError, 'Failed to retrieve user data for update', {
+        new AppError(ErrorCode.DatabaseError, 'Failed to retrieve user', {
           cause: findResult.error,
         })
       );
     }
     const currentUser = findResult.value;
     if (!currentUser) {
-      this.logger.warn({
-        message: `User with ID ${input.userId} not found.`,
-        userId: input.userId,
+      this.logger.info({
+        message: '更新対象のユーザーが見つかりませんでした',
         operation: 'updateUserProfile',
+        entityType: 'User',
+        entityId: input.userId,
       });
 
-      return err(new AppError(ErrorCode.NotFound, `User with ID ${input.userId} not found.`));
+      return err(new AppError(ErrorCode.NotFound, 'User not found'));
     }
 
     // 3. Validate Input Data (Optional name for now)
@@ -98,16 +110,19 @@ export class UpdateUserProfileUsecase {
       const nameResult = UserName.create(input.name);
       if (nameResult.isErr()) {
         this.logger.warn({
-          message: `Invalid name format: ${nameResult.error.message}`,
-          userId: input.userId,
-          name: input.name,
+          message: '無効なユーザー名形式',
           operation: 'updateUserProfile',
+          entityType: 'User',
+          entityId: input.userId,
+          name: input.name,
+          errorDetail: nameResult.error.message,
         });
 
         return err(
           new AppError(
             ErrorCode.ValidationError,
-            `Invalid name format: ${nameResult.error.message}`
+            `Invalid user name format: ${nameResult.error.message}`,
+            { cause: nameResult.error }
           )
         );
       }
@@ -129,24 +144,26 @@ export class UpdateUserProfileUsecase {
     if (saveResult.isErr()) {
       this.logger.error(
         {
-          message: 'Failed to save updated user profile',
-          userId: input.userId,
+          message: 'ユーザー保存中にエラーが発生しました',
           operation: 'updateUserProfile',
+          entityType: 'User',
+          entityId: input.userId,
         },
         saveResult.error
       );
 
       return err(
-        new AppError(ErrorCode.DatabaseError, 'Failed to save updated user profile', {
+        new AppError(ErrorCode.DatabaseError, 'Failed to save updated user', {
           cause: saveResult.error,
         })
       );
     }
 
     this.logger.info({
-      message: `Successfully updated user profile for user ${input.userId}`,
-      userId: input.userId,
+      message: 'ユーザープロフィールの更新に成功しました',
       operation: 'updateUserProfile',
+      entityType: 'User',
+      entityId: input.userId,
     });
 
     // 6. Map to DTO

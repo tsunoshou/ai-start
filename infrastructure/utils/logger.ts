@@ -10,7 +10,8 @@
  *
  * // 推奨:
  * import { inject, injectable } from 'tsyringe';
- * import { LoggerInterface, LoggerToken } from '@/shared/logger/logger.interface';
+ * import { LoggerInterface } from '@/shared/logger/logger.interface';
+ * import { LoggerToken } from '@/shared/logger/logger.token';
  *
  * @injectable()
  * export class SomeService {

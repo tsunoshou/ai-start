@@ -12,7 +12,7 @@ import { UserMapper } from '@/infrastructure/mappers/user.mapper';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
 
 // Application Layer
 
@@ -45,13 +45,28 @@ export class GetUserByIdUsecase {
    * @returns A Result containing the User entity or null if not found, or an AppError.
    */
   async execute(input: GetUserByIdInput): Promise<Result<GetUserByIdOutput, AppError>> {
+    this.logger.debug({
+      message: 'ユーザーID検索リクエスト開始',
+      operation: 'getUserById',
+      entityType: 'User',
+      entityId: input.userId,
+    });
+
     // 1. Input Validation (Create UserId VO)
     const userIdResult = UserId.create(input.userId);
     if (userIdResult.isErr()) {
+      this.logger.warn({
+        message: '無効なユーザーID形式',
+        operation: 'getUserById',
+        entityType: 'User',
+        entityId: input.userId,
+        errorDetail: userIdResult.error.message,
+      });
       return err(
         new AppError(
           ErrorCode.ValidationError,
-          `Invalid user ID format: ${userIdResult.error.message}`
+          `Invalid user ID format: ${userIdResult.error.message}`,
+          { cause: userIdResult.error }
         )
       );
     }
@@ -64,9 +79,10 @@ export class GetUserByIdUsecase {
       // リポジトリのエラーをラップ
       this.logger.error(
         {
-          message: `Failed to find user by ID: ${userIdVo.value}`,
-          userId: userIdVo.value,
+          message: 'ユーザー検索中にエラーが発生しました',
           operation: 'getUserById',
+          entityType: 'User',
+          entityId: userIdVo.value,
         },
         findResult.error
       );
@@ -86,15 +102,17 @@ export class GetUserByIdUsecase {
 
     if (output) {
       this.logger.info({
-        message: `Successfully retrieved user: ${userIdVo.value}`,
-        userId: userIdVo.value,
+        message: 'ユーザーの取得に成功しました',
         operation: 'getUserById',
+        entityType: 'User',
+        entityId: userIdVo.value,
       });
     } else {
       this.logger.info({
-        message: `User not found with ID: ${userIdVo.value}`,
-        userId: userIdVo.value,
+        message: 'ユーザーが見つかりませんでした',
         operation: 'getUserById',
+        entityType: 'User',
+        entityId: userIdVo.value,
       });
     }
 

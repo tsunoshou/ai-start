@@ -104,7 +104,10 @@ describe('CreateUserUsecase', () => {
       expect(userDTO).toHaveProperty('updatedAt');
 
       // モックが期待通り呼び出されたか検証
-      expect(passwordUtils.hashPassword).toHaveBeenCalledWith(validInput.passwordPlainText);
+      expect(passwordUtils.hashPassword).toHaveBeenCalledWith(
+        validInput.passwordPlainText,
+        mockLogger
+      );
       expect(User.create).toHaveBeenCalledTimes(1);
       expect(mockUserRepository.save).toHaveBeenCalledTimes(1);
       expect(mockLogger.info).toHaveBeenCalled();
