@@ -1465,3 +1465,53 @@ async findById(id: UserId): Promise<Result<User | null, InfrastructureError>> {
 ## その他のユーティリティ
 
 // ... rest of the document ...
+
+## APIユーティリティ (`shared/utils/api.utils.ts`) (新規)
+
+Next.js の API ルートハンドラーにおける共通処理を抽象化し、コードの重複を削減するためのユーティリティ関数を提供します。
+
+1.  **`processApiRequest<T, SchemaType = unknown>(...)`**:
+    *   **目的**: APIリクエストのライフサイクル（解析、バリデーション、ハンドラー実行、レスポンス生成）を一元管理します。
+    *   **機能**:
+        *   リクエストタイプ（ボディ、クエリ、パラメータ）に応じて、提供された Zod スキーマ (`bodySchema`, `querySchema`, `paramsSchema`) を用いて入力を検証します。
+        *   検証済みのデータを引数として、提供された `handler` 非同期関数を実行します。
+        *   `handler` が成功した場合は `apiSuccess` を使用して標準的な成功レスポンス（デフォルト 200 OK、`successStatus` で変更可）を生成します。
+        *   検証エラーや `handler` 内でスローされたエラーは `handleApiError` に委譲します。
+    *   **利点**: APIルートハンドラーの記述を簡潔にし、一貫したリクエスト処理フローとエラーハンドリングを保証します。ジェネリクスにより、`handler` の引数型がスキーマから安全に推論されます。
+
+2.  **`handleApiError(error: unknown)`**:
+    *   **目的**: APIルートで `catch` されたエラーを分類し、適切な HTTP ステータスコードと標準化されたエラーレスポンス形式を生成します。
+    *   **機能**:
+        *   エラーが `AppError` のインスタンスである場合、`error.code` (ErrorCode) に基づいて HTTP ステータスコードを決定し、`apiError` を使用してレスポンスを生成します。5xx エラーは `error` レベル、4xx エラーは `warn` レベルでログに記録されます。
+        *   エラーが `zod.ZodError` のインスタンスである場合、HTTP 400 (Bad Request) と `ErrorCode.ValidationError` を返し、詳細なバリデーションエラー情報を含めます。`warn` レベルでログに記録されます。
+        *   その他の `Error` インスタンスの場合は、HTTP 500 (Internal Server Error) と `ErrorCode.InternalServerError` を返します。`error` レベルでログに記録されます。
+        *   `Error` インスタンスでない予期せぬエラーの場合は、HTTP 500 と `ErrorCode.UnknownError` を返します。`error` レベルでログに記録されます。
+    *   **利点**: API全体で一貫したエラーレスポンス形式を提供し、エラーの種類に応じた適切なロギングとステータスコードマッピングを自動で行います。
+
+3.  **`apiSuccess<T>(status: number, data: T)`**:
+    *   **目的**: 標準的な成功レスポンス (`{ success: true, data: ... }`) を持つ `NextResponse` を生成します。
+
+4.  **`apiError(status: number, code: string, message: string, details?: unknown)`**:
+    *   **目的**: 標準的なエラーレスポンス (`{ success: false, error: { code, message, details } }`) を持つ `NextResponse` を生成します。
+
+> **参照**: 具体的な実装例については「code_examples/06_utility_functions_examples.md」の「APIユーティリティ」セクションを参照してください。
+
+## マッピングヘルパー (`infrastructure/mappers/utils/mapping-helpers.ts`) (新規)
+
+`BaseEntityMapper` を利用したエンティティと他のデータ形式（DBレコード、DTO）間のマッピング処理を補助するための、シンプルで型安全なヘルパー関数を提供します。
+
+1.  **`asValueObjectMapper<T, R>(valueObject: { create: (value: T) => Result<R, AppError> })`**:
+    *   **目的**: 値オブジェクトの静的 `create` メソッドを持つクラス参照を、`BaseEntityMapper` のマッピング定義 (`ValueObjectMapping`) で期待される形式にキャストします。
+    *   **利点**: マッピング定義の記述を簡潔にします。
+
+2.  **`asType<T>(value: unknown)`**:
+    *   **目的**: `unknown` 型の値を指定された型 `T` にキャストします。主に、`createValueObjects` ヘルパーによって生成された値オブジェクトを、エンティティコンストラクタで期待される具体的な型に安全に（開発者の責任において）キャストするために使用されます。
+    *   **注意**: この関数は型安全性を保証するものではなく、開発者が型の互換性を確認した上で使用する必要があります。
+
+3.  **`toISOString(value: unknown)`**:
+    *   **目的**: `Date` オブジェクトまたは日付文字列を ISO 8601 形式の文字列に変換します。`DateTimeString` 値オブジェクトなど、ISO文字列を期待するマッピングで使用されます。
+    *   **利点**: 日付関連の値オブジェクトへのマッピング時に、一貫した形式変換を提供します。
+
+これらのヘルパーは、`BaseEntityMapper` の `toDomainUsingDefinition` や `toObjectUsingDefinition` と組み合わせて使用することで、マッピング設定 (`domainMappingConfig`, `dtoPropMappings`, `persistencePropMappings`) の記述を簡素化し、型安全性を維持しながらマッピングロジックを宣言的に記述するのに役立ちます。
+
+> **参照**: 具体的な実装例は `infrastructure/mappers/user.mapper.ts` や、必要に応じて「code_examples/06_utility_functions_examples.md」の「マッピングヘルパー」セクションを参照してください。

@@ -54,8 +54,8 @@ APIエンドポイントの設計においては、以下の原則に従いま�
     -   例: `GET /api/projects/{projectId}/steps`
 
 3.  **一貫性のあるレスポンス形式**:
-    -   成功時: `200 OK`, `201 Created`, `204 No Content`
-    -   エラー時: 標準化されたエラーレスポンス形式（[05_type_definitions.md](/docs/restructuring/05_type_definitions.md) 参照）を使用し、適切なHTTPステータスコード（4xx, 5xx）を返す。 `Result` 型のエラー情報を適切に変換する。
+    -   成功時: `200 OK`, `201 Created`, `204 No Content` など。**`shared/utils/api.utils.ts` の `apiSuccess` が生成する `{ success: true, data: ... }` 形式を標準とします。**
+    -   エラー時: 標準化されたエラーレスポンス形式（[05_type_definitions.md](/docs/05_type_definitions.md) 参照）を使用し、適切なHTTPステータスコード（4xx, 5xx）を返す。 **`shared/utils/api.utils.ts` の `apiError` が生成する `{ success: false, error: { code, message, details? } }` 形式を標準とし、`handleApiError` ユーティリティによって `AppError` や `ZodError` から自動生成されます。** `AppResult` 型のエラー情報を適切に変換する。
 
 4.  **HATEOAS (Hypermedia as the Engine of Application State) の適用**: レスポンスに関連リソースへのリンクを含めることで、APIの自己記述性と発見可能性を高める（必要に応じて）。
 
@@ -70,69 +70,127 @@ APIエンドポイントの設計においては、以下の原則に従いま�
 [02_architecture_design.md](/docs/restructuring/02_architecture_design.md) および [04_implementation_rules.md](/docs/restructuring/04_implementation_rules.md) で定義された通り、`tsyringe` を用いて依存性注入を実装します。
 
 1.  **コンテナ設定**:
-    -   アプリケーションのエントリーポイント（例: `app/api/.../route.ts` やカスタムサーバー）でDIコンテナを初期化し、必要な依存関係を登録します。
-    -   環境設定 (`config/`) や外部サービス接続クライアント (`infrastructure/`) などを登録します。
+    -   **`config/container.config.ts`** でDIコンテナ (`tsyringe` の `container`) を設定し、必要な依存関係を登録します。
+    -   データベース接続 (`drizzle` インスタンス）、ロガー (`LoggerInterface`)、リポジトリ (`UserRepositoryInterface`)、ユースケース (`CreateUserUsecase` など）を登録します。
 
-```typescript
-    // 例: infrastructure/di/container.config.ts
+    ```typescript
+    // 例: config/container.config.ts
+    import 'reflect-metadata';
+    import { drizzle } from 'drizzle-orm/node-postgres';
+    import { Pool } from 'pg';
     import { container } from 'tsyringe';
-    import { PrismaClient } from '@prisma/client'; // 仮のDBクライアント
-    import { OpenAIClient } from '@/infrastructure/ai/providers/openai';
-    import { IProjectRepository } from '@/domain/repositories/IProjectRepository';
-    import { ProjectRepository } from '@/infrastructure/database/repositories/ProjectRepository';
-    import { IAiService } from '@/application/services/IAiService';
-    import { AiService } from '@/infrastructure/ai/AiService';
+    import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
+    import { ENV } from '@/config/environment';
+    import {
+      UserRepositoryInterface,
+      UserRepositoryToken,
+    } from '@/domain/repositories/user.repository.interface';
+    import { UserRepository } from '@/infrastructure/database/repositories/user.repository';
+    import { ConsoleLogger } from '@/shared/logger/console.logger';
+    import { LoggerInterface } from '@/shared/logger/logger.interface';
+    import { LoggerToken } from '@/shared/logger/logger.token';
+    // ... 他のユースケースやリポジトリのインポート ...
 
-    // --- シングルトンインスタンスの登録 ---
-    container.register<PrismaClient>(PrismaClient, { useValue: new PrismaClient() });
-    container.register<OpenAIClient>(OpenAIClient, {
-      useValue: new OpenAIClient(process.env.OPENAI_API_KEY!),
+    // --- データベース接続 (Singleton) ---
+    const pool = new Pool({ connectionString: ENV.DATABASE_URL });
+    const db = drizzle(pool);
+    container.register<typeof db>('Database', { useValue: db });
+
+    // --- Logger ---
+    container.register<LoggerInterface>(LoggerToken, {
+      useClass: ConsoleLogger,
     });
 
-    // --- インターフェースと実装の紐付け (トークン使用) ---
-    // リポジトリなど、実装が変わりうるものはトークンを使うことが多い
-    container.register<IProjectRepository>('IProjectRepository', {
-      useClass: ProjectRepository,
+    // --- リポジトリ (トークンを使用) ---
+    container.register<UserRepositoryInterface>(UserRepositoryToken, {
+      useClass: UserRepository,
     });
-    container.register<IAiService>('IAiService', { useClass: AiService });
+    // ... 他のリポジトリ登録 ...
 
-    export { container };
+    // --- ユースケース (具象クラスを直接登録) ---
+    container.register(CreateUserUsecase, { useClass: CreateUserUsecase });
+    // ... 他のユースケース登録 ...
+
+    export default container;
     ```
 
 2.  **クラスへの適用**:
     -   注入可能にするクラスには `@injectable()` デコレータを付与します。
-    -   依存性を注入する箇所（コンストラクタインジェクション推奨）では `@inject(トークン)` デコレータを使用します。
+    -   依存性を注入する箇所（コンストラクタインジェクション推奨）では `@inject(トークン)` または `@inject(クラス名)` デコレータを使用します。
 
-```typescript
-    // 例: application/usecases/project/CreateProjectUsecase.ts
+    ```typescript
+    // 例: application/usecases/user/create-user.usecase.ts
     import { inject, injectable } from 'tsyringe';
-    import { IProjectRepository } from '@/domain/repositories/IProjectRepository';
-    import { Project } from '@/domain/models/entities/Project';
-    import { Result, ok, err } from 'neverthrow';
-    import { ApplicationError } from '@/shared/errors/ApplicationError';
+    import { ok, err } from 'neverthrow';
+    import { UserDTO } from '@/application/dtos/user.dto';
+    import {
+      UserRepositoryInterface,
+      UserRepositoryToken,
+    } from '@/domain/repositories/user.repository.interface';
+    import { User } from '@/domain/models/user/user.entity';
+    import { UserName } from '@/domain/models/user/user-name.vo';
+    import { Email } from '@/shared/value-objects/email.vo';
+    import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+    import { hashPassword } from '@/shared/utils/security/password.utils';
+    import { AppResult } from '@/shared/types/common.types';
+    import { AppError } from '@/shared/errors/app.error';
+    import { ErrorCode } from '@/shared/errors/error-code.enum';
+    import { LoggerInterface } from '@/shared/logger/logger.interface';
+    import { LoggerToken } from '@/shared/logger/logger.token';
+    import { UserMapper } from '@/infrastructure/mappers/user.mapper';
+
+    // ... CreateUserInput 型定義 ...
 
 @injectable()
-    export class CreateProjectUsecase {
-  constructor(
-        @inject('IProjectRepository') private projectRepository: IProjectRepository
+    export class CreateUserUsecase {
+      constructor(
+        @inject(UserRepositoryToken) private readonly userRepository: UserRepositoryInterface,
+        @inject(LoggerToken) private readonly logger: LoggerInterface
       ) {}
 
-      async execute(userId: string, name: string): Promise<Result<Project, ApplicationError>> {
-        try {
-          const project = Project.create(userId, name); // ドメインロジックで生成
-          const saveResult = await this.projectRepository.save(project);
-          if (saveResult.isErr()) {
-            // リポジトリからのエラーをラップして返す
-            return err(new ApplicationError('Failed to save project', { cause: saveResult.error }));
-          }
-          return ok(saveResult.value);
-        } catch (error) {
-          // ドメイン層での予期せぬエラーなど
-          return err(new ApplicationError('Unexpected error creating project', { cause: error }));
+      async execute(input: CreateUserInput): Promise<AppResult<UserDTO>> {
+        // 1. Input Validation & Value Object Creation (例: UserName, Email)
+        // ... zod/VO を使ったバリデーション ...
+        // エラー時は err(new AppError(ErrorCode.ValidationError, ...)) を返す
+
+        // 2. Password Hashing
+        const hashedPasswordResult = await hashPassword(input.passwordPlainText, this.logger);
+        if (hashedPasswordResult.isErr()) {
+          this.logger.error(...);
+          return err(new AppError(ErrorCode.PasswordHashingFailed, ..., { cause: hashedPasswordResult.error }));
         }
-  }
-}
-```
+        const passwordHashVoResult = PasswordHash.create(hashedPasswordResult.value);
+        // ... passwordHashVoResult のエラーハンドリング ...
+
+        // 3. Domain Entity Creation
+        const userCreateResult = User.create({ name: nameVo, email: emailVo, passwordHash: passwordHashVo });
+        if (userCreateResult.isErr()) {
+          this.logger.error(...);
+          return err(new AppError(ErrorCode.DomainRuleViolation, ..., { cause: userCreateResult.error }));
+        }
+        const userEntity = userCreateResult.value;
+
+        // 4. Repository Interaction (save)
+        const saveResult = await this.userRepository.save(userEntity);
+        if (saveResult.isErr()) {
+          this.logger.error(...);
+          // エラーは既に AppError か InfrastructureError なので、そのまま返すか、必要に応じてラップ
+          return err(saveResult.error);
+        }
+
+        this.logger.info({
+          message: 'User created successfully',
+          operation: 'createUser',
+          userId: userEntity.id.value,
+        });
+
+        // 5. Output Mapping (to DTO)
+        const output = UserMapper.toDTO(userEntity);
+
+        return ok(output);
+      }
+    }
+    ```
 
 3.  **スコープ管理**:
     -   `@singleton()`: アプリケーション全体で単一のインスタンス。DBクライアントや設定オブジェクトなどに使用。
@@ -141,438 +199,163 @@ APIエンドポイントの設計においては、以下の原則に従いま�
     -   **リクエストスコープ**: Next.js の API Routes や Server Actions ごとにインスタンスを生成したい場合（例: リクエスト固有のユーザー情報、トランザクション管理）、`tsyringe` の子コンテナ (`container.createChildContainer()`) をリクエスト処理の開始時に生成し、終了時に破棄するパターンを検討します。これにより、リクエスト固有の依存性（例: 認証済みユーザー情報オブジェクト）を安全に注入できます。
 
 4.  **API Routes / Server Actions での使用**:
-    -   各ハンドラー関数の冒頭でDIコンテナから必要なユースケースやサービスを取得します。
+    -   各ハンドラー関数でDIコンテナから必要なユースケースを取得します。
+    -   **`shared/utils/api.utils.ts` の `processApiRequest` を使用することで、リクエスト処理、バリデーション、ハンドラー実行、レスポンス生成を簡潔に記述できます。**
 
    ```typescript
-    // 例: app/api/projects/route.ts
-    import { container } from '@/infrastructure/di/container.config';
-    import { CreateProjectUsecase } from '@/application/usecases/project/CreateProjectUsecase';
-    import { NextResponse } from 'next/server';
-import { z } from 'zod';
-    import { Result } from 'neverthrow';
-    import { handleApiError } from '@/presentation/utils/handleApiError'; // エラーハンドリング用ユーティリティ
+    // 例: app/api/users/route.ts
+    import 'reflect-metadata';
+    import { NextRequest } from 'next/server';
+    import { z } from 'zod';
+    import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
+    import container from '@/config/container.config';
+    import { processApiRequest } from '@/shared/utils/api.utils'; // ★ インポート
 
-    const createProjectSchema = z.object({
-      userId: z.string(),
-      name: z.string().min(1),
+    // Zod スキーマで入力データを定義・検証
+    const createUserSchema = z.object({
+      name: z.string().min(1, 'Name is required').max(50),
+      email: z.string().email('Invalid email format'),
+      passwordPlainText: z.string().min(8, 'Password must be at least 8 characters'),
     });
 
-    export async function POST(request: Request) {
-      const body = await request.json();
-      const validation = createProjectSchema.safeParse(body);
+    export async function POST(request: NextRequest) {
+      // ★ processApiRequest を使用して処理を委譲
+      return processApiRequest(request, {
+        bodySchema: createUserSchema, // Zod スキーマでボディを検証
+        successStatus: 201, // 成功時のステータスコード
+        handler: async (createUserDto) => {
+          // ★ DI コンテナからユースケースを取得
+          const createUserUsecase = container.resolve(CreateUserUsecase);
+          // ★ ユースケースを実行 (createUserDto は検証済みのデータ)
+          const result = await createUserUsecase.execute(createUserDto);
 
-      if (!validation.success) {
-      return NextResponse.json(
-          { error: 'Invalid input', details: validation.error.errors },
-          { status: 400 }
-        );
-      }
+          // ★ AppResult のエラーをスローすると processApiRequest が handleApiError で処理
+          if (result.isErr()) {
+            throw result.error;
+          }
 
-      const { userId, name } = validation.data;
-
-      // ★ DIコンテナからユースケースを取得
-      const createProjectUsecase = container.resolve(CreateProjectUsecase);
-
-      const result: Result<any, any> = await createProjectUsecase.execute(userId, name);
-
-      return result.match(
-        (project) => NextResponse.json(project, { status: 201 }),
-        (error) => handleApiError(error) // ★ 標準エラーハンドラーで処理
-      );
+          // ★ 成功時のデータを返す
+          return result.value;
+        },
+      });
     }
     ```
 
 ### リポジトリの実装とエラーハンドリング
 
-リポジトリインターフェースは `domain/repositories` に、その実装は `infrastructure/database/repositories` に配置され、`BaseRepository` クラスを通じて共通操作が提供されます。
+リポジトリインターフェースは `domain/repositories` に、その実装は `infrastructure/database/repositories` に配置され、**`infrastructure/database/repositories/base.repository.ts` の `BaseRepository` クラスを継承することで、共通のCRUD操作が提供されます。**
 
-各リポジトリメソッドの標準動作として以下が定義されています：
+各リポジトリメソッドの標準動作として以下が定義されています（`BaseRepository` により保証）：
 
-1. **`findById` / `findByXXX` メソッド**: 
-   - エンティティが見つからない場合は `ok(null)` を返します。これは「見つからない」ことは正常系として扱い、呼び出し側でnullチェックを行うことを意味します。
-   - 技術的エラー（DB接続失敗など）の場合のみ `err(new InfrastructureError(...))` を返します。
+1. **`findById` / `findByEmail` 等の検索メソッド**: 
+   - **戻り値**: `Promise<AppResult<TDomain | null>>`
+   - エンティティが見つからない場合は `ok(null)` を返します。
+   - DB接続エラーなどの技術的エラーの場合は `err(InfrastructureError)` を返します。
+   - マッピングエラー（DBレコードからドメインエンティティへの変換失敗）の場合も `err(InfrastructureError)` を返します。
 
 2. **`delete` メソッド**:
+   - **戻り値**: `Promise<AppResult<void>>`
    - 冪等性を保証するため、対象エンティティが存在しない場合でも **成功 (`ok(undefined)`)** として扱います。
-   - これにより、同一IDに対する複数回の削除操作が安全に行えます。
-   - 技術的エラー（DB接続失敗など）の場合のみ `err(new InfrastructureError(...))` を返します。
+   - DB接続エラーなどの技術的エラーの場合は `err(InfrastructureError)` を返します。
 
 3. **`save` メソッド（作成/更新）**:
+   - **戻り値**: `Promise<AppResult<void>>`
    - ユニーク制約違反（例: 既存のメールアドレスで新規ユーザー作成）の場合：
-     - `AppError(ErrorCode.ConflictError, ...)` を返します。
-     - エラーは `withMetadata()` メソッドを使用し、競合したフィールド名など、詳細情報を含めます。
-   - 技術的エラー（DB接続失敗など）の場合は `err(new InfrastructureError(...))` を返します。
-
-これらの挙動は `BaseRepository` クラスで標準化されており、子クラスでオーバーライドしない限り一貫して適用されます。
+     - **`err(AppError)` を返し、エラーコードは `ErrorCode.ConflictError` が設定されます。**
+     - `BaseRepository` 内で、DBエラー（特定の `error.code`）を検知し、`ConflictError` に変換します。
+   - マッピングエラー（ドメインエンティティからDBレコード形式への変換失敗）の場合は `err(InfrastructureError)` を返します。
+   - DB接続エラーなどの技術的エラーの場合は `err(InfrastructureError)` を返します。
 
 #### エラーコンテキスト情報の追加
 
-`AppError` クラスは、エラーデバッグに役立つコンテキスト情報（メタデータ）を追加するための便利なメソッドを提供します：
+`AppError` クラスとそのサブクラス (`InfrastructureError`, `ValidationError`) は、エラーデバッグに役立つコンテキスト情報（メタデータ）を追加するためのメソッドを提供します。
 
 ```typescript
-// エンティティ関連エラーにコンテキストを追加する例
-throw new AppError(ErrorCode.NotFound, 'User not found')
-  .withEntityContext('user', userId, 'find');
+import { AppError, InfrastructureError, ValidationError, ErrorCode } from '@/shared/errors';
 
-// カスタムメタデータの追加例
-throw new AppError(ErrorCode.ValidationError, 'Invalid input')
-  .withMetadata({ 
-    field: 'email', 
-    value: inputEmail,
-    validationRule: 'email-format'
-  });
+// 例1: リポジトリでの InfrastructureError
+return err(
+  new InfrastructureError(
+    ErrorCode.DatabaseError,
+    `Failed to find user by email ${email.value}`,
+    { cause: dbError }
+  ).withMetadata({ operation: 'findByEmail', email: email.value })
+);
+
+// 例2: ユースケースでの ValidationError
+return err(
+  new ValidationError('Invalid user name format', {
+    cause: nameResult.error, // ZodError など
+    value: input.name,
+  }).withEntityContext('user', input.userId ?? 'unknown', 'updateProfile')
+);
+
+// 例3: 既存のエラーにコンテキストを追加
+if (saveResult.isErr()) {
+  return err(saveResult.error.withMetadata({ step: 'saveUser' }));
+}
 ```
 
-ロギング時にこれらのメタデータを含めることで、エラーの原因分析が容易になります。
+ロガー (`LoggerInterface`) は、エラーオブジェクトを第2引数に受け取った場合、自動的に `cause` や `metadata` をログに出力するように実装されています (例: `ConsoleLogger`)。
 
 ### ロギングの実装とベストプラクティス
 
-アプリケーション全体で一貫したロギングを実現するために、`LoggerInterface` を中心としたロギング機構を採用しています。このインターフェースはDIコンテナを通じて注入され、各クラスで一貫したロギング方法を提供します。
+アプリケーション全体で一貫したロギングを実現するために、**`shared/logger/logger.interface.ts` で定義された `LoggerInterface`** を中心としたロギング機構を採用しています。**`shared/logger/logger.token.ts` の `LoggerToken`** を使用して、具体的なロガー実装（例: `shared/logger/console.logger.ts` の `ConsoleLogger`）がDIコンテナを通じて注入されます。
 
 ##### ロガーの構造
 
-1. **インターフェース定義**:
-   ```typescript
-   // @/shared/logger/logger.interface.ts
-   export interface LoggerInterface {
-     info(data: LogData | string): void;
-     warn(data: LogData | string): void;
-     error(data: LogData | string, error?: unknown): void;
-     debug(data: LogData | string): void;
-   }
-   
-   export interface LogData {
-     message: string;
-     [key: string]: unknown; // 任意の構造化データ
-   }
-   ```
+1.  **インターフェース定義 (`LoggerInterface`)**: `info`, `warn`, `error`, `debug` の各メソッドを定義します。`error` メソッドはエラーオブジェクト (`unknown`) を第二引数として受け取ることができます。
 
-2. **DI設定**:
-   - `LoggerToken` シンボルを使用してDIコンテナに登録
-   - デフォルト実装として `ConsoleLogger` クラスを提供
-   ```typescript
-   // config/container.config.ts
-   container.register<LoggerInterface>(LoggerToken, {
-     useClass: ConsoleLogger,
-   });
-   ```
+2.  **DI設定**: `config/container.config.ts` で `LoggerToken` に対して具体的なロガー実装（例: `ConsoleLogger`）を登録します。
 
-3. **ロガーのインジェクション**:
-   ```typescript
-   @injectable()
-   export class SomeService {
-     constructor(
-       @inject(LoggerToken) private readonly logger: LoggerInterface
-     ) {}
-     
-     someMethod() {
-       this.logger.info({
-         message: '操作が成功しました',
-         operation: 'someMethod',
-         additionalData: 'データ'
-       });
-     }
-   }
-   ```
+3.  **利用**: 各クラス（Usecase, Repository, Service など）のコンストラクタで `LoggerInterface` を `@inject(LoggerToken)` で注入し、ログ出力に使用します。
 
-##### ロギングのガイドライン
+    ```typescript
+    import { inject, injectable } from 'tsyringe';
+    import { LoggerInterface, LoggerToken } from '@/shared/logger';
 
-1. **直接 `console.*` を使用しない**：
-   - コード内で直接 `console.log`, `console.error` などを使用せず、必ず `LoggerInterface` 経由でログを出力します。
-   - 旧式の `/infrastructure/utils/logger.ts` ユーティリティも非推奨であり、代わりにDIコンテナから注入された `LoggerInterface` を使用してください。
-   - これにより、環境に応じたログレベルのフィルタリングや、構造化ログの一貫した形式が保証されます。
+@injectable()
+    export class MyService {
+      constructor(@inject(LoggerToken) private readonly logger: LoggerInterface) {}
 
-2. **クラス作成時に `LoggerInterface` をインジェクトする**:
-   - サービス、リポジトリ、ユースケースなどのクラスを作成する際は、常にコンストラクタで `LoggerInterface` をインジェクトします。
-   - 特にエラー処理やデータアクセスを行うクラスでは、ロガーは必須の依存関係です。
+      doSomething(input: string) {
+        this.logger.info({ message: 'Starting doSomething', input });
+        try {
+          // ... 処理 ...
+          this.logger.debug({ message: 'Intermediate step successful', data: ... });
+          // ...
+        } catch (error) {
+          this.logger.error({ message: 'Failed to doSomething', input }, error);
+          // ... エラーハンドリング ...
+        }
+      }
+    }
+    ```
 
-3. **構造化ログを優先し、標準フォーマットに従う**：
-   - 単純な文字列より、構造化オブジェクトを使ったログを優先します。
-   - すべてのログは以下の標準フォーマットに従います：
-   
-   ```typescript
-   interface StandardLogFormat {
-     // 必須フィールド
-     message: string;           // ログの主要なメッセージ
-     operation: string;         // 実行中の操作 (メソッド名やイベント名)
-     
-     // 状況に応じて推奨されるフィールド
-     entityType?: string;       // 操作対象のエンティティタイプ (User, Project など)
-     entityId?: string;         // 操作対象のID (userIdなど)
-     traceId?: string;          // 分散トレーシングID (複数のサービスやリクエストをまたぐ場合)
-     duration?: number;         // 操作にかかった時間 (ミリ秒)
-     requestId?: string;        // HTTPリクエストID
-     
-     // その他のコンテキスト情報
-     [key: string]: unknown;    // 操作に関連するその他の有用な情報
-   }
-   ```
-   
-   ログ出力例：
-   ```typescript
-   // 基本的な使用例
-   this.logger.info({
-     message: 'ユーザーを作成しました',
-     operation: 'createUser',
-     entityType: 'User',
-     entityId: user.id.value,
-     email: user.email.value    // コンテキスト固有の追加情報
-   });
-   
-   // エラーログの例
-   this.logger.error({
-     message: 'ユーザー作成に失敗しました',
-     operation: 'createUser',
-     entityType: 'User',
-     email: input.email,
-     errorCode: ErrorCode.ValidationError
-   }, error); // エラーオブジェクトを第2引数に渡す
-   
-   // パフォーマンスログの例
-   this.logger.info({
-     message: 'データベース操作が完了しました',
-     operation: 'findUsers',
-     entityType: 'User',
-     duration: elapsedTimeMs,
-     count: users.length,
-     filters: JSON.stringify(queryFilters)
-   });
-   ```
-   
-   注意事項：
-   - 個人を特定できる情報（PII）はログに含めないでください（パスワード、トークンなど）
-   - 大きなオブジェクトを完全にログに記録することは避け、必要な情報のみを抽出してください
-   - エラーログでは、必ずエラーオブジェクトを第2引数として渡し、スタックトレースを保持してください
+##### ログレベルの使い分け
 
-4. **適切なログレベルの使用**：
-   以下に各ログレベルの詳細な定義と使用ガイドラインを示します：
-   
-   - **info**:
-     - システムの正常な動作状態を表すログ
-     - ユーザーやその他のエンティティの作成・更新・削除など、重要なビジネスイベント
-     - API呼び出しの開始と完了
-     - ユーザー認証やセッション関連イベント
-     - バッチ処理やスケジュールタスクの開始と完了
-     - 例：`"ユーザーが作成されました"`, `"バッチ処理が完了しました (100件処理)"`
-   
-   - **warn**:
-     - 潜在的な問題や異常だが、アプリケーションは依然として機能している状態
-     - 非推奨APIやメソッドの使用
-     - パフォーマンス問題（遅いクエリ、高いCPU使用率など）
-     - ビジネスルール違反（重複リクエスト、特定の制限に近づいた場合など）
-     - 自動リトライが発生した場合
-     - 例：`"クエリ実行に5秒以上かかりました"`, `"非推奨のAPIエンドポイントが呼び出されました"`
-   
-   - **error**:
-     - アプリケーションやシステムコンポーネントが正常に機能できない状態
-     - 例外やエラー（特に未処理や予期しないもの）
-     - サードパーティサービスやデータベースへの接続失敗
-     - データ整合性違反
-     - ビジネスクリティカルな操作の失敗
-     - 例：`"データベース接続に失敗しました"`, `"ユーザー作成中に例外が発生しました"`
-   
-   - **debug**:
-     - 詳細なシステム動作情報（開発環境やトラブルシューティング時のみ有効）
-     - 詳細な変数値やオブジェクトの状態
-     - メソッドの入力/出力値
-     - 内部処理のフロー
-     - パフォーマンス測定の詳細
-     - 例：`"ユーザーリポジトリ呼び出し - 入力パラメータ: {...}"`, `"処理時間: 45ms"`
+-   **`debug`**: 開発中の詳細なトレース情報。本番環境では通常出力しない。
+-   **`info`**: 通常の操作ログ、リクエストの開始/終了、重要な状態変化など。
+-   **`warn`**: 予期しないが、即座にエラーではない状況。軽微な設定ミス、非推奨APIの使用、リトライ可能な一時的なエラーなど。
+-   **`error`**: 処理の失敗、例外のキャッチ、外部サービスの接続不可など、対応が必要な問題。
 
-5.  **一貫したコンテキスト情報**：
-   - エンティティ操作には `entityType`, `entityId`, `operation` などの情報を含めます。
-   - ユーザー関連操作には `userId` を含めます（個人情報は含めない）。
-   - API関連では `endpoint`, `method`, `statusCode` などを含めます。
+##### 構造化ログ
 
-6.  **エラーログには詳細情報を含める**：
-   - `logger.error()` の第2引数にエラーオブジェクトを渡し、スタックトレースを保持します。
-   - `AppError` のメタデータを活用して、エラーの詳細情報をログに含めます。
-   ```typescript
-   try {
-     // 何らかの操作
-   } catch (error) {
-     this.logger.error({
-       message: 'ユーザー作成中にエラーが発生しました',
-       userId: request.email,
-       operation: 'createUser'
-     }, error); // エラーオブジェクトを第2引数に渡す
-     
-     throw new AppError(ErrorCode.InternalServerError, 'ユーザー作成中にエラーが発生しました', {
-       cause: error instanceof Error ? error : undefined
-     });
-   }
-   ```
-
-7. **ヘルパー関数を使用する場合もロガーを渡す**:
-   - ユーティリティやヘルパー関数を作成する場合は、パラメータとして `logger` を受け取るようにします。
-   ```typescript
-   export async function someHelper(data: SomeData, logger: LoggerInterface): Promise<Result<void, Error>> {
-     try {
-       // 実装
-       logger.info({
-         message: 'ヘルパー関数が成功しました',
-         operation: 'someHelper'
-       });
-       return ok(undefined);
-     } catch (error) {
-       logger.error({
-         message: 'ヘルパー関数でエラーが発生しました',
-         operation: 'someHelper'
-       }, error);
-       return err(error);
-     }
-   }
-   ```
-
-#### 実装例（ユースケースクラス）
+可能な限り **構造化ログ** (`LogData` オブジェクト形式) を使用します。これにより、ログの解析や集計が容易になります。
 
 ```typescript
-@injectable()
-export class CreateUserUsecase {
-  constructor(
-    @inject(UserRepositoryToken)
-    private readonly userRepository: UserRepositoryInterface,
-    @inject(LoggerToken)
-    private readonly logger: LoggerInterface
-  ) {}
+// 悪い例
+this.logger.error('Failed to process user ' + userId + ' due to: ' + error.message);
 
-  async execute(input: CreateUserInput): Promise<Result<UserDTO, AppError>> {
-    // Email検証
-    const emailResult = Email.create(input.email);
-    if (emailResult.isErr()) {
-      this.logger.warn({
-        message: `Invalid email format: ${input.email}`,
-        email: input.email,
-        operation: 'createUser'
-      });
-      
-      return err(
-        new AppError(ErrorCode.ValidationError, `Invalid email format: ${emailResult.error.message}`)
-      );
-    }
-    
-    // ユーザー作成ロジック
-    
-    try {
-      // 新しいユーザーの保存
-      const saveResult = await this.userRepository.save(newUser);
-      if (saveResult.isErr()) {
-        this.logger.error({
-          message: `Failed to save new user: ${input.email}`,
-          email: input.email,
-          operation: 'createUser'
-        }, saveResult.error);
-        
-        return err(
-          new AppError(ErrorCode.DatabaseError, 'Failed to create user account', {
-            cause: saveResult.error,
-          })
-        );
-      }
-      
-      this.logger.info({
-        message: `User created successfully: ${input.email}`,
-        userId: newUser.id.value,
-        email: input.email,
-        operation: 'createUser'
-      });
-      
-      // 成功
-      return ok(UserMapper.toDTO(newUser));
-    } catch (error) {
-      this.logger.error({
-        message: 'Unexpected error during user creation',
-        email: input.email,
-        operation: 'createUser'
-      }, error);
-      
-      return err(
-        new AppError(ErrorCode.InternalServerError, 'An unexpected error occurred', {
-          cause: error instanceof Error ? error : undefined,
-        })
-      );
-    }
-  }
-}
+// 良い例 (構造化ログ)
+this.logger.error({
+  message: 'Failed to process user',
+  userId: userId,
+  operation: 'processUserData'
+}, error);
 ```
 
-#### 実装例（リポジトリクラス）
-
-```typescript
-@injectable()
-export class UserRepository implements UserRepositoryInterface {
-  constructor(
-    @inject('Database') private readonly db: NodePgDatabase,
-    @inject(LoggerToken) private readonly logger: LoggerInterface
-  ) {}
-
-  async findById(id: UserId): Promise<Result<User | null, InfrastructureError>> {
-    try {
-      this.logger.debug({
-        message: 'ユーザー検索を実行します',
-        userId: id.value,
-        operation: 'findById'
-      });
-      
-      // DB操作
-      
-      if (!user) {
-        this.logger.info({
-          message: 'ユーザーが見つかりませんでした',
-          userId: id.value,
-          operation: 'findById'
-        });
-        return ok(null);
-      }
-      
-      return ok(user);
-    } catch (error) {
-      this.logger.error({
-        message: 'ユーザー検索に失敗しました',
-        userId: id.value,
-        operation: 'findById'
-      }, error);
-      
-      return err(
-        new InfrastructureError(`Failed to find user by ID: ${id.value}`, {
-          cause: error instanceof Error ? error : undefined
-        })
-      );
-    }
-  }
-}
-```
-
-### エラーハンドリング (`neverthrow` 利用)
-
-サーバーサイドにおけるエラーハンドリングは、アプリケーションの堅牢性と保守性を高める上で非常に重要です。AiStartプロジェクトでは、[04_implementation_rules.md](../04_implementation_rules.md) および [05_type_definitions.md](../05_type_definitions.md) で定義されたエラーハンドリング方針に基づき、以下の原則を採用しています。
-
-1.  **`Result` 型による明示的なエラー処理**:
-    -   `neverthrow` ライブラリの `Result<T, E>` 型を全面的に利用し、成功と失敗のパスを明確に分離します。
-    -   失敗する可能性のある操作（DBアクセス、外部API呼び出し、ビジネスルール検証、バリデーションなど）を行う関数は、原則として `Promise<Result<T, AppError>>` または `Result<T, AppError>` を返します。
-    -   `T` は成功時の値の型、`E` は失敗時のエラー型であり、原則として後述する `AppError` またはそのサブクラスのインスタンスが入ります。
-
-2.  **カスタムエラークラス (`AppError` 体系) による分類**:
-    -   アプリケーション固有のエラー状況を体系的に表現するために、`AppError` (`shared/errors/app.error.ts`) を基底クラスとするカスタムエラー階層を定義します。
-    -   具体的なエラータイプとして、入力値の検証エラーを示す `ValidationError` (`shared/errors/validation.error.ts`)、リソースが見つからない場合の `NotFoundError` (`shared/errors/not-found.error.ts`)、データ競合時の `ConflictError` (`shared/errors/conflict.error.ts`)、認証・認可エラーを示す `UnauthorizedError` (`shared/errors/unauthorized.error.ts`) などを用意します。
-    -   各エラークラスは、エラーコード (`code`) や追加情報 (`metadata`) を保持し、エラーの原因や種類を明確にします。
-    -   各レイヤー（ドメイン、アプリケーション、インフラストラクチャ）で発生したエラーは、この `AppError` 体系の適切なクラスのインスタンスとして生成され、`err()` でラップして返されます。
-
-3.  **レスポンスマッパーによるエラー集約と HTTP レスポンス生成**:
-    -   API Routes (`app/api/...`) 層でのエラー処理の最終段階として、UseCase などから返された `Result<T, AppError>` オブジェクトを HTTP レスポンスに変換する役割は、専用のレスポンスマッパーユーティリティ (`infrastructure/web/utils/response-mapper.ts` の `mapResultToApiResponse` など) が担当します。
-    -   レスポンスマッパーは、受け取った `Result` が成功 (`ok`) か失敗 (`err`) かを判断します。
-    -   成功 (`ok`) の場合は、成功時のデータを含む JSON レスポンス（または No Content）を適切なステータスコード (例: 200 OK, 201 Created, 204 No Content) と共に生成します。
-    -   失敗 (`err`) の場合は、含まれる `AppError` インスタンスの種類 (`instanceof` で判定) を識別します。
-    -   エラーの種類に応じて、適切な HTTP ステータスコード (例: `ValidationError` なら 400, `NotFoundError` なら 404, `ConflictError` なら 409, `UnauthorizedError` なら 401, それ以外は 500 など) と、標準化されたエラー情報（エラーコード、メッセージ、詳細など）を含む JSON レスポンスボディを生成します。
-    -   これにより、API Routes のハンドラー関数から、エラーの種類に応じた具体的なレスポンス生成ロジックを分離し、コードの重複を排除し、一貫性を保ちます。
-
-4.  **`handleApiRequest` ユーティリティによる定型処理の集約**:
-    -   API Routes におけるリクエスト処理の定型的な流れ（リクエストボディのパースとバリデーション、ロギング、UseCase/QueryService の呼び出し、レスポンスマッパーの適用による最終レスポンス生成）は、`handleApiRequest` (`shared/utils/api.utils.ts`) ユーティリティ関数に集約されます。
-    -   API Route ハンドラーは、`handleApiRequest` にビジネスロジックを実行する非同期関数（UseCase/QueryService を呼び出し `Result<T, AppError>` を返す部分）と、成功時のステータスコードを渡すだけで済みます。
-    -   `handleApiRequest` が内部でレスポンスマッパー (`mapResultToApiResponse`) を呼び出し、成功・失敗に応じた最終的な `NextResponse` を返します。
-
-このエラーハンドリング戦略により、エラーの発生源から API レスポンスまでの流れが明確になり、各層の責務が分離され、一貫性のあるエラー処理とレスポンス生成が実現されます。
-具体的なコード例については、[`docs/code_examples/07_server_implementation_examples.md`](./code_examples/07_server_implementation_examples.md) のエラーハンドリングセクションを参照してください。
+ロガーの実装（例: `ConsoleLogger`）は、エラーオブジェクトが渡された場合、その `message`, `stack`, `cause`, `metadata` などの詳細情報もログに含めるようにします。
 
 ## APIエンドポイント一覧
 
