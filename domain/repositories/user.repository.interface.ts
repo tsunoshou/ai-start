@@ -1,8 +1,5 @@
-import { Result } from 'neverthrow';
-
 import { UserId } from '@/domain/models/user/user-id.vo';
 import { User } from '@/domain/models/user/user.entity';
-import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 import { AppResult } from '@/shared/types/common.types';
 import { Email } from '@/shared/value-objects/email.vo';
 
@@ -15,7 +12,7 @@ import { BaseRepositoryInterface } from './base.repository.interface'; // Import
  * extending the base repository interface with user-specific methods.
  */
 export interface UserRepositoryInterface extends BaseRepositoryInterface<UserId, User> {
-  // findById, save, delete methods are inherited from BaseRepositoryInterface
+  // findById, save methods are inherited from BaseRepositoryInterface
 
   /**
    * Finds a user by their email address.
@@ -24,8 +21,11 @@ export interface UserRepositoryInterface extends BaseRepositoryInterface<UserId,
    */
   findByEmail(email: Email): Promise<AppResult<User | null>>;
 
-  /** Deletes an entity by its ID. */
-  delete(id: UserId): Promise<Result<void, InfrastructureError>>;
+  /**
+   * Deletes an entity by its ID.
+   * Overrides the return type to be AppResult consistent with BaseRepository implementation.
+   */
+  delete(id: UserId): Promise<AppResult<void>>;
 
   /** Finds all user entities, possibly with pagination. */
   findAll(options?: { limit?: number; offset?: number }): Promise<AppResult<User[]>>;
