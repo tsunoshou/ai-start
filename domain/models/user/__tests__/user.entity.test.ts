@@ -123,10 +123,10 @@ describe('User Entity', () => {
       // Prepare VOs for other users
       const email2 = Email.create('another@example.com')._unsafeUnwrap();
       const name2 = UserName.create('User Two')._unsafeUnwrap();
-      const hash2 = PasswordHash.create('hash2')._unsafeUnwrap();
+      const hash2 = PasswordHash.create('validHashPlaceholder2')._unsafeUnwrap();
       const email3 = Email.create('user3@example.com')._unsafeUnwrap();
       const name3 = UserName.create('User Three')._unsafeUnwrap();
-      const hash3 = PasswordHash.create('hash3')._unsafeUnwrap();
+      const hash3 = PasswordHash.create('validHashPlaceholder3')._unsafeUnwrap();
 
       user1SameId = User.reconstruct({
         id: user1.id, // Same ID

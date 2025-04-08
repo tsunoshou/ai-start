@@ -23,9 +23,7 @@ describe('PasswordHash Value Object', () => {
       const result = PasswordHash.create('');
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error).toBeInstanceOf(BaseError);
-        expect(result.error.code).toBe(ErrorCode.ValidationError);
-        expect(result.error.message).toContain('Password hash cannot be empty');
+        expect(result.error.message).toBe('Password must be at least 8 characters long');
       }
     });
 

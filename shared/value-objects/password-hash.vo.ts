@@ -5,7 +5,9 @@ import { ValidationError } from '@/shared/errors/validation.error';
 
 // Schema for password hash validation (non-empty string)
 // In a real app, might add length checks or format checks depending on the hashing algorithm output
-const PASSWORD_HASH_SCHEMA = z.string().min(1, { message: 'Password hash cannot be empty.' });
+const PASSWORD_HASH_SCHEMA = z
+  .string()
+  .min(8, { message: 'Password must be at least 8 characters long' });
 
 /**
  * @class PasswordHash

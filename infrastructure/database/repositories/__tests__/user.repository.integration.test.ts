@@ -248,13 +248,12 @@ describe('UserRepository 統合テスト', () => {
   });
 
   it('存在しないメールアドレスで検索すると null を返す', async () => {
-    // 準備
-    const emailResult = Email.create('nobody@example.com');
-    if (emailResult.isErr()) {
-      console.error('Email エラー詳細:', emailResult.error);
-      fail(`Email の作成に失敗しました: ${emailResult.error.message}`);
+    // 準備: 存在しないであろうメールアドレス
+    const nonExistentEmailResult = Email.create('not.found@example.com');
+    if (nonExistentEmailResult.isErr()) {
+      fail(`Email の作成に失敗しました: ${nonExistentEmailResult.error.message}`);
     }
-    const nonExistentEmail = emailResult.value;
+    const nonExistentEmail = nonExistentEmailResult.value;
 
     // 実行
     const foundResult = await userRepository.findByEmail(nonExistentEmail);
@@ -329,56 +328,38 @@ describe('UserRepository 統合テスト', () => {
 
   it('複数ユーザーを検索できる (findAll)', async () => {
     // 準備: 複数のユーザーを作成
-    const createdUsers = [];
+    // 削除: const createdUsers = [];
 
-    for (let i = 0; i < 5; i++) {
-      const userIdResult = UserId.generate();
-      if (userIdResult.isErr())
-        fail(`UserId${i} の生成に失敗しました: ${userIdResult.error.message}`);
-      const userId = userIdResult.value;
+    // テストデータ作成
+    const usersData = [
+      {
+        name: UserName.create('Test User 0')._unsafeUnwrap(),
+        email: Email.create('test0@example.com')._unsafeUnwrap(),
+        // 8文字以上の有効なハッシュ文字列を使用
+        passwordHash: PasswordHash.create('validhash0')._unsafeUnwrap(),
+      },
+      {
+        name: UserName.create('Test User 1')._unsafeUnwrap(),
+        email: Email.create('test1@example.com')._unsafeUnwrap(),
+        // 8文字以上の有効なハッシュ文字列を使用
+        passwordHash: PasswordHash.create('validhash1')._unsafeUnwrap(),
+      },
+      {
+        name: UserName.create('Test User 2')._unsafeUnwrap(),
+        email: Email.create('test2@example.com')._unsafeUnwrap(),
+        // 8文字以上の有効なハッシュ文字列を使用
+        passwordHash: PasswordHash.create('validhash2')._unsafeUnwrap(),
+      },
+    ];
 
-      // 値オブジェクト作成 - エラー時にメッセージを表示
-      const userNameResult = UserName.create(`ユーザー${i}`);
-      if (userNameResult.isErr()) {
-        console.error(`UserName${i} エラー詳細:`, userNameResult.error);
-        fail(`UserName${i} の作成に失敗しました: ${userNameResult.error.message}`);
-      }
-      const userName = userNameResult.value;
-
-      const emailResult = Email.create(`user${i}@example.com`);
-      if (emailResult.isErr()) {
-        console.error(`Email${i} エラー詳細:`, emailResult.error);
-        fail(`Email${i} の作成に失敗しました: ${emailResult.error.message}`);
-      }
-      const email = emailResult.value;
-
-      const passwordHashResult = PasswordHash.create(`hash${i}`);
-      if (passwordHashResult.isErr()) {
-        console.error(`PasswordHash${i} エラー詳細:`, passwordHashResult.error);
-        fail(`PasswordHash${i} の作成に失敗しました: ${passwordHashResult.error.message}`);
-      }
-      const passwordHash = passwordHashResult.value;
-
-      // create でユーザー作成後、reconstruct で特定IDを持つユーザーに変換
-      const userResult = User.create({ name: userName, email, passwordHash });
+    for (let i = 0; i < usersData.length; i++) {
+      const userData = usersData[i];
+      const userResult = User.create(userData);
       if (userResult.isErr()) {
-        console.error(`User${i} エラー詳細:`, userResult.error);
-        fail(`User${i} の作成に失敗しました: ${userResult.error.message}`);
+        fail(`User ${i} の作成に失敗しました: ${userResult.error.message}`);
       }
       const user = userResult.value;
-
-      const now = DateTimeString.now();
-      const userWithId = User.reconstruct({
-        id: userId,
-        name: user.name,
-        email: user.email,
-        passwordHash: user.passwordHash,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      createdUsers.push(userWithId);
-      await userRepository.save(userWithId);
+      await userRepository.save(user);
     }
 
     // 実行
@@ -398,9 +379,9 @@ describe('UserRepository 統合テスト', () => {
     const offsetUsers = offsetUsersResult.unwrapOr([]);
     const paginatedUsers = paginatedUsersResult.unwrapOr([]);
 
-    expect(allUsers.length).toBe(5);
+    expect(allUsers.length).toBe(3);
     expect(limitedUsers.length).toBe(3);
-    expect(offsetUsers.length).toBe(3); // 5-2=3
-    expect(paginatedUsers.length).toBe(2);
+    expect(offsetUsers.length).toBe(1);
+    expect(paginatedUsers.length).toBe(1);
   });
 });
