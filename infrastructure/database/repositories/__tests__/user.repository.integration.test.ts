@@ -169,6 +169,22 @@ describe('UserRepository 統合テスト', () => {
     }
   });
 
+  it('存在しないIDで検索すると null を返す', async () => {
+    // 準備: 存在しないであろうランダムなUUIDを生成
+    const nonExistentUserIdResult = UserId.generate();
+    if (nonExistentUserIdResult.isErr()) {
+      fail(`UserId の生成に失敗しました: ${nonExistentUserIdResult.error.message}`);
+    }
+    const nonExistentUserId = nonExistentUserIdResult.value;
+
+    // 実行
+    const foundResult = await userRepository.findById(nonExistentUserId);
+
+    // 検証
+    expect(foundResult.isOk()).toBe(true);
+    expect(foundResult.unwrapOr(null)).toBeNull(); // 結果が null であることを確認
+  });
+
   it('既存のユーザーをメールアドレスで検索できる', async () => {
     // 準備: 値オブジェクトとユーザー作成
     const userIdResult = UserId.generate();
