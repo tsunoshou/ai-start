@@ -10,14 +10,30 @@
  */
 
 import { Result, ok, err } from 'neverthrow';
+import { z } from 'zod';
 
 import { ValidationError } from '../errors/validation.error';
+
+import { BaseValueObject } from './base.vo';
+
+// Zod schema for ISO 8601 datetime string validation
+// .datetime() includes offset validation by default.
+const DATETIME_STRING_SCHEMA = z.string().datetime({
+  message: 'Invalid ISO 8601 DateTime format.',
+  // precision: 3, // Optional: enforce millisecond precision if needed
+  offset: true, // Optional: require timezone offset like 'Z' or '+/-HH:mm'
+});
+
+// Zodスキーマから型を推論
+type DateTimeStringValue = z.infer<typeof DATETIME_STRING_SCHEMA>;
 
 /**
  * ISO 8601形式の日時文字列を表す値オブジェクトクラス。
  *
  * 不変性を持ち、常に有効なISO 8601形式（例: '2023-10-27T10:00:00Z'）であることを保証します。
  * `create` 静的メソッドを使用してインスタンスを生成してください。
+ *
+ * @extends BaseValueObject<string>
  *
  * @example
  * const now = new Date();
@@ -36,43 +52,14 @@ import { ValidationError } from '../errors/validation.error';
  * const invalidResult = DateTimeString.create('invalid-date-string');
  * console.log(invalidResult.isErr()); // true
  */
-export class DateTimeString {
-  private readonly _value: string;
-
-  /** ISO 8601形式のおおよそのパターン (厳密ではないが一般的な形式をカバー) */
-  private static readonly iso8601Regex =
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
-
+export class DateTimeString extends BaseValueObject<DateTimeStringValue> {
   /**
    * DateTimeStringクラスのインスタンスをプライベートに生成します。
-   * @param {string} value - ISO 8601形式の日時文字列。
+   * @param {string} value - バリデーション済みのISO 8601形式の日時文字列。
+   * @private
    */
-  private constructor(value: string) {
-    this._value = value;
-  }
-
-  /**
-   * 文字列が有効なISO 8601形式かを検証します。
-   * @param {string} value - 検証する文字列。
-   * @returns {boolean} 有効な形式であれば true、そうでなければ false。
-   */
-  private static isValid(value: string): boolean {
-    if (!value) {
-      return false;
-    }
-    // Regexでの簡易チェック
-    if (!DateTimeString.iso8601Regex.test(value)) {
-      return false;
-    }
-    // Dateオブジェクトでのパース可否チェック
-    try {
-      const date = new Date(value);
-      // getTime() が NaN でないことのみを確認する (toISOString()との比較は削除)
-      // オフセット付き文字列も Date オブジェクトに変換できれば有効とみなす
-      return !isNaN(date.getTime());
-    } catch (e) {
-      return false;
-    }
+  private constructor(value: DateTimeStringValue) {
+    super(value);
   }
 
   /**
@@ -83,28 +70,28 @@ export class DateTimeString {
    * @returns {Result<DateTimeString, ValidationError>} 生成結果。
    */
   public static create(value: unknown): Result<DateTimeString, ValidationError> {
-    // 型ガード: 文字列以外はエラー
-    if (typeof value !== 'string') {
+    const parseResult = DATETIME_STRING_SCHEMA.safeParse(value);
+
+    if (!parseResult.success) {
+      // Zodのエラーメッセージを使用
+      const errorMessage =
+        parseResult.error.errors[0]?.message || 'Invalid ISO 8601 DateTime format.';
+      // Add detailed logging for the Zod error
+      console.error('[DateTimeString.create] Zod validation failed:', {
+        inputValue: value,
+        zodError: parseResult.error.format(), // Log formatted Zod error
+      });
       return err(
-        new ValidationError('Input must be a string.', {
+        new ValidationError(errorMessage, {
+          cause: parseResult.error,
           value: value,
           validationTarget: 'ValueObject',
           metadata: { valueObjectName: 'DateTimeString' },
         })
       );
     }
-
-    const trimmedValue = value.trim();
-    if (!DateTimeString.isValid(trimmedValue)) {
-      return err(
-        new ValidationError(`Invalid ISO 8601 DateTime format: ${value}`, {
-          value: trimmedValue,
-          validationTarget: 'ValueObject',
-          metadata: { valueObjectName: 'DateTimeString' },
-        })
-      );
-    }
-    return ok(new DateTimeString(trimmedValue));
+    // Use validated data and private constructor
+    return ok(new DateTimeString(parseResult.data));
   }
 
   /**
@@ -112,16 +99,21 @@ export class DateTimeString {
    * @returns {DateTimeString} 現在時刻を表すDateTimeStringインスタンス。
    */
   public static now(): DateTimeString {
-    // `new Date().toISOString()` は常に有効な形式なので、直接コンストラクタを呼ぶ
-    return new DateTimeString(new Date().toISOString());
-  }
-
-  /**
-   * ISO 8601形式の日時文字列を取得します。
-   * @returns {string} ISO 8601形式の日時文字列。
-   */
-  get value(): string {
-    return this._value;
+    const nowIso = new Date().toISOString();
+    const result = DateTimeString.create(nowIso);
+    // This should ideally never fail if Date.toISOString() is correct
+    if (result.isErr()) {
+      // Log unexpected error or handle appropriately
+      console.error('Unexpected error creating DateTimeString from Date.now()', result.error);
+      // Instead of throwing, return the error result directly
+      // This might require changing the return type of now() to Result<DateTimeString, ValidationError>
+      // For now, let's assume it still throws for simplicity in demonstrating the change,
+      // but returning the Result is cleaner.
+      // return result;
+      // Revert to throw to keep signature, but log properly.
+      throw new Error(`Failed to create DateTimeString from Date.now(): ${result.error.message}`);
+    }
+    return result.value;
   }
 
   /**
@@ -129,16 +121,7 @@ export class DateTimeString {
    * @returns {Date} 対応するDateオブジェクト。
    */
   public toDate(): Date {
-    return new Date(this._value);
-  }
-
-  /**
-   * 他のDateTimeStringインスタンスと値が等しいかを比較します。
-   * @param {DateTimeString} other - 比較対象のDateTimeStringインスタンス。
-   * @returns {boolean} 値が等しければ true、そうでなければ false。
-   */
-  public equals(other: DateTimeString): boolean {
-    return this._value === other.value;
+    return new Date(this.value);
   }
 
   /**

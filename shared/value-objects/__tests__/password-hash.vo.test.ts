@@ -48,7 +48,7 @@ describe('PasswordHash Value Object', () => {
       expect(error).toBeInstanceOf(ValidationError);
       expect(error.code).toBe(ErrorCode.ValidationError);
       // Message depends on the Zod schema in password-hash.vo.ts
-      expect(error.message).toContain('Password must be at least 8 characters long');
+      expect(error.message).toContain('Password hash must be at least 8 characters long.');
     });
 
     // Add test for max length if applicable based on schema/requirements

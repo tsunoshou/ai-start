@@ -2,45 +2,43 @@ import { Result, ok, err } from 'neverthrow';
 import { z } from 'zod';
 
 import { ValidationError } from '@/shared/errors/validation.error';
+import { BaseValueObject } from '@/shared/value-objects/base.vo';
 
-// Schema for password hash validation (non-empty string)
-// In a real app, might add length checks or format checks depending on the hashing algorithm output
+// Schema for password hash validation (minimum 8 characters, as an example constraint)
 const PASSWORD_HASH_SCHEMA = z
   .string()
-  .min(8, { message: 'Password must be at least 8 characters long' });
+  .min(8, { message: 'Password hash must be at least 8 characters long.' });
+
+// Zodスキーマから型を推論
+type PasswordHashValue = z.infer<typeof PASSWORD_HASH_SCHEMA>;
 
 /**
  * @class PasswordHash
+ * @extends BaseValueObject<string>
  * @description Represents a hashed password as a Value Object.
- * Ensures the hash string is not empty. Does not perform hashing or comparison.
+ * Ensures the hash string meets basic format constraints (e.g., minimum length).
+ * Does not perform hashing or comparison.
  *
  * @example
- * const hashResult = PasswordHash.create('bcrypt_hashed_password_string');
+ * const hashResult = PasswordHash.create('bcrypt_hashed_password_string_longer_than_8');
  * if (hashResult.isOk()) {
- *   console.log(hashResult.value.value); // 'bcrypt_hashed_password_string'
+ *   console.log(hashResult.value.value);
  * }
  */
-export class PasswordHash {
-  /**
-   * The underlying string value of the password hash.
-   * @public
-   * @readonly
-   */
-  public readonly value: string;
-
+export class PasswordHash extends BaseValueObject<PasswordHashValue> {
   /**
    * Private constructor to enforce creation via static factory method.
    * @param {string} value - The validated password hash string.
    * @private
    */
-  private constructor(value: string) {
-    this.value = value;
+  private constructor(value: PasswordHashValue) {
+    super(value);
   }
 
   /**
    * Creates a PasswordHash instance from a string.
-   * Validates that the string is not empty.
-   * @param {string} hash - The password hash string.
+   * Validates that the string is not empty and meets length constraints.
+   * @param {unknown} hash - The raw password hash input.
    * @returns {Result<PasswordHash, ValidationError>} Ok with PasswordHash instance or Err with ValidationError.
    */
   public static create(hash: unknown): Result<PasswordHash, ValidationError> {
@@ -57,18 +55,5 @@ export class PasswordHash {
       );
     }
     return ok(new PasswordHash(parseResult.data));
-  }
-
-  /**
-   * Checks if this PasswordHash is equal to another PasswordHash based on their values.
-   * Note: Direct string comparison is usually sufficient for hashed passwords.
-   * @param {PasswordHash} other - The other PasswordHash to compare against.
-   * @returns {boolean} True if the hashes have the same value, false otherwise.
-   */
-  public equals(other: PasswordHash): boolean {
-    if (other === null || other === undefined) {
-      return false;
-    }
-    return this.value === other.value;
   }
 }
