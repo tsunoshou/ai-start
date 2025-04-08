@@ -25,6 +25,7 @@
     "test:e2e:codegen": "playwright codegen",
     "coverage": "vitest run --coverage",
     "prebuild-check": "npm run lint && npx eslint . && npm run type-check && npm run test:unit && npm run test:e2e",
+    "full-check": "npm run prebuild-check && npm run build",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push:pg",
     "db:studio": "drizzle-kit studio",
