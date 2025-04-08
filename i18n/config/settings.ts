@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-
 // 環境変数から直接取得（エッジランタイムでの互換性のため）
 const DEFAULT_LOCALE_ENV =
   typeof process !== 'undefined' && process.env.DEFAULT_LOCALE ? process.env.DEFAULT_LOCALE : 'ja';

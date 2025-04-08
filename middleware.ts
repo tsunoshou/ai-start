@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { DEFAULT_LOCALE, GET_LOCALE_FROM_URL, IS_VALID_LOCALE } from './i18n/config/settings';

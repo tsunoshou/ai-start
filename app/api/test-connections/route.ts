@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import '@/config/container.config'; // DIコンテナ設定を明示的にインポート
 import { NextResponse } from 'next/server';
 import { container } from 'tsyringe';
 
@@ -32,9 +33,9 @@ export async function GET() {
   } catch (error) {
     logger.error({
       message: '接続テスト実行中にエラー',
-      error
+      error,
     });
-    
+
     return NextResponse.json(
       { error: '接続テストエラー', timestamp: new Date().toISOString() },
       { status: 500 }
