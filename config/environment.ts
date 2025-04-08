@@ -190,7 +190,7 @@ if (typeof window === 'undefined') {
   // クライアントサイドでは利用可能な環境変数のみで処理を続行
   // NEXT_PUBLIC_で始まる変数のみクライアントで利用可能
   if (!_ENV.success) {
-    console.warn('⚠️ いくつかの環境変数が不足しています（クライアントサイド）');
+    // console.info('⚠️ いくつかの環境変数が不足しています（クライアントサイド）'); // Commented out line 193
     // デフォルト値でフォールバック
     /* eslint-disable @typescript-eslint/naming-convention */
     const defaultValues: EnvironmentVariables = {
@@ -303,20 +303,20 @@ export const getDatabaseUrl = (): string => {
   // 利用可能なURLからプーラー接続を優先
   if (envSpecificUrl) {
     if (isPoolerUrl(envSpecificUrl)) {
-      console.info(`${ENV.APP_ENV}環境用の接続プーラーを使用します`);
+      // console.info(`${ENV.APP_ENV}環境用の接続プーラーを使用します`); // Commented out line 306
       return envSpecificUrl;
     }
 
-    console.info(`${ENV.APP_ENV}環境用の直接接続を使用します`);
+    // console.info(`${ENV.APP_ENV}環境用の直接接続を使用します`); // Commented out line 310
     return envSpecificUrl;
   }
 
   // デフォルトの接続設定
   if (ENV.DATABASE_URL) {
     if (isPoolerUrl(ENV.DATABASE_URL)) {
-      console.info('デフォルトの接続プーラーを使用します');
+      // console.info('デフォルトの接続プーラーを使用します'); // Commented out line 317
     } else {
-      console.info('デフォルトの直接接続を使用します');
+      // console.info('デフォルトの直接接続を使用します'); // Commented out line 319
     }
     return ENV.DATABASE_URL;
   }

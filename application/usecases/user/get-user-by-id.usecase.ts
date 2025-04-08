@@ -1,4 +1,4 @@
-import { Result, ok, err } from 'neverthrow';
+import { ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
 import { UserDTO } from '@/application/dtos/user.dto';
@@ -13,17 +13,20 @@ import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import { LoggerToken } from '@/shared/logger/logger.token';
+import { AppResult } from '@/shared/types/common.types';
 
 // Application Layer
 
 // Infrastructure Layer
 
 // Input: Requires the user ID
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type GetUserByIdInput = {
   userId: string;
 };
 
 // Output: The found User entity (or null), or a DTO later
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type GetUserByIdOutput = UserDTO | null;
 
 /**
@@ -44,7 +47,7 @@ export class GetUserByIdUsecase {
    * @param input - Object containing the userId.
    * @returns A Result containing the User entity or null if not found, or an AppError.
    */
-  async execute(input: GetUserByIdInput): Promise<Result<GetUserByIdOutput, AppError>> {
+  async execute(input: GetUserByIdInput): Promise<AppResult<GetUserByIdOutput>> {
     this.logger.debug({
       message: 'ユーザーID検索リクエスト開始',
       operation: 'getUserById',
@@ -87,10 +90,13 @@ export class GetUserByIdUsecase {
         findResult.error
       );
 
+      // Wrap InfrastructureError in AppError
       return err(
-        new AppError(ErrorCode.DatabaseError, 'Failed to retrieve user data', {
-          cause: findResult.error,
-        })
+        findResult.error instanceof AppError
+          ? findResult.error
+          : new AppError(ErrorCode.DatabaseError, 'Failed to retrieve user data', {
+              cause: findResult.error,
+            })
       );
     }
 

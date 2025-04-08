@@ -1,4 +1,4 @@
-import { Result, ok, err } from 'neverthrow';
+import { ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
 import { UserDTO } from '@/application/dtos/user.dto';
@@ -14,8 +14,10 @@ import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import { LoggerToken } from '@/shared/logger/logger.token';
+import { AppResult } from '@/shared/types/common.types'; // Import AppResult
 
 // Input: Requires the user ID and the fields to update (optional name for now)
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type UpdateUserProfileInput = {
   userId: string;
   name?: string; // Optional: only update if provided
@@ -23,6 +25,7 @@ type UpdateUserProfileInput = {
 };
 
 // Output: The updated user DTO
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type UpdateUserProfileOutput = UserDTO;
 
 /**
@@ -43,7 +46,8 @@ export class UpdateUserProfileUsecase {
    * @param input - Object containing the userId and fields to update.
    * @returns A Result containing the updated UserDTO or an AppError.
    */
-  async execute(input: UpdateUserProfileInput): Promise<Result<UpdateUserProfileOutput, AppError>> {
+  async execute(input: UpdateUserProfileInput): Promise<AppResult<UpdateUserProfileOutput>> {
+    // Use AppResult
     this.logger.debug({
       message: 'ユーザープロフィール更新リクエスト開始',
       operation: 'updateUserProfile',
@@ -86,10 +90,13 @@ export class UpdateUserProfileUsecase {
         findResult.error
       );
 
+      // Wrap InfrastructureError in AppError
       return err(
-        new AppError(ErrorCode.DatabaseError, 'Failed to retrieve user', {
-          cause: findResult.error,
-        })
+        findResult.error instanceof AppError
+          ? findResult.error
+          : new AppError(ErrorCode.DatabaseError, 'Failed to retrieve user', {
+              cause: findResult.error,
+            })
       );
     }
     const currentUser = findResult.value;
@@ -152,10 +159,13 @@ export class UpdateUserProfileUsecase {
         saveResult.error
       );
 
+      // Wrap InfrastructureError/AppError in AppError
       return err(
-        new AppError(ErrorCode.DatabaseError, 'Failed to save updated user', {
-          cause: saveResult.error,
-        })
+        saveResult.error instanceof AppError
+          ? saveResult.error
+          : new AppError(ErrorCode.DatabaseError, 'Failed to save updated user', {
+              cause: saveResult.error,
+            })
       );
     }
 

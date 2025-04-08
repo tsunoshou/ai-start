@@ -17,6 +17,7 @@ import { BaseError } from '@/shared/errors/base.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import { LoggerToken } from '@/shared/logger/logger.token';
+import { AppResult } from '@/shared/types/common.types';
 import { hashPassword } from '@/shared/utils/security/password.utils';
 import { Email } from '@/shared/value-objects/email.vo';
 import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
@@ -26,14 +27,17 @@ import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
 // Infrastructure Layer
 
 // TODO: Define Input Type (e.g., CreateUserInput DTO)
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type CreateUserInput = {
   name: string;
   email: string;
+  // eslint-disable-next-line @typescript-eslint/naming-convention
   passwordPlainText: string; // Plain text password from input
 };
 
 // TODO: Define Output Type (e.g., UserDTO)
 // Use UserDTO as the output type
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type CreateUserOutput = UserDTO;
 
 /**
@@ -55,11 +59,12 @@ export class CreateUserUsecase {
    * @param input - The user data for creation (name, email, plain password).
    * @returns A Result containing the created User entity (or DTO later) or an AppError.
    */
-  async execute(input: CreateUserInput): Promise<Result<CreateUserOutput, AppError>> {
+  async execute(input: CreateUserInput): Promise<AppResult<CreateUserOutput>> {
     // 1. Input Validation & Value Object Creation
     const nameResult = UserName.create(input.name);
     const emailResult = Email.create(input.email);
 
+    // Use Result.combine directly as AppResult is for the final return type
     const validationResult = Result.combine([nameResult, emailResult]);
     if (validationResult.isErr()) {
       const errors = validationResult.error; // Type should be (BaseError | Error)[]
@@ -67,6 +72,7 @@ export class CreateUserUsecase {
         const errorMessages = errors
           .map((e: BaseError | Error) => e.message) // Add type annotation for e
           .join(', ');
+        // Return err wrapped in AppError
         return err(new AppError(ErrorCode.ValidationError, `Invalid input: ${errorMessages}`));
       } else {
         // Fallback for unexpected error format (should not happen with combine)
@@ -78,6 +84,7 @@ export class CreateUserUsecase {
           },
           errors
         );
+        // Return err wrapped in AppError
         return err(
           new AppError(ErrorCode.InternalServerError, 'Unexpected validation error format')
         );
@@ -96,8 +103,8 @@ export class CreateUserUsecase {
         },
         hashedPasswordResult.error
       );
+      // Return err wrapped in AppError
       return err(
-        // Use specific error code
         new AppError(ErrorCode.PasswordHashingFailed, 'Failed to process password', {
           cause: hashedPasswordResult.error,
         })
@@ -113,8 +120,8 @@ export class CreateUserUsecase {
         },
         passwordHashVoResult.error
       );
+      // Return err wrapped in AppError
       return err(
-        // This might still be an internal server error if hash generation is broken
         new AppError(ErrorCode.InternalServerError, 'Invalid password hash format generated', {
           cause: passwordHashVoResult.error,
         })
@@ -123,6 +130,7 @@ export class CreateUserUsecase {
     const passwordHashVo = passwordHashVoResult.value;
 
     // 3. Domain Entity Creation (User.create) - Assuming User.create returns Result
+    // User.create might return BaseError, handle it appropriately
     const userCreateResult = User.create({
       name: nameVo,
       email: emailVo,
@@ -138,12 +146,15 @@ export class CreateUserUsecase {
         },
         userCreateResult.error
       );
+      // Wrap BaseError from domain in AppError
+      const appErrorCode =
+        userCreateResult.error.code === ErrorCode.InvalidIdentifierFormat
+          ? ErrorCode.InternalServerError // Or a more specific code if needed
+          : ErrorCode.DomainRuleViolation;
       return err(
-        new AppError(
-          ErrorCode.DomainRuleViolation,
-          'Failed to create user due to domain rule violation',
-          { cause: userCreateResult.error }
-        )
+        new AppError(appErrorCode, 'Failed to create user due to domain rule violation', {
+          cause: userCreateResult.error,
+        })
       );
     }
     const userEntity = userCreateResult.value;
@@ -158,12 +169,15 @@ export class CreateUserUsecase {
           userId: userEntity.id.value,
           email: userEntity.email.value,
         },
-        saveResult.error
+        saveResult.error // Already AppError or InfrastructureError
       );
+      // Wrap the repository error (which could be AppError or InfrastructureError) in an AppError
       return err(
-        new AppError(ErrorCode.DatabaseError, 'Failed to save user data', {
-          cause: saveResult.error,
-        })
+        saveResult.error instanceof AppError
+          ? saveResult.error
+          : new AppError(ErrorCode.DatabaseError, 'Failed to save user data', {
+              cause: saveResult.error,
+            })
       );
     }
 

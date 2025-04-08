@@ -1,5 +1,6 @@
 import { Result, ok, err } from 'neverthrow';
 
+import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 
 /**
@@ -131,9 +132,13 @@ export abstract class BaseEntityMapper<
       return Result.combine(dtoResults);
     } catch (error) {
       return err(
-        new InfrastructureError('エンティティ配列のDTO変換に失敗しました', {
-          cause: error instanceof Error ? error : undefined,
-        })
+        new InfrastructureError(
+          ErrorCode.InternalServerError,
+          'エンティティ配列のDTO変換に失敗しました',
+          {
+            cause: error instanceof Error ? error : undefined,
+          }
+        )
       );
     }
   }
@@ -150,9 +155,13 @@ export abstract class BaseEntityMapper<
       return Result.combine(entityResults);
     } catch (error) {
       return err(
-        new InfrastructureError('レコード配列のドメインエンティティ変換に失敗しました', {
-          cause: error instanceof Error ? error : undefined,
-        })
+        new InfrastructureError(
+          ErrorCode.InternalServerError,
+          'レコード配列のドメインエンティティ変換に失敗しました',
+          {
+            cause: error instanceof Error ? error : undefined,
+          }
+        )
       );
     }
   }
@@ -174,7 +183,10 @@ export abstract class BaseEntityMapper<
 
     if (missingProps.length > 0) {
       return err(
-        new InfrastructureError(`レコードに必須プロパティがありません: ${missingProps.join(', ')}`)
+        new InfrastructureError(
+          ErrorCode.InternalServerError,
+          `レコードに必須プロパティがありません: ${missingProps.join(', ')}`
+        )
       );
     }
 
@@ -197,6 +209,7 @@ export abstract class BaseEntityMapper<
     if (valueObject === null || valueObject === undefined) {
       return err(
         new InfrastructureError(
+          ErrorCode.InternalServerError,
           `エンティティの ${propertyName} プロパティがnullまたはundefinedです`
         )
       );
@@ -243,9 +256,13 @@ export abstract class BaseEntityMapper<
 
       if (combinedResult.isErr()) {
         return err(
-          new InfrastructureError('値オブジェクト作成に失敗しました', {
-            cause: combinedResult.error,
-          })
+          new InfrastructureError(
+            ErrorCode.InternalServerError,
+            '値オブジェクト作成に失敗しました',
+            {
+              cause: combinedResult.error,
+            }
+          )
         );
       }
 
@@ -258,9 +275,13 @@ export abstract class BaseEntityMapper<
       return ok(valueObjects);
     } catch (error) {
       return err(
-        new InfrastructureError('値オブジェクト作成処理に失敗しました', {
-          cause: error instanceof Error ? error : undefined,
-        })
+        new InfrastructureError(
+          ErrorCode.InternalServerError,
+          '値オブジェクト作成処理に失敗しました',
+          {
+            cause: error instanceof Error ? error : undefined,
+          }
+        )
       );
     }
   }
@@ -289,7 +310,10 @@ export abstract class BaseEntityMapper<
         for (const part of pathParts) {
           if (currentObject === null || currentObject === undefined) {
             return err(
-              new InfrastructureError(`エンティティの ${def.sourceField} パスが存在しません`)
+              new InfrastructureError(
+                ErrorCode.InternalServerError,
+                `エンティティの ${def.sourceField} パスが存在しません`
+              )
             );
           }
           currentValue = (currentObject as Record<string, unknown>)[part];
@@ -305,7 +329,7 @@ export abstract class BaseEntityMapper<
       return ok(result);
     } catch (error) {
       return err(
-        new InfrastructureError('プロパティ抽出に失敗しました', {
+        new InfrastructureError(ErrorCode.InternalServerError, 'プロパティ抽出に失敗しました', {
           cause: error instanceof Error ? error : undefined,
         })
       );
@@ -339,17 +363,25 @@ export abstract class BaseEntityMapper<
           return ok(entity);
         } catch (error) {
           return err(
-            new InfrastructureError('エンティティの再構築に失敗しました', {
-              cause: error instanceof Error ? error : undefined,
-            })
+            new InfrastructureError(
+              ErrorCode.InternalServerError,
+              'エンティティの再構築に失敗しました',
+              {
+                cause: error instanceof Error ? error : undefined,
+              }
+            )
           );
         }
       });
     } catch (error) {
       return err(
-        new InfrastructureError('レコードのドメインエンティティへの変換に失敗しました', {
-          cause: error instanceof Error ? error : undefined,
-        })
+        new InfrastructureError(
+          ErrorCode.InternalServerError,
+          'レコードのドメインエンティティへの変換に失敗しました',
+          {
+            cause: error instanceof Error ? error : undefined,
+          }
+        )
       );
     }
   }
@@ -368,13 +400,18 @@ export abstract class BaseEntityMapper<
   ): Result<U, InfrastructureError> {
     try {
       if (entity === null || entity === undefined) {
-        return err(new InfrastructureError('エンティティがnullまたはundefinedです'));
+        return err(
+          new InfrastructureError(
+            ErrorCode.ValidationError,
+            'エンティティがnullまたはundefinedです'
+          )
+        );
       }
 
       return this.extractValues<U>(entity, definitions);
     } catch (error) {
       return err(
-        new InfrastructureError('エンティティの変換に失敗しました', {
+        new InfrastructureError(ErrorCode.InternalServerError, 'エンティティの変換に失敗しました', {
           cause: error instanceof Error ? error : undefined,
         })
       );

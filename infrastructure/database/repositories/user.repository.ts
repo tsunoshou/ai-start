@@ -8,9 +8,11 @@ import { UserId } from '@/domain/models/user/user-id.vo';
 import { User } from '@/domain/models/user/user.entity';
 import { UserRepositoryInterface } from '@/domain/repositories/user.repository.interface';
 import { UserMapper } from '@/infrastructure/mappers/user.mapper';
-import { InfrastructureError } from '@/shared/errors/infrastructure.error';
+import { AppError } from '@/shared/errors/app.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import { LoggerToken } from '@/shared/logger/logger.token';
+import { AppResult } from '@/shared/types/common.types';
 import { Email } from '@/shared/value-objects/email.vo';
 
 import { users } from '../schema/users.schema';
@@ -18,7 +20,9 @@ import { users } from '../schema/users.schema';
 import { BaseRepository } from './base.repository';
 
 // Drizzle schema selection/insertion types (adjust if schema file exports these)
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type UserDbSelect = typeof users.$inferSelect;
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type UserDbInsert = typeof users.$inferInsert;
 
 /**
@@ -88,9 +92,9 @@ export class UserRepository
   /**
    * Finds a user by their email address.
    * @param email The Email value object.
-   * @returns A Result containing the User entity or null if not found, or an InfrastructureError.
+   * @returns A Result containing the User entity or null if not found, or an AppError.
    */
-  async findByEmail(email: Email): Promise<Result<User | null, InfrastructureError>> {
+  async findByEmail(email: Email): Promise<AppResult<User | null>> {
     try {
       const [result] = await this.db
         .select()
@@ -114,13 +118,12 @@ export class UserRepository
           mappingError
         );
 
-        if (mappingError instanceof InfrastructureError) {
-          return err(mappingError);
-        }
         return err(
-          new InfrastructureError(`Failed to process record found for email ${email.value}`, {
-            cause: mappingError instanceof Error ? mappingError : undefined,
-          })
+          mappingError instanceof AppError
+            ? mappingError
+            : new AppError(ErrorCode.DatabaseError, 'Mapping failed during findByEmail', {
+                cause: mappingError instanceof Error ? mappingError : undefined,
+              })
         );
       }
     } catch (error) {
@@ -133,26 +136,25 @@ export class UserRepository
         error
       );
 
-      const infraError = new InfrastructureError(`Failed to find user by email ${email.value}`, {
-        cause: error instanceof Error ? error : undefined,
-      });
-      return err(infraError);
+      const appError = new AppError(
+        ErrorCode.DatabaseError,
+        `Failed to find user by email ${email.value}`,
+        { cause: error instanceof Error ? error : undefined }
+      );
+      return err(appError);
     }
   }
 
   /**
    * Finds all user entities, optionally applying limit and offset.
    * @param options - Optional object containing limit and offset.
-   * @returns A Result containing an array of User entities or an InfrastructureError.
+   * @returns A Result containing an array of User entities or an AppError.
    */
-  async findAll(
-    options: { limit?: number; offset?: number } = {}
-  ): Promise<Result<User[], InfrastructureError>> {
+  async findAll(options: { limit?: number; offset?: number } = {}): Promise<AppResult<User[]>> {
     const { limit, offset } = options;
     try {
-      let results: UserDbSelect[]; // Declare results array type
+      let results: UserDbSelect[];
 
-      // Select query based on limit/offset presence
       if (limit !== undefined && offset !== undefined) {
         results = await this.db.select().from(this.schema).limit(limit).offset(offset);
       } else if (limit !== undefined) {
@@ -163,7 +165,6 @@ export class UserRepository
         results = await this.db.select().from(this.schema);
       }
 
-      // Map each record to domain entity, handling potential errors
       const usersResult = Result.combine(
         results.map((record) => {
           try {
@@ -178,9 +179,9 @@ export class UserRepository
             );
 
             return err(
-              mappingError instanceof InfrastructureError
+              mappingError instanceof AppError
                 ? mappingError
-                : new InfrastructureError('Failed to process record during findAll mapping', {
+                : new AppError(ErrorCode.DatabaseError, 'Mapping failed during findAll', {
                     cause: mappingError instanceof Error ? mappingError : undefined,
                   })
             );
@@ -188,16 +189,14 @@ export class UserRepository
         })
       );
 
-      // If any mapping failed, return the combined error
       if (usersResult.isErr()) {
         return err(
-          new InfrastructureError('Failed to map one or more user records in findAll', {
-            cause: usersResult.error, // Aggregate errors
+          new AppError(ErrorCode.DatabaseError, 'Failed to map one or more user records', {
+            cause: usersResult.error,
           })
         );
       }
 
-      // Return the array of successfully mapped User entities
       return ok(usersResult.value);
     } catch (error) {
       this.logger.error(
@@ -208,10 +207,10 @@ export class UserRepository
         error
       );
 
-      const infraError = new InfrastructureError('Failed to find all users', {
+      const appError = new AppError(ErrorCode.DatabaseError, 'Failed to find all users', {
         cause: error instanceof Error ? error : undefined,
       });
-      return err(infraError);
+      return err(appError);
     }
   }
 

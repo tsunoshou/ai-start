@@ -139,7 +139,11 @@ describe('GetUserByIdUsecase', () => {
     // モックリポジトリの挙動を設定 - エラーを返す
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockUserRepository.findById as Mock).mockResolvedValue(
-      err(new InfrastructureError('ユーザー検索に失敗しました', { cause: new Error('DB error') }))
+      err(
+        new InfrastructureError(ErrorCode.DatabaseError, 'Failed to retrieve user data', {
+          cause: new Error('DB error'),
+        })
+      )
     );
 
     // 実行

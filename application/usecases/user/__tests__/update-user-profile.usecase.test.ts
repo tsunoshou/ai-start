@@ -237,7 +237,11 @@ describe('UpdateUserProfileUsecase', () => {
     // モックリポジトリの挙動を設定 - findByIdでエラー
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockUserRepository.findById as Mock).mockResolvedValue(
-      err(new InfrastructureError('ユーザー取得に失敗しました', { cause: new Error('DB error') }))
+      err(
+        new InfrastructureError(ErrorCode.DatabaseError, 'Failed to retrieve user', {
+          cause: new Error('DB error'),
+        })
+      )
     );
 
     // 実行

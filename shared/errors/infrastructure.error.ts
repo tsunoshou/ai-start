@@ -1,31 +1,34 @@
-import { BaseError, BaseErrorOptions } from './base.error';
+import { AppError } from './app.error';
+import { BaseErrorOptions } from './base.error';
+import { ErrorCode } from './error-code.enum';
 
 /**
  * @class InfrastructureError
- * @extends BaseError
+ * @extends AppError
  * @description インフラストラクチャ層（データベース、外部API、ネットワークなど）で発生したエラーを示すためのクラス。
- * 通常、より具体的なエラー（例: DatabaseError, NetworkError）を `cause` としてラップするために使用される。
+ * AppError の一種として扱われる。
  *
  * @example
  * try {
  *   // DB操作
  *   await db.query('...');
  * } catch (dbError) {
- *   throw new InfrastructureError('Database operation failed', { cause: dbError });
+ *   // ErrorCode.DatabaseError を指定して InfrastructureError をスロー
+ *   throw new InfrastructureError(ErrorCode.DatabaseError, 'Database operation failed', { cause: dbError });
  * }
  */
-export class InfrastructureError extends BaseError {
+export class InfrastructureError extends AppError {
   /**
    * InfrastructureError の新しいインスタンスを作成します。
-   * エラーコードは汎用的な 'INFRASTRUCTURE_ERROR' を使用します。
+   * @param {ErrorCode} code - ErrorCode Enum のメンバー（例: ErrorCode.DatabaseError）。
    * @param {string} message - エラーメッセージ。
    * @param {BaseErrorOptions} [options] - 追加オプション（cause、metadata）。
    */
-  constructor(message: string, options?: BaseErrorOptions) {
-    // BaseError のコンストラクタを呼び出し、汎用的なコードを設定
-    super('INFRASTRUCTURE_ERROR', message, options);
-    this.name = 'InfrastructureError'; // エラー名を設定
+  constructor(code: ErrorCode, message: string, options?: BaseErrorOptions) {
+    // AppError のコンストラクタを呼び出す
+    super(code, message, options);
+    this.name = 'InfrastructureError'; // エラー名を上書き設定
 
-    // プロトタイプチェーンとスタックトレースは BaseError で設定済み
+    // プロトタイプチェーンとスタックトレースは BaseError (経由で AppError) で設定済み
   }
 }

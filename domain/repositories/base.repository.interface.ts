@@ -1,8 +1,5 @@
-import { Result } from 'neverthrow';
-
-import { InfrastructureError } from '@/shared/errors/infrastructure.error';
-import { Identifier } from '@/shared/types/common.types';
-import { EntityBase } from '@/shared/types/entity-base.interface';
+import type { AppResult, Identifier } from '@/shared/types/common.types';
+import type { EntityBase } from '@/shared/types/entity-base.interface';
 
 /**
  * @interface BaseRepositoryInterface
@@ -18,21 +15,21 @@ export interface BaseRepositoryInterface<
   /**
    * Finds an entity by its ID.
    * @param id The ID value object.
-   * @returns A Result containing the domain entity or null if not found, or an InfrastructureError.
+   * @returns A Result containing the domain entity or null if not found, or an AppError.
    */
-  findById(id: TID): Promise<Result<TDomain | null, InfrastructureError>>;
+  findById(id: TID): Promise<AppResult<TDomain | null>>;
 
   /**
    * Saves (creates or updates) a domain entity.
    * @param entity The domain entity to save.
-   * @returns A Result containing void or an InfrastructureError.
+   * @returns A Result containing void or an AppError (or InfrastructureError converted to AppError).
    */
-  save(entity: TDomain): Promise<Result<void, InfrastructureError>>;
+  save(entity: TDomain): Promise<AppResult<void>>;
 
   /**
    * Deletes an entity by its ID.
    * @param id The ID value object.
-   * @returns A Result containing void or an InfrastructureError.
+   * @returns A Result containing void or an AppError.
    */
-  delete(id: TID): Promise<Result<void, InfrastructureError>>;
+  delete(id: TID): Promise<AppResult<void>>;
 }

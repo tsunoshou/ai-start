@@ -116,7 +116,11 @@ describe('DeleteUserUsecase', () => {
     // モックリポジトリの挙動を設定 - findByIdは成功、削除に失敗
     (mockUserRepository.findById as Mock).mockResolvedValue(ok({}));
     (mockUserRepository.delete as Mock).mockResolvedValue(
-      err(new InfrastructureError('削除に失敗しました', { cause: new Error('DB error') }))
+      err(
+        new InfrastructureError(ErrorCode.DatabaseError, 'Failed to delete user', {
+          cause: new Error('DB error'),
+        })
+      )
     );
 
     // 実行

@@ -5,6 +5,10 @@
  * @lastmodified 2025-04-04
  */
 
+import { Result } from 'neverthrow';
+
+import { AppError } from '@/shared/errors/app.error';
+
 /**
  * Represents a date and time string in ISO 8601 format (e.g., "2023-10-27T10:00:00.000Z").
  * Used for standardized date-time exchange, especially in APIs and database storage (timezone required).
@@ -152,3 +156,21 @@ export interface BaseDomainEntity {
   /** The exact time when the entity was last modified. Should be updated on every change. */
   readonly updatedAt: Timestamp;
 }
+
+/**
+ * Represents the outcome of an application operation (e.g., use case execution).
+ * It can either be a success containing a value of type T, or a failure
+ * containing an AppError.
+ * This simplifies function signatures by providing a standard result type.
+ *
+ * @template T The type of the success value.
+ * @example
+ * async function processData(input: string): Promise<AppResult<ProcessedData>> {
+ *   if (!input) {
+ *     return err(new AppError(ErrorCode.ValidationError, 'Input cannot be empty'));
+ *   }
+ *   // ... processing ...
+ *   return ok(processedData);
+ * }
+ */
+export type AppResult<T> = Result<T, AppError>;

@@ -1,16 +1,17 @@
+// External libraries
 import { eq, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgColumn, PgTable } from 'drizzle-orm/pg-core';
-import { Result, ok, err } from 'neverthrow';
+import { ok, err } from 'neverthrow';
 import { inject } from 'tsyringe';
 
+// Internal modules & types (alphabetical by path)
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
-import { InfrastructureError } from '@/shared/errors/infrastructure.error';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import { LoggerToken } from '@/shared/logger/logger.token';
-import { Identifier } from '@/shared/types/common.types';
-import { EntityBase } from '@/shared/types/entity-base.interface';
+import type { AppResult, Identifier } from '@/shared/types/common.types';
+import type { EntityBase } from '@/shared/types/entity-base.interface';
 
 /**
  * @description Base abstract class for repositories providing common structure.
@@ -48,9 +49,9 @@ export abstract class BaseRepository<
   /**
    * Finds an entity by its ID.
    * @param id The ID of the entity to find.
-   * @returns A Result containing the entity or null if not found, or an InfrastructureError.
+   * @returns An AppResult containing the entity or null if not found, or an AppError.
    */
-  async findById(id: TID): Promise<Result<TDomain | null, InfrastructureError>> {
+  async findById(id: TID): Promise<AppResult<TDomain | null>> {
     try {
       // drizzle-ormの型システム問題を回避するために型アサーションを使用
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
@@ -80,12 +81,12 @@ export abstract class BaseRepository<
           mappingError
         );
 
-        if (mappingError instanceof InfrastructureError) {
+        if (mappingError instanceof AppError) {
           return err(mappingError);
         }
         return err(
-          new InfrastructureError(`Mapping failed for entity with ID ${id.value}`, {
-            cause: mappingError instanceof Error ? mappingError : undefined,
+          new AppError(ErrorCode.DatabaseError, `Mapping failed for entity with ID ${id.value}`, {
+            cause: mappingError,
           })
         );
       }
@@ -100,8 +101,8 @@ export abstract class BaseRepository<
       );
 
       return err(
-        new InfrastructureError(`Failed to find entity by id ${id.value}`, {
-          cause: error instanceof Error ? error : undefined,
+        new AppError(ErrorCode.DatabaseError, `Failed to find entity by id ${id.value}`, {
+          cause: error,
         })
       );
     }
@@ -110,9 +111,9 @@ export abstract class BaseRepository<
   /**
    * Saves (inserts or updates) an entity to the database.
    * @param entity The domain entity to save.
-   * @returns A Result containing void or an InfrastructureError.
+   * @returns An AppResult containing void or an AppError.
    */
-  async save(entity: TDomain): Promise<Result<void, InfrastructureError | AppError>> {
+  async save(entity: TDomain): Promise<AppResult<void>> {
     let persistenceData: TDbInsert;
 
     try {
@@ -128,11 +129,11 @@ export abstract class BaseRepository<
       );
 
       return err(
-        mappingError instanceof InfrastructureError
-          ? mappingError
-          : new InfrastructureError(`Mapping to persistence failed for ${entity.id.value}`, {
-              cause: mappingError instanceof Error ? mappingError : undefined,
-            })
+        new AppError(
+          ErrorCode.DatabaseError,
+          `Mapping to persistence failed for ${entity.id.value}`,
+          { cause: mappingError }
+        )
       );
     }
 
@@ -198,8 +199,8 @@ export abstract class BaseRepository<
       }
 
       return err(
-        new InfrastructureError(`Failed to save entity data: ${entity.id.value}`, {
-          cause: error instanceof Error ? error : undefined,
+        new AppError(ErrorCode.DatabaseError, `Failed to save entity data: ${entity.id.value}`, {
+          cause: error,
         })
       );
     }
@@ -208,10 +209,10 @@ export abstract class BaseRepository<
   /**
    * Deletes an entity by its ID.
    * @param id The ID of the entity to delete.
-   * @returns A Result containing void or an InfrastructureError.
+   * @returns An AppResult containing void or an AppError.
    * @remarks エンティティが存在しない場合も成功として扱います（冪等性のため）。
    */
-  async delete(id: TID): Promise<Result<void, InfrastructureError>> {
+  async delete(id: TID): Promise<AppResult<void>> {
     try {
       // drizzle-ormの型システム問題を回避するために型アサーションを使用
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
@@ -249,8 +250,8 @@ export abstract class BaseRepository<
       );
 
       return err(
-        new InfrastructureError(`Failed to delete entity ${id.value}`, {
-          cause: error instanceof Error ? error : undefined,
+        new AppError(ErrorCode.DatabaseError, `Failed to delete entity ${id.value}`, {
+          cause: error,
         })
       );
     }
@@ -259,9 +260,9 @@ export abstract class BaseRepository<
   /**
    * エンティティが存在するかチェックします。
    * @param id エンティティのID。
-   * @returns 存在する場合はtrue、存在しない場合はfalseを含むResult。エラー時はInfrastructureErrorを含むResult。
+   * @returns 存在する場合はtrue、存在しない場合はfalseを含むAppResult。エラー時はAppErrorを含むAppResult。
    */
-  async exists(id: TID): Promise<Result<boolean, InfrastructureError>> {
+  async exists(id: TID): Promise<AppResult<boolean>> {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       const result = await this.db
@@ -283,8 +284,8 @@ export abstract class BaseRepository<
       );
 
       return err(
-        new InfrastructureError(`Failed to check if entity ${id.value} exists`, {
-          cause: error instanceof Error ? error : undefined,
+        new AppError(ErrorCode.DatabaseError, `Failed to check if entity ${id.value} exists`, {
+          cause: error,
         })
       );
     }

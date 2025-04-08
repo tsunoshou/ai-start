@@ -1,4 +1,4 @@
-import { Result, ok, err } from 'neverthrow';
+import { ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
 import { UserDTO } from '@/application/dtos/user.dto';
@@ -11,8 +11,10 @@ import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import { LoggerToken } from '@/shared/logger/logger.token';
+import { AppResult } from '@/shared/types/common.types';
 
 // Input: Optional pagination/filtering parameters
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type ListUsersInput = {
   limit?: number;
   offset?: number;
@@ -20,6 +22,7 @@ type ListUsersInput = {
 };
 
 // Output: An array of user DTOs
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type ListUsersOutput = UserDTO[];
 
 /**
@@ -40,7 +43,7 @@ export class ListUsersUsecase {
    * @param input - Optional parameters like limit and offset.
    * @returns A Result containing an array of UserDTOs or an AppError.
    */
-  async execute(input: ListUsersInput = {}): Promise<Result<ListUsersOutput, AppError>> {
+  async execute(input: ListUsersInput = {}): Promise<AppResult<ListUsersOutput>> {
     this.logger.debug({
       message: 'ユーザー一覧取得リクエスト開始',
       operation: 'listUsers',
@@ -67,10 +70,13 @@ export class ListUsersUsecase {
           findAllResult.error
         );
 
+        // Wrap InfrastructureError in AppError
         return err(
-          new AppError(ErrorCode.DatabaseError, 'Failed to retrieve user list', {
-            cause: findAllResult.error,
-          })
+          findAllResult.error instanceof AppError
+            ? findAllResult.error
+            : new AppError(ErrorCode.DatabaseError, 'Failed to retrieve user list', {
+                cause: findAllResult.error,
+              })
         );
       }
 

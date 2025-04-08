@@ -156,7 +156,9 @@ describe('ListUsersUsecase', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockUserRepository.findAll as Mock).mockResolvedValue(
       err(
-        new InfrastructureError('ユーザー一覧取得に失敗しました', { cause: new Error('DB error') })
+        new InfrastructureError(ErrorCode.DatabaseError, 'Failed to retrieve user list', {
+          cause: new Error('DB error'),
+        })
       )
     );
 

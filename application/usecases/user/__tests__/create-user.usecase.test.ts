@@ -160,7 +160,11 @@ describe('CreateUserUsecase', () => {
     // リポジトリのsaveメソッドのモックをエラーを返すように設定
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockUserRepository.save as Mock).mockResolvedValue(
-      err(new InfrastructureError('ユーザー保存に失敗しました', { cause: new Error('DB error') }))
+      err(
+        new InfrastructureError(ErrorCode.DatabaseError, 'Failed to save user data', {
+          cause: new Error('DB error'),
+        })
+      )
     );
 
     // 実行

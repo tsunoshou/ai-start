@@ -308,8 +308,8 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
 
       // エラーコードが環境によって異なる場合に対応
       if (response.status() === 409) {
-        expect(responseData.error).toHaveProperty('code', 'CONFLICT');
-        expect(responseData.error.message).toContain('already in use');
+        expect(responseData.error).toHaveProperty('code', 'CONFLICT_ERROR');
+        expect(responseData.error.message).toContain('Unique constraint violation');
       } else {
         expect(responseData.error).toHaveProperty('code', 'DATABASE_ERROR');
         expect(responseData.error.message).toContain('Failed to save user data');

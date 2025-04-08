@@ -1,4 +1,4 @@
-import { Result, ok, err } from 'neverthrow';
+import { ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
 import { UserId } from '@/domain/models/user/user-id.vo';
@@ -10,13 +10,16 @@ import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
 import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import { LoggerToken } from '@/shared/logger/logger.token';
+import { AppResult } from '@/shared/types/common.types';
 
 // Input: Requires the user ID to delete
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type DeleteUserInput = {
   userId: string;
 };
 
 // Output: Void on success
+// eslint-disable-next-line @typescript-eslint/naming-convention
 type DeleteUserOutput = void;
 
 /**
@@ -37,7 +40,7 @@ export class DeleteUserUsecase {
    * @param input - Object containing the userId to delete.
    * @returns A Result containing void on success or an AppError.
    */
-  async execute(input: DeleteUserInput): Promise<Result<DeleteUserOutput, AppError>> {
+  async execute(input: DeleteUserInput): Promise<AppResult<DeleteUserOutput>> {
     this.logger.debug({
       message: 'ユーザー削除リクエスト開始',
       operation: 'deleteUser',
@@ -79,10 +82,13 @@ export class DeleteUserUsecase {
           findResult.error
         );
 
+        // Wrap InfrastructureError in AppError
         return err(
-          new AppError(ErrorCode.DatabaseError, 'Failed to check user existence', {
-            cause: findResult.error,
-          })
+          findResult.error instanceof AppError
+            ? findResult.error
+            : new AppError(ErrorCode.DatabaseError, 'Failed to check user existence', {
+                cause: findResult.error,
+              })
         );
       }
 
@@ -111,10 +117,13 @@ export class DeleteUserUsecase {
           deleteResult.error
         );
 
+        // Wrap InfrastructureError in AppError
         return err(
-          new AppError(ErrorCode.DatabaseError, 'Failed to delete user', {
-            cause: deleteResult.error,
-          })
+          deleteResult.error instanceof AppError
+            ? deleteResult.error
+            : new AppError(ErrorCode.DatabaseError, 'Failed to delete user', {
+                cause: deleteResult.error,
+              })
         );
       }
 
