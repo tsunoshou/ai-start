@@ -111,8 +111,9 @@ export class UpdateUserProfileUsecase {
       return err(new AppError(ErrorCode.NotFound, 'User not found'));
     }
 
-    // 3. Validate Input Data (Optional name for now)
-    let newNameVo = currentUser.name; // Default to current name
+    let userToUpdate: User = currentUser; // Start with the current user
+
+    // Update Name if provided
     if (input.name !== undefined) {
       const nameResult = UserName.create(input.name);
       if (nameResult.isErr()) {
@@ -133,51 +134,88 @@ export class UpdateUserProfileUsecase {
           )
         );
       }
-      newNameVo = nameResult.value;
+      // ★ Call entity's changeName method
+      const nameChangeResult = userToUpdate.changeName(nameResult.value);
+      if (nameChangeResult.isErr()) {
+        // Handle potential errors from changeName
+        const baseError = nameChangeResult.error; // BaseError を取得
+        this.logger.error(
+          {
+            message: 'changeName メソッドでエラーが発生しました',
+            operation: 'updateUserProfile',
+            entityType: 'User',
+            entityId: input.userId,
+          },
+          baseError
+        );
+        // ★ BaseError を AppError でラップする
+        return err(
+          new AppError(
+            ErrorCode.InternalServerError, // または適切なErrorCode
+            `Error changing user name: ${baseError.message}`,
+            { cause: baseError }
+          )
+        );
+      }
+      userToUpdate = nameChangeResult.value; // ★ Update userToUpdate with the new instance
     }
 
-    // 4. Update User Entity (by reconstructing with new values)
-    // Assuming entity is immutable, create a new instance with updated fields
-    // User.reconstruct should ideally handle this or a dedicated update method
-    const updatedUser = User.reconstruct({
-      ...currentUser, // Spread existing properties
-      name: newNameVo, // Override name if changed
-      // id, email, passwordHash, createdAt remain the same
-      // updatedAt will be handled by the repository save method
-    });
+    // // ★ Add logic for other updatable fields similarly (Example for Email)
+    // if (input.email !== undefined) {
+    //   const emailResult = Email.create(input.email);
+    //   if (emailResult.isErr()) {
+    //     // ... validation error handling ...
+    //     return err(/* ... */);
+    //   }
+    //   const emailChangeResult = userToUpdate.changeEmail(emailResult.value);
+    //   if (emailChangeResult.isErr()) {
+    //      // ... error handling ...
+    //     return err(emailChangeResult.error);
+    //   }
+    //   userToUpdate = emailChangeResult.value;
+    // }
 
-    // 5. Save Updated User Entity
-    const saveResult = await this.userRepository.save(updatedUser);
-    if (saveResult.isErr()) {
-      this.logger.error(
-        {
-          message: 'ユーザー保存中にエラーが発生しました',
-          operation: 'updateUserProfile',
-          entityType: 'User',
-          entityId: input.userId,
-        },
-        saveResult.error
-      );
-
-      // Wrap InfrastructureError/AppError in AppError
-      return err(
-        saveResult.error instanceof AppError
-          ? saveResult.error
-          : new AppError(ErrorCode.DatabaseError, 'Failed to save updated user', {
-              cause: saveResult.error,
-            })
-      );
+    // 4. Save Updated User Entity (only if changes were made)
+    // Check object identity: if userToUpdate is different from currentUser, a new instance was created.
+    if (userToUpdate !== currentUser) {
+      const saveResult = await this.userRepository.save(userToUpdate); // ★ Pass the potentially new instance
+      if (saveResult.isErr()) {
+        this.logger.error(
+          {
+            message: 'ユーザー保存中にエラーが発生しました',
+            operation: 'updateUserProfile',
+            entityType: 'User',
+            entityId: input.userId,
+          },
+          saveResult.error
+        );
+        // Wrap InfrastructureError/AppError in AppError
+        return err(
+          saveResult.error instanceof AppError
+            ? saveResult.error
+            : new AppError(ErrorCode.DatabaseError, 'Failed to save updated user', {
+                cause: saveResult.error,
+              })
+        );
+      }
+      this.logger.info({
+        message: 'ユーザープロフィールの更新に成功しました',
+        operation: 'updateUserProfile',
+        entityType: 'User',
+        entityId: input.userId,
+      });
+    } else {
+      // No changes detected
+      this.logger.info({
+        message: 'ユーザープロフィールに変更はありませんでした',
+        operation: 'updateUserProfile',
+        entityType: 'User',
+        entityId: input.userId,
+      });
     }
 
-    this.logger.info({
-      message: 'ユーザープロフィールの更新に成功しました',
-      operation: 'updateUserProfile',
-      entityType: 'User',
-      entityId: input.userId,
-    });
-
-    // 6. Map to DTO
-    const output = UserMapper.toDTO(updatedUser);
+    // 5. Map the final state of userToUpdate to DTO
+    const output = UserMapper.toDTO(userToUpdate);
 
     return ok(output);
   }
