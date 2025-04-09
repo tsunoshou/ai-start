@@ -90,12 +90,37 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
 
   test.afterAll(async () => {
     // テスト全体終了後に、テスト1で作成したユーザーが残っていれば削除
-    if (createdUserId && SERVICE_KEY) {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET; // バイパスシークレットを取得
+    // const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL; // USER_API_ENDPOINT を使うので不要に
+
+    // ユーザーIDと必要なキーが存在するか確認 (anonKeyのチェックも追加)
+    if (createdUserId && serviceRoleKey && anonKey) {
       try {
-        // Playwright の request コンテキストはここでは使えないので fetch を使う
+        // HeadersInit 型を使用して型安全性を高める
+        const headersToSend: HeadersInit = {
+          Authorization: `Bearer ${serviceRoleKey}`,
+          apikey: anonKey,
+        };
+
+        // バイパスシークレットが存在すればヘッダーに追加
+        if (bypassSecret) {
+          headersToSend['x-vercel-automation-bypass-secret'] = bypassSecret;
+        }
+
+        // ★★★ デバッグログを更新 ★★★ (URLも確認用に追加)
+        console.log(`DEBUG: Sending DELETE to: ${USER_API_ENDPOINT}/${createdUserId}`);
+        console.log(
+          'DEBUG: Headers being sent by fetch in afterAll:',
+          JSON.stringify(headersToSend, null, 2)
+        );
+        // ★★★★★★★★★★★★★★★★
+
+        // fetch の URL を USER_API_ENDPOINT を使うように修正
         const deleteResponse = await fetch(`${USER_API_ENDPOINT}/${createdUserId}`, {
           method: 'DELETE',
-          headers: getAuthHeaders() ?? undefined, // undefined の場合も許容
+          headers: headersToSend, // headersToSend を直接渡す
         });
         if (deleteResponse.ok) {
           console.log(`🧹 グローバル後処理: ユーザー (${createdUserId}) を削除しました。`);
