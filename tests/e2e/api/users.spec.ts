@@ -92,10 +92,18 @@ test.describe.serial('ユーザーAPI (E2E)', () => {
     // テスト全体終了後に、テスト1で作成したユーザーが残っていれば削除
     if (createdUserId && SERVICE_KEY) {
       try {
-        // Playwright の request コンテキストはここでは使えないので fetch を使う
+        const headersToSend = getAuthHeaders(); // ヘッダーを取得
+
+        // ★★★ デバッグログを追加 ★★★
+        console.log(
+          'DEBUG: Headers being sent by fetch in afterAll:',
+          JSON.stringify(headersToSend, null, 2)
+        );
+        // ★★★★★★★★★★★★★★★★
+
         const deleteResponse = await fetch(`${USER_API_ENDPOINT}/${createdUserId}`, {
           method: 'DELETE',
-          headers: getAuthHeaders() ?? undefined, // undefined の場合も許容
+          headers: headersToSend ?? undefined, // 取得したヘッダーを使用
         });
         if (deleteResponse.ok) {
           console.log(`🧹 グローバル後処理: ユーザー (${createdUserId}) を削除しました。`);
