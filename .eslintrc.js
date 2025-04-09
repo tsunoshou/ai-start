@@ -134,7 +134,8 @@ module.exports = {
         filter: {
           // 既存の例外に加えて、末尾が Schema の変数を UPPER_CASE 強制から除外
           // さらに logger のような非プリミティブなオブジェクトも除外
-          regex: '^(metadata|config|React|.*Schema|logger|.*[cC]lient|.*[sS]ervice|.*[rR]epository|.*[mM]apper)$',
+          regex:
+            '^(metadata|config|React|.*Schema|logger|.*[cC]lient|.*[sS]ervice|.*[rR]epository|.*[mM]apper)$',
           match: false,
         },
       },
@@ -171,6 +172,19 @@ module.exports = {
         format: ['camelCase'],
         leadingUnderscore: 'allow',
       },
+      // ★★★ 修正: HTTPヘッダー形式のプロパティのみ命名規則チェックを無効化 ★★★
+      {
+        selector: ['objectLiteralProperty'],
+        filter: {
+          // HTTPヘッダー形式 (例: Content-Type) にマッチする正規表現
+          regex: '^([A-Z][a-zA-Z0-9]*(-[A-Z][a-zA-Z0-9]*)*)$',
+          match: true,
+        },
+        // マッチしたプロパティ（HTTPヘッダー形式）については、命名規則チェックを適用しない
+        format: null,
+      },
+      // ★★★ 注意: これより前のルールで camelCase が objectLiteralProperty に適用されている想定 ★★★
+      // (デフォルトセレクタが camelCase を指定しているため、通常はこれでOK)
     ],
   },
   settings: {
