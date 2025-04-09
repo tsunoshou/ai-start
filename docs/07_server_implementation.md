@@ -54,8 +54,8 @@ APIエンドポイントの設計においては、以下の原則に従いま�
     -   例: `GET /api/projects/{projectId}/steps`
 
 3.  **一貫性のあるレスポンス形式**:
-    -   成功時: `200 OK`, `201 Created`, `204 No Content`
-    -   エラー時: 標準化されたエラーレスポンス形式（[05_type_definitions.md](/docs/restructuring/05_type_definitions.md) 参照）を使用し、適切なHTTPステータスコード（4xx, 5xx）を返す。 `Result` 型のエラー情報を適切に変換する。
+    -   成功時: `200 OK`, `201 Created`, `204 No Content` など。**`shared/utils/api.utils.ts` の `apiSuccess` が生成する `{ success: true, data: ... }` 形式を標準とします。**
+    -   エラー時: 標準化されたエラーレスポンス形式（[05_type_definitions.md](/docs/05_type_definitions.md) 参照）を使用し、適切なHTTPステータスコード（4xx, 5xx）を返す。 **`shared/utils/api.utils.ts` の `apiError` が生成する `{ success: false, error: { code, message, details? } }` 形式を標準とし、`handleApiError` ユーティリティによって `AppError` や `ZodError` から自動生成されます。** `AppResult` 型のエラー情報を適切に変換する。
 
 4.  **HATEOAS (Hypermedia as the Engine of Application State) の適用**: レスポンスに関連リソースへのリンクを含めることで、APIの自己記述性と発見可能性を高める（必要に応じて）。
 
@@ -70,69 +70,127 @@ APIエンドポイントの設計においては、以下の原則に従いま�
 [02_architecture_design.md](/docs/restructuring/02_architecture_design.md) および [04_implementation_rules.md](/docs/restructuring/04_implementation_rules.md) で定義された通り、`tsyringe` を用いて依存性注入を実装します。
 
 1.  **コンテナ設定**:
-    -   アプリケーションのエントリーポイント（例: `app/api/.../route.ts` やカスタムサーバー）でDIコンテナを初期化し、必要な依存関係を登録します。
-    -   環境設定 (`config/`) や外部サービス接続クライアント (`infrastructure/`) などを登録します。
+    -   **`config/container.config.ts`** でDIコンテナ (`tsyringe` の `container`) を設定し、必要な依存関係を登録します。
+    -   データベース接続 (`drizzle` インスタンス）、ロガー (`LoggerInterface`)、リポジトリ (`UserRepositoryInterface`)、ユースケース (`CreateUserUsecase` など）を登録します。
 
-```typescript
-    // 例: infrastructure/di/container.config.ts
+    ```typescript
+    // 例: config/container.config.ts
+    import 'reflect-metadata';
+    import { drizzle } from 'drizzle-orm/node-postgres';
+    import { Pool } from 'pg';
     import { container } from 'tsyringe';
-    import { PrismaClient } from '@prisma/client'; // 仮のDBクライアント
-    import { OpenAIClient } from '@/infrastructure/ai/providers/openai';
-    import { IProjectRepository } from '@/domain/repositories/IProjectRepository';
-    import { ProjectRepository } from '@/infrastructure/database/repositories/ProjectRepository';
-    import { IAiService } from '@/application/services/IAiService';
-    import { AiService } from '@/infrastructure/ai/AiService';
+    import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
+    import { ENV } from '@/config/environment';
+    import {
+      UserRepositoryInterface,
+      UserRepositoryToken,
+    } from '@/domain/repositories/user.repository.interface';
+    import { UserRepository } from '@/infrastructure/database/repositories/user.repository';
+    import { ConsoleLogger } from '@/shared/logger/console.logger';
+    import { LoggerInterface } from '@/shared/logger/logger.interface';
+    import { LoggerToken } from '@/shared/logger/logger.token';
+    // ... 他のユースケースやリポジトリのインポート ...
 
-    // --- シングルトンインスタンスの登録 ---
-    container.register<PrismaClient>(PrismaClient, { useValue: new PrismaClient() });
-    container.register<OpenAIClient>(OpenAIClient, {
-      useValue: new OpenAIClient(process.env.OPENAI_API_KEY!),
+    // --- データベース接続 (Singleton) ---
+    const pool = new Pool({ connectionString: ENV.DATABASE_URL });
+    const db = drizzle(pool);
+    container.register<typeof db>('Database', { useValue: db });
+
+    // --- Logger ---
+    container.register<LoggerInterface>(LoggerToken, {
+      useClass: ConsoleLogger,
     });
 
-    // --- インターフェースと実装の紐付け (トークン使用) ---
-    // リポジトリなど、実装が変わりうるものはトークンを使うことが多い
-    container.register<IProjectRepository>('IProjectRepository', {
-      useClass: ProjectRepository,
+    // --- リポジトリ (トークンを使用) ---
+    container.register<UserRepositoryInterface>(UserRepositoryToken, {
+      useClass: UserRepository,
     });
-    container.register<IAiService>('IAiService', { useClass: AiService });
+    // ... 他のリポジトリ登録 ...
 
-    export { container };
+    // --- ユースケース (具象クラスを直接登録) ---
+    container.register(CreateUserUsecase, { useClass: CreateUserUsecase });
+    // ... 他のユースケース登録 ...
+
+    export default container;
     ```
 
 2.  **クラスへの適用**:
     -   注入可能にするクラスには `@injectable()` デコレータを付与します。
-    -   依存性を注入する箇所（コンストラクタインジェクション推奨）では `@inject(トークン)` デコレータを使用します。
+    -   依存性を注入する箇所（コンストラクタインジェクション推奨）では `@inject(トークン)` または `@inject(クラス名)` デコレータを使用します。
 
-```typescript
-    // 例: application/usecases/project/CreateProjectUsecase.ts
+    ```typescript
+    // 例: application/usecases/user/create-user.usecase.ts
     import { inject, injectable } from 'tsyringe';
-    import { IProjectRepository } from '@/domain/repositories/IProjectRepository';
-    import { Project } from '@/domain/models/entities/Project';
-    import { Result, ok, err } from 'neverthrow';
-    import { ApplicationError } from '@/shared/errors/ApplicationError';
+    import { ok, err } from 'neverthrow';
+    import { UserDTO } from '@/application/dtos/user.dto';
+    import {
+      UserRepositoryInterface,
+      UserRepositoryToken,
+    } from '@/domain/repositories/user.repository.interface';
+    import { User } from '@/domain/models/user/user.entity';
+    import { UserName } from '@/domain/models/user/user-name.vo';
+    import { Email } from '@/shared/value-objects/email.vo';
+    import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+    import { hashPassword } from '@/shared/utils/security/password.utils';
+    import { AppResult } from '@/shared/types/common.types';
+    import { AppError } from '@/shared/errors/app.error';
+    import { ErrorCode } from '@/shared/errors/error-code.enum';
+    import { LoggerInterface } from '@/shared/logger/logger.interface';
+    import { LoggerToken } from '@/shared/logger/logger.token';
+    import { UserMapper } from '@/infrastructure/mappers/user.mapper';
+
+    // ... CreateUserInput 型定義 ...
 
 @injectable()
-    export class CreateProjectUsecase {
-  constructor(
-        @inject('IProjectRepository') private projectRepository: IProjectRepository
+    export class CreateUserUsecase {
+      constructor(
+        @inject(UserRepositoryToken) private readonly userRepository: UserRepositoryInterface,
+        @inject(LoggerToken) private readonly logger: LoggerInterface
       ) {}
 
-      async execute(userId: string, name: string): Promise<Result<Project, ApplicationError>> {
-        try {
-          const project = Project.create(userId, name); // ドメインロジックで生成
-          const saveResult = await this.projectRepository.save(project);
-          if (saveResult.isErr()) {
-            // リポジトリからのエラーをラップして返す
-            return err(new ApplicationError('Failed to save project', { cause: saveResult.error }));
-          }
-          return ok(saveResult.value);
-        } catch (error) {
-          // ドメイン層での予期せぬエラーなど
-          return err(new ApplicationError('Unexpected error creating project', { cause: error }));
+      async execute(input: CreateUserInput): Promise<AppResult<UserDTO>> {
+        // 1. Input Validation & Value Object Creation (例: UserName, Email)
+        // ... zod/VO を使ったバリデーション ...
+        // エラー時は err(new AppError(ErrorCode.ValidationError, ...)) を返す
+
+        // 2. Password Hashing
+        const hashedPasswordResult = await hashPassword(input.passwordPlainText, this.logger);
+        if (hashedPasswordResult.isErr()) {
+          this.logger.error(...);
+          return err(new AppError(ErrorCode.PasswordHashingFailed, ..., { cause: hashedPasswordResult.error }));
         }
-  }
-}
-```
+        const passwordHashVoResult = PasswordHash.create(hashedPasswordResult.value);
+        // ... passwordHashVoResult のエラーハンドリング ...
+
+        // 3. Domain Entity Creation
+        const userCreateResult = User.create({ name: nameVo, email: emailVo, passwordHash: passwordHashVo });
+        if (userCreateResult.isErr()) {
+          this.logger.error(...);
+          return err(new AppError(ErrorCode.DomainRuleViolation, ..., { cause: userCreateResult.error }));
+        }
+        const userEntity = userCreateResult.value;
+
+        // 4. Repository Interaction (save)
+        const saveResult = await this.userRepository.save(userEntity);
+        if (saveResult.isErr()) {
+          this.logger.error(...);
+          // エラーは既に AppError か InfrastructureError なので、そのまま返すか、必要に応じてラップ
+          return err(saveResult.error);
+        }
+
+        this.logger.info({
+          message: 'User created successfully',
+          operation: 'createUser',
+          userId: userEntity.id.value,
+        });
+
+        // 5. Output Mapping (to DTO)
+        const output = UserMapper.toDTO(userEntity);
+
+        return ok(output);
+      }
+    }
+    ```
 
 3.  **スコープ管理**:
     -   `@singleton()`: アプリケーション全体で単一のインスタンス。DBクライアントや設定オブジェクトなどに使用。
@@ -141,352 +199,163 @@ APIエンドポイントの設計においては、以下の原則に従いま�
     -   **リクエストスコープ**: Next.js の API Routes や Server Actions ごとにインスタンスを生成したい場合（例: リクエスト固有のユーザー情報、トランザクション管理）、`tsyringe` の子コンテナ (`container.createChildContainer()`) をリクエスト処理の開始時に生成し、終了時に破棄するパターンを検討します。これにより、リクエスト固有の依存性（例: 認証済みユーザー情報オブジェクト）を安全に注入できます。
 
 4.  **API Routes / Server Actions での使用**:
-    -   各ハンドラー関数の冒頭でDIコンテナから必要なユースケースやサービスを取得します。
+    -   各ハンドラー関数でDIコンテナから必要なユースケースを取得します。
+    -   **`shared/utils/api.utils.ts` の `processApiRequest` を使用することで、リクエスト処理、バリデーション、ハンドラー実行、レスポンス生成を簡潔に記述できます。**
 
    ```typescript
-    // 例: app/api/projects/route.ts
-    import { container } from '@/infrastructure/di/container.config';
-    import { CreateProjectUsecase } from '@/application/usecases/project/CreateProjectUsecase';
-    import { NextResponse } from 'next/server';
-import { z } from 'zod';
-    import { Result } from 'neverthrow';
-    import { handleApiError } from '@/presentation/utils/handleApiError'; // エラーハンドリング用ユーティリティ
+    // 例: app/api/users/route.ts
+    import 'reflect-metadata';
+    import { NextRequest } from 'next/server';
+    import { z } from 'zod';
+    import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
+    import container from '@/config/container.config';
+    import { processApiRequest } from '@/shared/utils/api.utils'; // ★ インポート
 
-    const createProjectSchema = z.object({
-      userId: z.string(),
-      name: z.string().min(1),
+    // Zod スキーマで入力データを定義・検証
+    const createUserSchema = z.object({
+      name: z.string().min(1, 'Name is required').max(50),
+      email: z.string().email('Invalid email format'),
+      passwordPlainText: z.string().min(8, 'Password must be at least 8 characters'),
     });
 
-    export async function POST(request: Request) {
-      const body = await request.json();
-      const validation = createProjectSchema.safeParse(body);
+    export async function POST(request: NextRequest) {
+      // ★ processApiRequest を使用して処理を委譲
+      return processApiRequest(request, {
+        bodySchema: createUserSchema, // Zod スキーマでボディを検証
+        successStatus: 201, // 成功時のステータスコード
+        handler: async (createUserDto) => {
+          // ★ DI コンテナからユースケースを取得
+          const createUserUsecase = container.resolve(CreateUserUsecase);
+          // ★ ユースケースを実行 (createUserDto は検証済みのデータ)
+          const result = await createUserUsecase.execute(createUserDto);
 
-      if (!validation.success) {
-      return NextResponse.json(
-          { error: 'Invalid input', details: validation.error.errors },
-          { status: 400 }
-        );
-      }
-
-      const { userId, name } = validation.data;
-
-      // ★ DIコンテナからユースケースを取得
-      const createProjectUsecase = container.resolve(CreateProjectUsecase);
-
-      const result: Result<any, any> = await createProjectUsecase.execute(userId, name);
-
-      return result.match(
-        (project) => NextResponse.json(project, { status: 201 }),
-        (error) => handleApiError(error) // ★ 標準エラーハンドラーで処理
-      );
-    }
-    ```
-
-### エラーハンドリング (`neverthrow` 利用)
-
-[04_implementation_rules.md](/docs/restructuring/04_implementation_rules.md) および [05_type_definitions.md](/docs/restructuring/05_type_definitions.md) で定義されたエラーハンドリング方針に基づき、`neverthrow` の `Result` 型を全面的に採用します。
-
-1.  **関数の戻り値**:
-    -   失敗する可能性のある操作（DBアクセス、外部API呼び出し、ビジネスルール検証など）を行う関数は、原則として `Promise<Result<T, E>>` または `Result<T, E>` を返します。
-    -   `T` は成功時の値の型、`E` は失敗時のエラー型（`BaseError` のサブクラス）です。
-
-2.  **エラーの生成**:
-    -   各レイヤーで発生したエラーは、適切なエラー型（`DomainError`, `ApplicationError`, `InfrastructureError`）のインスタンスとして生成し、`err()` でラップして返します。
-    -   エラーの原因（`cause`）を可能な限り含め、スタックトレースを保持します。
-
-```typescript
-    // 例: infrastructure/database/repositories/ProjectRepository.ts
-    import { Result, ok, err } from 'neverthrow';
-    import { Project } from '@/domain/models/entities/Project';
-    import { IProjectRepository } from '@/domain/repositories/IProjectRepository';
-    import { PrismaClient } from '@prisma/client'; // 仮
-    import { InfrastructureError } from '@/shared/errors/InfrastructureError';
-    import { inject, injectable } from 'tsyringe';
-
-    @injectable()
-    export class ProjectRepository implements IProjectRepository {
-      constructor(@inject(PrismaClient) private prisma: PrismaClient) {}
-
-      async findById(id: string): Promise<Result<Project | null, InfrastructureError>> {
-        try {
-          const data = await this.prisma.project.findUnique({ where: { id } });
-          if (!data) {
-            return ok(null);
+          // ★ AppResult のエラーをスローすると processApiRequest が handleApiError で処理
+          if (result.isErr()) {
+            throw result.error;
           }
-          // Mapperを使って Prisma データ -> ドメインモデル に変換 (Mapperは別途定義)
-          // const project = ProjectMapper.toDomain(data);
-          const project = new Project(data.id, data.userId, data.name, new Date(data.createdAt)); // 仮実装
-          return ok(project);
-        } catch (error) {
-          return err(new InfrastructureError(`Failed to find project by id: ${id}`, { cause: error }));
-        }
-      }
 
-      async save(project: Project): Promise<Result<Project, InfrastructureError>> {
+          // ★ 成功時のデータを返す
+          return result.value;
+        },
+      });
+    }
+    ```
+
+### リポジトリの実装とエラーハンドリング
+
+リポジトリインターフェースは `domain/repositories` に、その実装は `infrastructure/database/repositories` に配置され、**`infrastructure/database/repositories/base.repository.ts` の `BaseRepository` クラスを継承することで、共通のCRUD操作が提供されます。**
+
+各リポジトリメソッドの標準動作として以下が定義されています（`BaseRepository` により保証）：
+
+1. **`findById` / `findByEmail` 等の検索メソッド**: 
+   - **戻り値**: `Promise<AppResult<TDomain | null>>`
+   - エンティティが見つからない場合は `ok(null)` を返します。
+   - DB接続エラーなどの技術的エラーの場合は `err(InfrastructureError)` を返します。
+   - マッピングエラー（DBレコードからドメインエンティティへの変換失敗）の場合も `err(InfrastructureError)` を返します。
+
+2. **`delete` メソッド**:
+   - **戻り値**: `Promise<AppResult<void>>`
+   - 冪等性を保証するため、対象エンティティが存在しない場合でも **成功 (`ok(undefined)`)** として扱います。
+   - DB接続エラーなどの技術的エラーの場合は `err(InfrastructureError)` を返します。
+
+3. **`save` メソッド（作成/更新）**:
+   - **戻り値**: `Promise<AppResult<void>>`
+   - ユニーク制約違反（例: 既存のメールアドレスで新規ユーザー作成）の場合：
+     - **`err(AppError)` を返し、エラーコードは `ErrorCode.ConflictError` が設定されます。**
+     - `BaseRepository` 内で、DBエラー（特定の `error.code`）を検知し、`ConflictError` に変換します。
+   - マッピングエラー（ドメインエンティティからDBレコード形式への変換失敗）の場合は `err(InfrastructureError)` を返します。
+   - DB接続エラーなどの技術的エラーの場合は `err(InfrastructureError)` を返します。
+
+#### エラーコンテキスト情報の追加
+
+`AppError` クラスとそのサブクラス (`InfrastructureError`, `ValidationError`) は、エラーデバッグに役立つコンテキスト情報（メタデータ）を追加するためのメソッドを提供します。
+
+```typescript
+import { AppError, InfrastructureError, ValidationError, ErrorCode } from '@/shared/errors';
+
+// 例1: リポジトリでの InfrastructureError
+return err(
+  new InfrastructureError(
+    ErrorCode.DatabaseError,
+    `Failed to find user by email ${email.value}`,
+    { cause: dbError }
+  ).withMetadata({ operation: 'findByEmail', email: email.value })
+);
+
+// 例2: ユースケースでの ValidationError
+return err(
+  new ValidationError('Invalid user name format', {
+    cause: nameResult.error, // ZodError など
+    value: input.name,
+  }).withEntityContext('user', input.userId ?? 'unknown', 'updateProfile')
+);
+
+// 例3: 既存のエラーにコンテキストを追加
+if (saveResult.isErr()) {
+  return err(saveResult.error.withMetadata({ step: 'saveUser' }));
+}
+```
+
+ロガー (`LoggerInterface`) は、エラーオブジェクトを第2引数に受け取った場合、自動的に `cause` や `metadata` をログに出力するように実装されています (例: `ConsoleLogger`)。
+
+### ロギングの実装とベストプラクティス
+
+アプリケーション全体で一貫したロギングを実現するために、**`shared/logger/logger.interface.ts` で定義された `LoggerInterface`** を中心としたロギング機構を採用しています。**`shared/logger/logger.token.ts` の `LoggerToken`** を使用して、具体的なロガー実装（例: `shared/logger/console.logger.ts` の `ConsoleLogger`）がDIコンテナを通じて注入されます。
+
+##### ロガーの構造
+
+1.  **インターフェース定義 (`LoggerInterface`)**: `info`, `warn`, `error`, `debug` の各メソッドを定義します。`error` メソッドはエラーオブジェクト (`unknown`) を第二引数として受け取ることができます。
+
+2.  **DI設定**: `config/container.config.ts` で `LoggerToken` に対して具体的なロガー実装（例: `ConsoleLogger`）を登録します。
+
+3.  **利用**: 各クラス（Usecase, Repository, Service など）のコンストラクタで `LoggerInterface` を `@inject(LoggerToken)` で注入し、ログ出力に使用します。
+
+    ```typescript
+    import { inject, injectable } from 'tsyringe';
+    import { LoggerInterface, LoggerToken } from '@/shared/logger';
+
+@injectable()
+    export class MyService {
+      constructor(@inject(LoggerToken) private readonly logger: LoggerInterface) {}
+
+      doSomething(input: string) {
+        this.logger.info({ message: 'Starting doSomething', input });
         try {
-          const data = {
-             id: project.id,
-             userId: project.userId,
-             name: project.name,
-             createdAt: project.createdAt,
-             // ... 他の永続化データ (Mapper経由が望ましい)
-          };
-          const savedData = await this.prisma.project.upsert({
-             where: { id: project.id },
-             update: data,
-             create: data,
-          });
-          // const savedProject = ProjectMapper.toDomain(savedData);
-          const savedProject = new Project(savedData.id, savedData.userId, savedData.name, new Date(savedData.createdAt)); // 仮実装
-          return ok(savedProject);
+          // ... 処理 ...
+          this.logger.debug({ message: 'Intermediate step successful', data: ... });
+          // ...
         } catch (error) {
-          return err(new InfrastructureError(`Failed to save project: ${project.id}`, { cause: error }));
+          this.logger.error({ message: 'Failed to doSomething', input }, error);
+          // ... エラーハンドリング ...
         }
       }
-       // ... 他のリポジトリメソッド
     }
     ```
 
-3.  **エラーの伝播と処理**:
-    -   呼び出し元の関数は、`Result` オブジェクトの `isOk()`, `isErr()` で成功/失敗を判定します。
-    -   `match(okFn, errFn)` や `map(okFn)`, `mapErr(errFn)` を使って結果を処理・変換します。
-    -   アプリケーション層（ユースケース）では、下位レイヤー（インフラ層）からの `InfrastructureError` を受け取り、必要に応じて `ApplicationError` にマッピングして返すことがあります。
-    -   プレゼンテーション層（API Routes）では、最終的に `Result` を受け取り、成功時はデータを、失敗時は `handleApiError` ユーティリティなどを使って適切なHTTPレスポンスに変換します。
+##### ログレベルの使い分け
+
+-   **`debug`**: 開発中の詳細なトレース情報。本番環境では通常出力しない。
+-   **`info`**: 通常の操作ログ、リクエストの開始/終了、重要な状態変化など。
+-   **`warn`**: 予期しないが、即座にエラーではない状況。軽微な設定ミス、非推奨APIの使用、リトライ可能な一時的なエラーなど。
+-   **`error`**: 処理の失敗、例外のキャッチ、外部サービスの接続不可など、対応が必要な問題。
+
+##### 構造化ログ
+
+可能な限り **構造化ログ** (`LogData` オブジェクト形式) を使用します。これにより、ログの解析や集計が容易になります。
 
 ```typescript
-    // 例: presentation/utils/handleApiError.ts
-    import { NextResponse } from 'next/server';
-    import { BaseError } from '@/shared/errors/BaseError';
-    import { DomainError } from '@/shared/errors/DomainError';
-    import { ApplicationError } from '@/shared/errors/ApplicationError';
-    import { InfrastructureError } from '@/shared/errors/InfrastructureError';
-    import { ValidationError } from '@/shared/errors/ValidationError';
-    import pino from 'pino'; // 例: ロガー
+// 悪い例
+this.logger.error('Failed to process user ' + userId + ' due to: ' + error.message);
 
-    const logger = pino();
+// 良い例 (構造化ログ)
+this.logger.error({
+  message: 'Failed to process user',
+  userId: userId,
+  operation: 'processUserData'
+}, error);
+```
 
-    export function handleApiError(error: BaseError): NextResponse {
-      logger.error({ err: error, stack: error.stack }, error.message); // エラーログ出力
-
-      let statusCode = 500;
-      let responseBody: { error: string; code?: string; details?: any } = {
-        error: 'Internal Server Error',
-      };
-
-      if (error instanceof ValidationError) {
-        statusCode = 400; // Bad Request
-        responseBody = {
-          error: 'Validation Failed',
-          code: error.code,
-          details: error.details || error.message,
-        };
-      } else if (error instanceof DomainError) {
-        statusCode = 400; // Bad Request or 4xx depending on context
-        responseBody = { error: error.message, code: error.code };
-      } else if (error instanceof ApplicationError) {
-        // ApplicationErrorはより汎用的。causeによって判断が必要な場合も
-        statusCode = 500; // Or specific based on error code
-        responseBody = { error: error.message, code: error.code };
-      } else if (error instanceof InfrastructureError) {
-        statusCode = 503; // Service Unavailable or 500
-        responseBody = { error: 'Service Error', code: error.code };
-      }
-       // 他のエラータイプ（認証エラーなど）もここに追加
-
-      return NextResponse.json(responseBody, { status: statusCode });
-    }
-    ```
-
-### QueryObject / ReadModel
-
-[02_architecture_design.md](/docs/restructuring/02_architecture_design.md) および [05_type_definitions.md](/docs/restructuring/05_type_definitions.md) で定義された通り、読み取り専用のデータ取得にはQueryObjectパターンやReadModelを使用します。
-
-1.  **目的**: 書き込み操作とは独立した、UI表示やレポート生成に最適化されたデータ構造を取得する。CQRS (Command Query Responsibility Segregation) の原則に基づきます。
-2.  **実装場所**: 主に `infrastructure/database/` 配下に実装します。
-    -   `read-models/`: ReadModelのデータ構造定義と、それを生成するクエリロジックを配置。
-    -   `repositories/`: ReadModelを取得するための専用メソッドをリポジトリインターフェースに追加し、実装を提供する場合もあります。
-3.  **技術**:
-    -   Drizzle ORM の `select()` やビューを利用して、必要なカラムのみを結合・取得する効率的なクエリを構築します。
-    -   複雑な集計や読み取り専用のデータ変換ロジックをカプセル化します。
-4.  **データフロー**:
-    -   プレゼンテーション層 (例: サーバーコンポーネント) → アプリケーション層 (ユースケース、または専用のQueryService) → インフラストラクチャ層 (ReadModelクエリ実行) → データベース
-    -   取得されたReadModelは、ドメインモデルへのマッピングを経由せず、直接DTOとしてプレゼンテーション層に返されることが多いです。
-5.  **例 (概念)**:
-
-```typescript
-    // infrastructure/database/read-models/ProjectDashboardReadModel.ts
-    import { db } from '@/infrastructure/database/db'; // Drizzle instance
-    import { projects, users, steps } from '@/infrastructure/database/schema';
-    import { eq, count } from 'drizzle-orm';
-
-    export type ProjectDashboardItem = {
-      projectId: string;
-      projectName: string;
-      ownerName: string;
-      stepCount: number;
-      lastUpdatedAt: Date;
-    };
-
-    export async function getProjectDashboardItems(userId: string): Promise<ProjectDashboardItem[]> {
-       // Drizzleを使って複数テーブルを結合し、必要な情報だけを取得
-       const results = await db.select({
-           projectId: projects.id,
-           projectName: projects.name,
-           ownerName: users.name,
-           stepCount: count(steps.id),
-           lastUpdatedAt: projects.updatedAt, // 例
-         })
-         .from(projects)
-         .leftJoin(users, eq(projects.userId, users.id))
-         .leftJoin(steps, eq(projects.id, steps.projectId)) // プロジェクトIDでステップを結合
-         .where(eq(projects.userId, userId)) // 特定ユーザーのプロジェクト
-         .groupBy(projects.id, users.name)
-         .orderBy(projects.updatedAt); // 例: 更新日時順
-
-       // Drizzleの結果を ProjectDashboardItem 型に整形して返す
-       return results.map(r => ({
-           ...r,
-           lastUpdatedAt: new Date(r.lastUpdatedAt), // 日付型に変換など
-       }));
-    }
-
-    // application/queryservices/ProjectQueryService.ts (ユースケースとは別のサービスクラス)
-    import { getProjectDashboardItems, ProjectDashboardItem } from '@/infrastructure/database/read-models/ProjectDashboardReadModel';
-    import { Result, ok, err } from 'neverthrow';
-    import { ApplicationError } from '@/shared/errors/ApplicationError';
-    import { injectable } from 'tsyringe';
-
-    @injectable()
-    export class ProjectQueryService {
-        async getDashboard(userId: string): Promise<Result<ProjectDashboardItem[], ApplicationError>> {
-            try {
-                const items = await getProjectDashboardItems(userId);
-                return ok(items);
-    } catch (error) {
-                return err(new ApplicationError('Failed to fetch project dashboard', { cause: error }));
-            }
-        }
-    }
-
-    // presentation/components/ProjectDashboard.server.tsx (サーバーコンポーネント)
-    import { container } from '@/infrastructure/di/container.config';
-    import { ProjectQueryService } from '@/application/queryservices/ProjectQueryService';
-    // ... 他のインポート
-
-    async function ProjectDashboard({ userId }: { userId: string }) {
-      const projectQueryService = container.resolve(ProjectQueryService);
-      const result = await projectQueryService.getDashboard(userId);
-
-      if (result.isErr()) {
-        // エラーハンドリング (UI)
-        return <div>Error loading dashboard: {result.error.message}</div>;
-      }
-
-      const dashboardItems = result.value;
-
-      return (
-        <div>
-          <h1>Project Dashboard</h1>
-          <ul>
-            {dashboardItems.map(item => (
-              <li key={item.projectId}>
-                {item.projectName} by {item.ownerName} ({item.stepCount} steps) - Last updated: {item.lastUpdatedAt.toLocaleDateString()}
-              </li>
-            ))}
-          </ul>
-        </div>
-      );
-    }
-    ```
-
-### サーバーコンポーネント (SC) / クライアントコンポーネント (CC) 連携
-
-Next.js App RouterにおけるSCとCCの連携では、データの受け渡しに関するルールを遵守します。
-
-1.  **データ転送の基本**:
-    -   SCからCCへデータを渡す場合、**シリアライズ可能 (Serializable)** なデータのみを `props` として渡す必要があります。
-    -   シリアライズ可能とは、JSONに変換できるデータ型を指します（例: `string`, `number`, `boolean`, `null`, `Array`, Plain Object）。
-    -   `Date`, `Map`, `Set`, `BigInt`, 関数、クラスインスタンスなどは直接渡せません。
-
-2.  **推奨されるデータ形式**:
-    -   **DTO (Data Transfer Object)**: サーバーサイドで取得したデータを、プレーンなオブジェクト構造を持つDTOに変換してからCCに渡します。型定義は [05_type_definitions.md](/docs/restructuring/05_type_definitions.md) を参照。
-    -   **QueryObject/ReadModel**: 上記で説明したReadModelは、通常シリアライズ可能なプレーンオブジェクトとして設計されるため、そのままCCに渡すのに適しています。
-
-3.  **非シリアライズ可能データの扱い**:
-    -   `Date` オブジェクト: 文字列 (ISO 8601形式) または数値 (タイムスタンプ) に変換してから渡します。CC側で必要に応じて `new Date()` で復元します。
-    -   複雑なオブジェクト/クラスインスタンス: 必要なプロパティのみを抽出し、プレーンオブジェクトに変換します。CC側でインスタンスが必要な場合は、渡されたデータから再構築します。
-
-4.  **TanStack Query (`initialData`)**:
-    -   サーバーコンポーネントでデータをフェッチし、それをクライアントコンポーネントのTanStack Queryの `initialData` として渡す場合も、データはシリアライズ可能である必要があります。
-    -   SCで `Result` 型を処理し、成功時の値 (DTO/ReadModel) を抽出して `initialData` に渡します。エラー情報は別途 `props` で渡すか、クライアント側で再フェッチ時にハンドリングします。
-
-```typescript
-    // presentation/components/ProjectDetails.server.tsx
-    import { ProjectQueryService } from '@/application/queryservices/ProjectQueryService';
-    import ProjectDetailsClient from './ProjectDetailsClient.client'; // クライアントコンポーネント
-    import { container } from '@/infrastructure/di/container.config';
-    import { QueryClient } from '@tanstack/react-query';
-    import { HydrationBoundary, dehydrate } from '@tanstack/react-query';
-
-    async function ProjectDetailsServer({ projectId }: { projectId: string }) {
-      const queryClient = new QueryClient();
-      const projectQueryService = container.resolve(ProjectQueryService);
-      const queryKey = ['project', projectId];
-
-      // サーバーサイドでデータフェッチし、QueryClientにキャッシュ
-      await queryClient.prefetchQuery({
-         queryKey: queryKey,
-         queryFn: async () => {
-           const result = await projectQueryService.getProjectDetails(projectId); // ReadModel or DTOを返す関数
-           if (result.isErr()) {
-             // prefetchQuery内でエラーを投げるとHydrationでエラーになることが多い
-             // null や空配列を返すなどして、クライアント側でエラー状態をハンドルさせる方が安全な場合がある
-             console.error("Prefetch failed:", result.error);
-             return null; // または適切なデフォルト値
-           }
-           // ★ シリアライズ可能なデータ (ReadModel/DTO) を返す
-           return result.value;
-         }
-      });
-
-      // dehydratedState はシリアライズ可能な形式になっている
-      const dehydratedState = dehydrate(queryClient);
-
-      return (
-        // HydrationBoundaryでクライアントに状態を引き継ぐ
-        <HydrationBoundary state={dehydratedState}>
-          <ProjectDetailsClient projectId={projectId} />
-        </HydrationBoundary>
-      );
-    }
-
-    // presentation/components/ProjectDetailsClient.client.tsx
-    'use client';
-    import { useQuery } from '@tanstack/react-query';
-    import { getProjectDetailsClient } // クライアントから呼び出すAPI関数 (React Query用)
-
-    function ProjectDetailsClient({ projectId }: { projectId: string }) {
-      const queryKey = ['project', projectId];
-
-      // initialDataはHydrationBoundaryから提供される
-      const { data: project, isLoading, error } = useQuery({
-        queryKey: queryKey,
-        queryFn: () => getProjectDetailsClient(projectId), // クライアント用のフェッチ関数
-        // staleTime など、キャッシュ戦略を設定
-      });
-
-      if (isLoading) return <div>Loading...</div>;
-      if (error) return <div>Error: {error.message}</div>;
-      if (!project) return <div>Project not found.</div>; // サーバーフェッチ失敗時の考慮
-
-      return (
-        <div>
-          <h1>{project.projectName}</h1>
-          {/* ...プロジェクト詳細表示... */}
-        </div>
-      );
-    }
-    ```
+ロガーの実装（例: `ConsoleLogger`）は、エラーオブジェクトが渡された場合、その `message`, `stack`, `cause`, `metadata` などの詳細情報もログに含めるようにします。
 
 ## APIエンドポイント一覧
 

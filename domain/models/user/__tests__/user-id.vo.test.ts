@@ -1,8 +1,8 @@
 import { validate as uuidValidate } from 'uuid';
 import { describe, it, expect } from 'vitest';
 
-import { BaseError } from '@/shared/errors/base.error';
 import { ErrorCode } from '@/shared/errors/error-code.enum';
+import { ValidationError } from '@/shared/errors/validation.error';
 
 import { UserId } from '../user-id.vo';
 
@@ -24,8 +24,8 @@ describe('UserId Value Object', () => {
       const result = UserId.create(invalidUUID);
       expect(result.isErr()).toBe(true);
       const error = result._unsafeUnwrapErr();
-      expect(error).toBeInstanceOf(BaseError);
-      expect(error.code).toBe(ErrorCode.InvalidIdentifierFormat);
+      expect(error).toBeInstanceOf(ValidationError);
+      expect(error.code).toBe(ErrorCode.ValidationError);
       expect(error.message).toContain('Invalid UUID v4 format');
     });
 
@@ -33,8 +33,8 @@ describe('UserId Value Object', () => {
       const result = UserId.create('');
       expect(result.isErr()).toBe(true);
       const error = result._unsafeUnwrapErr();
-      expect(error).toBeInstanceOf(BaseError);
-      expect(error.code).toBe(ErrorCode.InvalidIdentifierFormat);
+      expect(error).toBeInstanceOf(ValidationError);
+      expect(error.code).toBe(ErrorCode.ValidationError);
     });
 
     // zod handles null/undefined implicitly by schema type, but good to be explicit if needed
@@ -43,10 +43,10 @@ describe('UserId Value Object', () => {
       const result = UserId.create(null);
       expect(result.isErr()).toBe(true);
       const error = result._unsafeUnwrapErr();
-      expect(error).toBeInstanceOf(BaseError);
+      expect(error).toBeInstanceOf(ValidationError);
       // Zod might throw a different error type/message for wrong input type vs format
       // Adjust assertion based on actual zod behavior if necessary
-      expect(error.code).toBe(ErrorCode.InvalidIdentifierFormat);
+      expect(error.code).toBe(ErrorCode.ValidationError);
     });
 
     it('should return an error for undefined', () => {
@@ -54,8 +54,8 @@ describe('UserId Value Object', () => {
       const result = UserId.create(undefined);
       expect(result.isErr()).toBe(true);
       const error = result._unsafeUnwrapErr();
-      expect(error).toBeInstanceOf(BaseError);
-      expect(error.code).toBe(ErrorCode.InvalidIdentifierFormat);
+      expect(error).toBeInstanceOf(ValidationError);
+      expect(error.code).toBe(ErrorCode.ValidationError);
     });
   });
 

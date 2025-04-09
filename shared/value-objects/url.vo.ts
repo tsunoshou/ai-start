@@ -5,10 +5,12 @@
  *
  * @author tsunoshou
  * @date 2025-04-05
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import { Result, ok, err } from 'neverthrow';
+
+import { ValidationError } from '../errors/validation.error';
 
 /**
  * URLを表す値オブジェクトクラス。
@@ -47,28 +49,89 @@ export class Url {
   /**
    * 文字列が有効なURL形式 (http/https) かを検証します。
    * @param {string} value - 検証する文字列。
-   * @returns {Result<URL, Error>} 有効な形式であればURLオブジェクトを含むResult.Ok、そうでなければResult.Err。
+   * @returns {Result<URL, ValidationError>} 有効な形式であればURLオブジェクトを含むResult.Ok、そうでなければValidationErrorを含むResult.Err。
    */
-  private static validate(value: string): Result<URL, Error> {
+  private static validate(value: string): Result<URL, ValidationError> {
     if (!value) {
-      return err(new Error('URL cannot be empty.'));
+      return err(
+        new ValidationError('URL cannot be empty.', {
+          value: value,
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'Url' },
+        })
+      );
     }
     try {
       const url = new URL(value);
+      // console.log(`[Url.validate] Input: ${value}, Parsed hostname: '${url.hostname}', Parsed pathname: '${url.pathname}'`); // Detailed Debug log
+
       // http または https プロトコルのみを許可
       if (url.protocol !== 'http:' && url.protocol !== 'https:') {
         return err(
-          new Error(`Invalid URL protocol: ${url.protocol}. Only http: or https: are allowed.`)
+          new ValidationError(
+            `Invalid URL protocol: ${url.protocol}. Only http: or https: are allowed.`,
+            {
+              value: value,
+              validationTarget: 'ValueObject',
+              metadata: { valueObjectName: 'Url' },
+            }
+          )
         );
       }
+      // ホスト名が空でないことを確認
+      if (!url.hostname) {
+        return err(
+          new ValidationError(`Invalid URL format: Missing hostname for ${value}`, {
+            value: value,
+            validationTarget: 'ValueObject',
+            metadata: { valueObjectName: 'Url' },
+          })
+        );
+      }
+
+      // 追加チェック: // が hostname の前に存在するか（より簡易的な形式チェック）
+      const protocolSeparatorIndex = value.indexOf('://');
+      const hostnameIndex = value.indexOf(url.hostname);
+      if (
+        protocolSeparatorIndex === -1 ||
+        hostnameIndex === -1 ||
+        protocolSeparatorIndex + 3 > hostnameIndex
+      ) {
+        return err(
+          new ValidationError(`Invalid URL structure for ${value}`, {
+            value: value,
+            validationTarget: 'ValueObject',
+            metadata: { valueObjectName: 'Url' },
+          })
+        );
+      }
+
       return ok(url);
     } catch (e) {
-      // URL कंストラクタがエラーを投げた場合 (形式が無効)
+      // URL コンストラクタがエラーを投げた場合 (形式が無効)
       if (e instanceof TypeError) {
-        return err(new Error(`Invalid URL format: ${value}`));
+        return err(
+          new ValidationError(`Invalid URL format: ${value}`, {
+            cause: e,
+            value: value,
+            validationTarget: 'ValueObject',
+            metadata: { valueObjectName: 'Url' },
+          })
+        );
       }
       // 予期せぬエラー
-      return err(e instanceof Error ? e : new Error('Unknown error during URL validation'));
+      // NOTE: ここは予期せぬエラーなので ValidationError ではなく、より上位で InfrastructureError などに変換されるべきかもしれないが、
+      //       ひとまず VO の責務範囲外のエラーとして ValidationError でラップする（より具体的なエラーを返す方が望ましい場合もある）。
+      const unknownError =
+        e instanceof Error ? e : new Error('Unknown error during URL validation');
+      return err(
+        new ValidationError(unknownError.message, {
+          cause: unknownError,
+          value: value,
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'Url', originalErrorName: unknownError.name },
+        })
+      );
     }
   }
 
@@ -76,14 +139,26 @@ export class Url {
    * Urlインスタンスを生成するための静的ファクトリメソッド。
    * 入力文字列のバリデーションを行い、成功すれば Result.Ok を、失敗すれば Result.Err を返します。
    *
-   * @param {string} value - URL文字列。
-   * @returns {Result<Url, Error>} 生成結果。
+   * @param {unknown} value - URL文字列の可能性がある入力値。
+   * @returns {Result<Url, ValidationError>} 生成結果。
    */
-  public static create(value: string): Result<Url, Error> {
+  public static create(value: unknown): Result<Url, ValidationError> {
+    // 型ガード: 文字列以外はエラー
+    if (typeof value !== 'string') {
+      return err(
+        new ValidationError('Input must be a string.', {
+          value: value,
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'Url' },
+        })
+      );
+    }
+
     const trimmedValue = value.trim();
     const validationResult = Url.validate(trimmedValue);
 
     if (validationResult.isErr()) {
+      // validationResult.error は既に ValidationError なのでそのまま返す
       return err(validationResult.error);
     }
 

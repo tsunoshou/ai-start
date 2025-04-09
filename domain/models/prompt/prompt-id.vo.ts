@@ -9,45 +9,60 @@
  * @version 1.0.0
  */
 
-import { Identifier } from '@/shared/types/common.types';
-import { Brand } from '@/shared/types/utility.types';
-import { createIdentifier, generateIdentifier } from '@/shared/utils/identifier.utils';
+import { Result, ok, err } from 'neverthrow';
+
+import { BaseError } from '@/shared/errors/base.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
+import { generateUuidV4String, validateUuidV4String } from '@/shared/utils/identifier.utils';
+import { BaseId } from '@/shared/value-objects/base-id.vo';
 
 /**
- * プロンプトIDを表すブランド型。
- * UUID v4 形式の文字列として表現されます。
- *
- * @example
- * import { PromptId, generatePromptId, createPromptId } from '@/domain/models/prompt/prompt-id.vo';
- *
- * // 新しい PromptId を生成
- * const newId: PromptId = generatePromptId();
- *
- * // 既存のUUID文字列から PromptId を作成
- * const existingId: PromptId = createPromptId('abc12345-e89b-12d3-a456-426614174003');
- *
- * // UUID形式でない場合はエラー
- * // const invalidId = createPromptId('invalid-uuid'); // -> Error
- *
- * console.log(newId);
- * console.log(existingId);
- *
- * @see {@link Identifier}
- * @see {@link Brand}
+ * @class PromptTemplateId
+ * @extends BaseId<string>
+ * @description Represents the unique identifier for a Prompt Template.
  */
-export type PromptId = Brand<Identifier, 'PromptId'>;
+export class PromptTemplateId extends BaseId<string> {
+  /**
+   * Private constructor to enforce creation via static factory methods.
+   * @param {string} value - The UUID string value.
+   * @private
+   */
+  private constructor(value: string) {
+    super(value);
+  }
 
-/**
- * 新しい PromptId を生成します。
- * @returns {PromptId} 新しく生成されたプロンプトID。
- */
-export const generatePromptId = (): PromptId => generateIdentifier<PromptId>();
+  /**
+   * Creates a PromptTemplateId instance from a string.
+   * Validates that the string is a valid UUID v4 using the utility function.
+   * @param {string} id - The UUID string.
+   * @returns {Result<PromptTemplateId, BaseError>} Ok with PromptTemplateId instance or Err with BaseError.
+   */
+  public static create(id: string): Result<PromptTemplateId, BaseError> {
+    // 1. Validate the input string using the utility
+    const validationResult = validateUuidV4String(id);
+    if (validationResult.isErr()) {
+      return err(validationResult.error); // Propagate the error
+    }
+    // 2. If valid, create the instance
+    return ok(new PromptTemplateId(validationResult.value));
+  }
 
-/**
- * 既存の識別子文字列から PromptId を作成します。
- * UUID v4 形式である必要があります。
- * @param {string} id - プロンプトIDとして使用するUUID文字列。
- * @returns {PromptId} 作成されたプロンプトID。
- * @throws {Error} UUID v4 形式でない場合にエラーをスローします。
- */
-export const createPromptId = (id: string): PromptId => createIdentifier<PromptId>(id);
+  /**
+   * Generates a new PromptTemplateId with a v4 UUID.
+   * @returns {Result<PromptTemplateId, BaseError>} Ok with the new PromptTemplateId instance, or Err if UUID generation fails.
+   */
+  public static generate(): Result<PromptTemplateId, BaseError> {
+    try {
+      // 1. Generate a new UUID string using the utility
+      const newUuid = generateUuidV4String();
+      // 2. Create the instance
+      return ok(new PromptTemplateId(newUuid));
+    } catch (error) {
+      return err(
+        new BaseError(ErrorCode.InternalServerError, 'Failed to generate new PromptTemplateId', {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
+  }
+}

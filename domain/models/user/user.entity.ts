@@ -1,12 +1,13 @@
 import { Result, ok, err } from 'neverthrow';
 
 import { BaseError } from '@/shared/errors/base.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
 import { EntityBase } from '@/shared/types/entity-base.interface';
-import { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
+import * as DateTimeStringModule from '@/shared/value-objects/date-time-string.vo';
 import { Email } from '@/shared/value-objects/email.vo';
+import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
 
 import { UserId } from './user-id.vo';
+import { UserName } from './user-name.vo';
 
 /**
  * @class User
@@ -16,8 +17,8 @@ import { UserId } from './user-id.vo';
  *
  * @property {UserId} id - The unique identifier for the user.
  * @property {Email} email - The user's email address.
- * @property {string} name - The user's display name.
- * @property {string} passwordHash - The hashed password for the user.
+ * @property {UserName} name - The user's display name.
+ * @property {PasswordHash} passwordHash - The hashed password for the user.
  * @property {DateTimeString} createdAt - Timestamp when the user was created.
  * @property {DateTimeString} updatedAt - Timestamp when the user was last updated.
  *
@@ -25,8 +26,8 @@ import { UserId } from './user-id.vo';
  * // Example of creating a new user
  * const newUserResult = User.create({
  *   email: Email.create('test@example.com')._unsafeUnwrap(),
- *   name: 'Test User',
- *   passwordHash: 'hashedPassword123'
+ *   name: UserName.create('Test User')._unsafeUnwrap(),
+ *   passwordHash: PasswordHash.create('hashedPassword123')._unsafeUnwrap()
  * });
  * if (newUserResult.isOk()) {
  *   const user = newUserResult.value;
@@ -40,19 +41,19 @@ import { UserId } from './user-id.vo';
  * const existingUserResult = User.reconstruct({
  *   id: UserId.create('existing-uuid-string')._unsafeUnwrap(),
  *   email: Email.create('existing@example.com')._unsafeUnwrap(),
- *   name: 'Existing User',
- *   passwordHash: 'existingHashedPassword',
+ *   name: UserName.create('Existing User')._unsafeUnwrap(),
+ *   passwordHash: PasswordHash.create('existingHashedPassword')._unsafeUnwrap(),
  *   createdAt: DateTimeString.create('2023-01-01T00:00:00.000Z')._unsafeUnwrap(),
  *   updatedAt: DateTimeString.create('2023-01-10T12:00:00.000Z')._unsafeUnwrap(),
  * });
  */
-export class User implements EntityBase {
+export class User implements EntityBase<UserId> {
   /**
    * Private constructor to enforce object creation through static factory methods.
    * @param {UserId} id - User ID.
    * @param {Email} email - User email.
-   * @param {string} name - User name.
-   * @param {string} passwordHash - Hashed password.
+   * @param {UserName} name - User name.
+   * @param {PasswordHash} passwordHash - Hashed password.
    * @param {DateTimeString} createdAt - Creation timestamp.
    * @param {DateTimeString} updatedAt - Last update timestamp.
    * @private
@@ -60,10 +61,10 @@ export class User implements EntityBase {
   private constructor(
     public readonly id: UserId,
     public readonly email: Email,
-    public readonly name: string,
-    public readonly passwordHash: string,
-    public readonly createdAt: DateTimeString,
-    public readonly updatedAt: DateTimeString
+    public readonly name: UserName,
+    public readonly passwordHash: PasswordHash,
+    public readonly createdAt: DateTimeStringModule.DateTimeString,
+    public readonly updatedAt: DateTimeStringModule.DateTimeString
   ) {}
 
   /**
@@ -72,35 +73,26 @@ export class User implements EntityBase {
    * Performs basic validation (e.g., non-empty name).
    * @param {object} props - Properties for the new user.
    * @param {Email} props.email - User's email address.
-   * @param {string} props.name - User's name. Must not be empty.
-   * @param {string} props.passwordHash - User's hashed password. Must not be empty.
-   * @returns {Result<User, Error>} A Result containing the new User instance or an Error.
+   * @param {UserName} props.name - User's name.
+   * @param {PasswordHash} props.passwordHash - User's hashed password.
+   * @returns {Result<User, BaseError>} A Result containing the new User instance or an Error.
    */
   public static create(props: {
     email: Email;
-    name: string;
-    passwordHash: string;
+    name: UserName;
+    passwordHash: PasswordHash;
   }): Result<User, BaseError> {
-    if (!props.name || props.name.trim().length === 0) {
-      return err(new BaseError(ErrorCode.ValidationError, 'User name cannot be empty.'));
-    }
-    if (!props.passwordHash || props.passwordHash.trim().length === 0) {
-      // In a real scenario, password hash validation might be more complex
-      return err(new BaseError(ErrorCode.ValidationError, 'Password hash cannot be empty.'));
-    }
-
-    const now = DateTimeString.now();
+    const now = DateTimeStringModule.DateTimeString.now();
     const userIdResult = UserId.generate();
     if (userIdResult.isErr()) {
-      // This should theoretically not happen if generateUUID is correct
       return err(userIdResult.error);
     }
 
     const user = new User(
       userIdResult.value,
       props.email,
-      props.name.trim(),
-      props.passwordHash, // Assuming hash is already computed and valid
+      props.name,
+      props.passwordHash,
       now,
       now
     );
@@ -113,8 +105,8 @@ export class User implements EntityBase {
    * @param {object} props - Properties for reconstructing the user.
    * @param {UserId} props.id - Existing user ID.
    * @param {Email} props.email - Existing user email.
-   * @param {string} props.name - Existing user name.
-   * @param {string} props.passwordHash - Existing hashed password.
+   * @param {UserName} props.name - Existing user name.
+   * @param {PasswordHash} props.passwordHash - Existing hashed password.
    * @param {DateTimeString} props.createdAt - Existing creation timestamp.
    * @param {DateTimeString} props.updatedAt - Existing update timestamp.
    * @returns {User} The reconstructed User instance.
@@ -122,10 +114,10 @@ export class User implements EntityBase {
   public static reconstruct(props: {
     id: UserId;
     email: Email;
-    name: string;
-    passwordHash: string;
-    createdAt: DateTimeString;
-    updatedAt: DateTimeString;
+    name: UserName;
+    passwordHash: PasswordHash;
+    createdAt: DateTimeStringModule.DateTimeString;
+    updatedAt: DateTimeStringModule.DateTimeString;
   }): User {
     return new User(
       props.id,
@@ -139,11 +131,15 @@ export class User implements EntityBase {
 
   /**
    * Checks if this User entity is equal to another User entity based on their IDs.
-   * @param {User} other - The other User entity to compare against.
+   * @param {User | null | undefined} other - The other User entity to compare against.
+   *   Should accept any EntityBase with the same ID type, plus null/undefined.
    * @returns {boolean} True if the entities have the same ID, false otherwise.
    */
-  public equals(other: User): boolean {
+  public equals(other: EntityBase<UserId> | null | undefined): boolean {
     if (other === null || other === undefined) {
+      return false;
+    }
+    if (!(other instanceof User)) {
       return false;
     }
     return this.id.equals(other.id);
@@ -151,6 +147,6 @@ export class User implements EntityBase {
 
   // --- Potential future methods ---
   // public changeEmail(newEmail: Email): Result<User, Error> { ... }
-  // public changePassword(newPasswordHash: string): Result<User, Error> { ... }
-  // public updateProfile(props: { name?: string }): Result<User, Error> { ... }
+  // public changePassword(newPasswordHash: PasswordHash): Result<User, Error> { ... }
+  // public updateProfile(props: { name?: UserName }): Result<User, Error> { ... }
 }

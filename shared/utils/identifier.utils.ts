@@ -8,43 +8,53 @@
  * @version 1.0.0
  */
 
+import { Result, ok, err } from 'neverthrow';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 
-// import { Brand } from '@/shared/types/utility.types'; // Remove unused import
-import { Identifier } from '@/shared/types/common.types';
+import { BaseError } from '@/shared/errors/base.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
 
 /**
- * 新しい一意な識別子 (UUID v4) を生成します。
+ * 新しい一意な UUID v4 文字列を生成します。
+ * Identifier インスタンスの生成は呼び出し元で行ってください。
  *
- * @template T - ブランド型 (例: UserId, ProgramId)
- * @returns {T} 指定されたブランド型の新しい識別子。
+ * @returns {string} 新しい UUID v4 文字列。
  * @example
- * const newUserId = generateIdentifier<UserId>();
+ * const newUuid = generateUuidV4String();
+ * const userIdResult = UserId.create(newUuid); // Generate UserId at call site
  */
-export function generateIdentifier<T extends Identifier>(): T {
-  // return uuidv4() as Brand<Identifier, T extends Brand<Identifier, infer B> ? B : never>;
-  return uuidv4() as T; // Cast directly to T
+export function generateUuidV4String(): string {
+  return uuidv4();
 }
 
 /**
- * 与えられた文字列が有効な UUID v4 形式であるかを検証し、
- * 有効であれば指定されたブランド型の識別子として返します。
+ * 与えられた文字列が有効な UUID v4 形式であるかを検証します。
+ * Identifier インスタンスの生成は、この関数で成功した文字列を使用して呼び出し元で行ってください。
  *
- * @template T - ブランド型 (例: UserId, ProgramId)
  * @param {string} id - 検証する識別子文字列。
- * @returns {T} 検証済みの識別子。
- * @throws {Error} 文字列が有効な UUID v4 形式でない場合にエラーをスローします。
+ * @returns {Result<string, BaseError>} 検証成功時は Ok(id)、失敗時は Err(BaseError)。
  * @example
- * const userId = createIdentifier<UserId>('123e4567-e89b-12d3-a456-426614174000');
- * // createIdentifier<UserId>('invalid-uuid'); // -> throws Error
+ * const result = validateUuidV4String('123e4567-e89b-12d3-a456-426614174000');
+ * if (result.isOk()) {
+ *   const userIdResult = UserId.create(result.value); // Create UserId with validated string
+ * } else {
+ *   console.error(result.error.message); // "Invalid Identifier format..."
+ * }
+ *
+ * const invalidResult = validateUuidV4String('invalid-uuid');
+ * if (invalidResult.isErr()) {
+ *   console.error(invalidResult.error.message); // "Invalid Identifier format..."
+ * }
  */
-export function createIdentifier<T extends Identifier>(id: string): T {
+export function validateUuidV4String(id: string): Result<string, BaseError> {
   if (!uuidValidate(id)) {
-    // Consider using AppError for consistency
-    // import { AppError, ErrorCode } from '@/shared/errors/app.error';
-    // throw new AppError(ErrorCode.InvalidIdentifierFormat, `Invalid Identifier format. Expected UUID v4, received: ${id}`);
-    throw new Error(`Invalid Identifier format. Expected UUID v4, received: ${id}`);
+    // Use BaseError with appropriate ErrorCode as defined in docs/05_type_definitions.md
+    return err(
+      new BaseError(
+        ErrorCode.InvalidIdentifierFormat,
+        `Invalid Identifier format. Expected UUID v4, received: ${id}`
+      )
+    );
   }
-  // return id as Brand<Identifier, T extends Brand<Identifier, infer B> ? B : never>;
-  return id as T; // Cast directly to T
+  return ok(id);
 }

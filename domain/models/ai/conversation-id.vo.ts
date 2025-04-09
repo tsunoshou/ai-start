@@ -9,44 +9,61 @@
  * @version 1.0.0
  */
 
-import { Identifier } from '@/shared/types/common.types';
-import { Brand } from '@/shared/types/utility.types';
-import { createIdentifier, generateIdentifier } from '@/shared/utils/identifier.utils';
+import { Result, ok, err } from 'neverthrow';
+
+import { BaseError } from '@/shared/errors/base.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
+import { generateUuidV4String, validateUuidV4String } from '@/shared/utils/identifier.utils';
+import { BaseId } from '@/shared/value-objects/base-id.vo';
+// Import the new utility functions
 
 /**
- * AIとの会話セッションの一意な識別子を表す型。
- * UUID形式の文字列を基にしたブランド型です。
- *
- * @see {@link Identifier} - ベースとなる識別子の型定義
- * @see {@link Brand} - 型安全性を高めるためのユーティリティ型
- *
- * @example
- * // 新しい ConversationId を生成
- * const newId: ConversationId = generateConversationId();
- *
- * // 既存のUUID文字列から ConversationId を作成
- * const existingId: ConversationId = createConversationId('mno34567-e89b-12d3-a456-426614174000');
- *
- * // UUID形式でない場合はエラー
- * // const invalidId = createConversationId('invalid-uuid'); // -> Error
- *
- * console.log(newId);
- * console.log(existingId);
+ * @class ConversationId
+ * @extends BaseId<string>
+ * @description Represents the unique identifier for an AI Conversation.
  */
-export type ConversationId = Brand<Identifier, 'ConversationId'>;
+export class ConversationId extends BaseId<string> {
+  /**
+   * Private constructor to enforce creation via static factory methods.
+   * @param {string} value - The UUID string value.
+   * @private
+   */
+  private constructor(value: string) {
+    super(value);
+  }
 
-/**
- * 新しい ConversationId を生成します。
- * @returns {ConversationId} 新しく生成されたAI会話ID。
- */
-export const generateConversationId = (): ConversationId => generateIdentifier<ConversationId>();
+  /**
+   * Creates a ConversationId instance from a string.
+   * Validates that the string is a valid UUID v4 using the utility function.
+   * @param {string} id - The UUID string.
+   * @returns {Result<ConversationId, BaseError>} Ok with ConversationId instance or Err with BaseError.
+   */
+  public static create(id: string): Result<ConversationId, BaseError> {
+    // 1. Validate the input string using the utility
+    const validationResult = validateUuidV4String(id);
+    if (validationResult.isErr()) {
+      return err(validationResult.error); // Propagate the error
+    }
+    // 2. If valid, create the instance
+    return ok(new ConversationId(validationResult.value));
+  }
 
-/**
- * 既存の識別子文字列から ConversationId を作成します。
- * UUID v4 形式である必要があります。
- * @param {string} id - AI会話IDとして使用するUUID文字列。
- * @returns {ConversationId} 作成されたAI会話ID。
- * @throws {Error} UUID v4 形式でない場合にエラーをスローします。
- */
-export const createConversationId = (id: string): ConversationId =>
-  createIdentifier<ConversationId>(id);
+  /**
+   * Generates a new ConversationId with a v4 UUID.
+   * @returns {Result<ConversationId, BaseError>} Ok with the new ConversationId instance, or Err if UUID generation fails.
+   */
+  public static generate(): Result<ConversationId, BaseError> {
+    try {
+      // 1. Generate a new UUID string using the utility
+      const newUuid = generateUuidV4String();
+      // 2. Create the instance
+      return ok(new ConversationId(newUuid));
+    } catch (error) {
+      return err(
+        new BaseError(ErrorCode.InternalServerError, 'Failed to generate new ConversationId', {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
+  }
+}

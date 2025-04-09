@@ -1,9 +1,14 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { container } from 'tsyringe';
 
 import { ENV } from '@/config/environment';
 import * as schema from '@/infrastructure/database/schema'; // スキーマ定義をインポート
-import logger from '@/infrastructure/utils/logger'; // ロガーのパスを修正
+import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
+
+// DIコンテナからロガーを取得
+const logger = container.resolve<LoggerInterface>(LoggerToken);
 
 // PostgreSQL クライアントインスタンスを作成
 // 接続文字列を直接使用
@@ -15,7 +20,12 @@ const QUERY_CLIENT = postgres(ENV.DATABASE_URL, {
     ENV.NODE_ENV === 'development'
       ? (connection, query, parameters, paramTypes) => {
           // logger.debug の引数の順序を修正
-          logger.debug('Executing SQL Query', { query, parameters, paramTypes });
+          logger.debug({
+            message: 'Executing SQL Query',
+            query,
+            parameters,
+            paramTypes,
+          });
         }
       : undefined,
 });

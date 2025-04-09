@@ -52,6 +52,7 @@ import { UserRole } from '@/domain/models/user/user-role.enum'; // Enumパス修
 import { AuthProvider } from '@/domain/models/user/auth-provider.enum'; // Enumパス修正
 import { AggregateRoot } from '@/domain/models/aggregate-root'; // AggregateRoot基底クラス (例)
 import { Result, ok, err } from 'neverthrow';
+import { ValidationError } from '@/domain/errors/validation.error'; // ValidationErrorをインポート (仮パス)
 
 // Userエンティティのプロパティインターフェース (例)
 export interface UserProps {
@@ -168,7 +169,7 @@ export class User extends AggregateRoot<UserProps> {
 
   // --- ビジネスロジックメソッド ---
 
-  public updateEmail(newEmail: Email): Result<void, Error> {
+  public updateEmail(newEmail: Email): Result<void, ValidationError> {
     if (this.props.email.equals(newEmail)) {
       return ok(undefined); // 変更なし
     }
@@ -186,9 +187,9 @@ export class User extends AggregateRoot<UserProps> {
     return ok(undefined);
   }
 
-  public updateDisplayName(newName: string): Result<void, Error> {
+  public updateDisplayName(newName: string): Result<void, ValidationError> {
     if (newName.length === 0) {
-        return err(new Error('Display name cannot be empty'));
+        return err(new ValidationError('Display name cannot be empty', { field: 'displayName', value: newName }));
     }
     if (this.props.displayName === newName) {
       return ok(undefined); // 変更なし
@@ -205,9 +206,9 @@ export class User extends AggregateRoot<UserProps> {
     return ok(undefined);
   }
 
-  public updatePassword(newPasswordHash: string): Result<void, Error> {
+  public updatePassword(newPasswordHash: string): Result<void, ValidationError> {
     if (!newPasswordHash) {
-        return err(new Error('Password hash cannot be empty'));
+        return err(new ValidationError('Password hash cannot be empty', { field: 'hashedPassword' }));
     }
     this.props.hashedPassword = newPasswordHash;
     this.props.updatedAt = new Date();
@@ -220,12 +221,12 @@ export class User extends AggregateRoot<UserProps> {
     return ok(undefined);
   }
 
-  public updateRoles(newRoles: UserRole[]): Result<void, Error> {
+  public updateRoles(newRoles: UserRole[]): Result<void, ValidationError> {
     // 必要に応じてロールのバリデーションを行う
     const validRoles = newRoles.filter(role => Object.values(UserRole).includes(role));
     if (validRoles.length === 0) {
-        // 最低１つのロールが必要な場合など
-        // return err(new Error('At least one valid role is required'));
+        // 最低１つのロールが必要な場合など。エラーを返す場合はValidationErrorを使用
+        // return err(new ValidationError('At least one valid role is required', { field: 'roles', value: newRoles }));
         validRoles.push(UserRole.USER); // デフォルトロールを付与
     }
 
@@ -240,8 +241,8 @@ export class User extends AggregateRoot<UserProps> {
     return ok(undefined);
   }
 
-   public updatePreferences(newPreferences: Record<string, any>): Result<void, Error> {
-       // ここで設定内容のバリデーションを行うことも可能
+   public updatePreferences(newPreferences: Record<string, any>): Result<void, ValidationError> {
+       // ここで設定内容のバリデーションを行うことも可能 (エラー時はValidationError)
        this.props.preferences = { ...this.props.preferences, ...newPreferences };
        this.props.updatedAt = new Date();
 
@@ -283,9 +284,6 @@ import { User } from '@/domain/models/user/user.entity';
 import { Email } from '@/domain/models/user/value-objects/email.vo';
 import { Result } from 'neverthrow';
 import { DomainError, NotFoundError } from '@/shared/errors/domain.error'; // ドメインエラーパス修正
-
-// リポジトリ操作で発生しうるエラー型 (例)
-export type UserRepositoryError = NotFoundError | DomainError;
 
 export interface UserRepository {
   /**
@@ -904,7 +902,106 @@ dispatcher.register(UserCreatedEvent.name, welcomeEmailHandler);
 
 ## エラーハンドリング
 
-(変更なし - [06_utility_functions_examples.md](./06_utility_functions_examples.md) のエラー型定義と `handleApiRequest` のエラー処理例を参照)
+サーバーサイドにおけるエラーハンドリングは、アプリケーションの堅牢性と保守性を高める上で非常に重要です。AiStartプロジェクトでは、以下の原則に基づいたエラー処理戦略を採用しています。
+
+1.  **`Result` 型による明示的なエラー処理**:
+    -   `neverthrow` ライブラリの `Result<T, E>` 型を積極的に利用し、成功と失敗のパスを明確に分離します。
+    -   エラーが発生しうる関数（特にドメインロジックや外部サービスとの連携部分）は `Result` 型を返すように設計します。
+
+2.  **カスタムエラークラスによる分類**:
+    -   アプリケーション固有のエラー状況を表現するために、`AppError` (`shared/errors/app.error.ts`) を基底クラスとするカスタムエラー階層を定義します。
+    -   具体的なエラータイプとして `ValidationError` (`shared/errors/validation.error.ts`) や `NotFoundError` (`shared/errors/not-found.error.ts`) などを用意し、エラーの原因や種類を明確にします。
+    -   `Result` 型のエラー部分 (`E`) には、これらのカスタムエラークラスのインスタンスが入ります。
+
+    ```typescript
+    // 例: UseCaseからの返り値
+    import { Result } from 'neverthrow';
+    import { AppError } from '@/shared/errors/app.error';
+    import { User } from '@/domain/models/user/user.entity';
+
+    type CreateUserResult = Result<User, AppError>; // エラー型はAppErrorまたはそのサブクラス
+    ```
+
+3.  **レスポンスマッパーによるエラー集約**:
+    -   API Routes (`app/api/...`) から UseCase を呼び出した後、その結果 (`Result` オブジェクト) を HTTP レスポンスに変換する処理は、専用のレスポンスマッパー (`infrastructure/web/utils/response-mapper.ts` など) が担当します。
+    -   マッパーは `Result` が成功 (`ok`) か失敗 (`err`) かを判断します。
+    -   失敗 (`err`) の場合、含まれる `AppError` の種類 (例: `ValidationError`, `NotFoundError`, `ConflictError`) を識別し、それに応じた適切な HTTP ステータスコードとエラーレスポンスボディを生成します。これにより、API Routes からエラーハンドリングの詳細ロジックを分離します。
+
+    ```typescript
+    // infrastructure/web/utils/response-mapper.ts (抜粋例)
+    import { NextResponse } from 'next/server';
+    import { Result, ok, err } from 'neverthrow';
+    import { AppError } from '@/shared/errors/app.error';
+    import { ValidationError } from '@/shared/errors/validation.error';
+    import { NotFoundError } from '@/shared/errors/not-found.error';
+    import { ConflictError } from '@/shared/errors/conflict.error';
+    import { UnauthorizedError } from '@/shared/errors/unauthorized.error';
+    import { logger } from '@/infrastructure/logger/logger'; // Logger
+
+    export function mapResultToApiResponse<T>(result: Result<T, AppError>, successStatus: number = 200): NextResponse {
+      if (result.isOk()) {
+        // 値が void や null の場合は No Content (204) を返すなどの調整も可能
+        if (result.value === undefined || result.value === null) {
+          return new NextResponse(null, { status: 204 });
+        }
+        return NextResponse.json(result.value, { status: successStatus });
+      } else {
+        const error = result.error;
+        let statusCode: number;
+        let responseBody: object;
+
+        // AppError の種類に応じてステータスコードとレスポンスボディを決定
+        if (error instanceof ValidationError) {
+          statusCode = 400; // Bad Request
+          responseBody = { code: error.code, message: error.message, errors: error.metadata?.details };
+          logger.warn('API Input Validation Failed', { error: error }); // WARNレベルでログ出力
+        } else if (error instanceof NotFoundError) {
+          statusCode = 404; // Not Found
+          responseBody = { code: error.code, message: error.message };
+          logger.info('Resource not found', { error: error }); // INFOレベルでログ出力
+        } else if (error instanceof ConflictError) {
+          statusCode = 409; // Conflict
+          responseBody = { code: error.code, message: error.message, details: error.metadata };
+           logger.warn('Resource conflict occurred', { error: error }); // WARNレベル
+        } else if (error instanceof UnauthorizedError) {
+            statusCode = 401; // Unauthorized
+            responseBody = { code: error.code, message: error.message };
+            logger.warn('Unauthorized access attempt', { error: error }); // WARNレベル
+        // 他のカスタムエラータイプに対する分岐を追加...
+        } else {
+          // 予期しない AppError または汎用 Error
+          statusCode = 500; // Internal Server Error
+          responseBody = { code: error.code || 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred.' };
+          logger.error('Unhandled AppError or unexpected error', { error: error }); // ERRORレベルでログ出力
+        }
+
+        return NextResponse.json(responseBody, { status: statusCode });
+      }
+    }
+    ```
+
+4.  **`handleApiRequest` ユーティリティ**:
+    -   API Routes におけるリクエスト処理の定型的な流れ（リクエストボディのパース、ロギング、UseCase の呼び出し、レスポンスマッパーの適用）は、`handleApiRequest` (`shared/utils/api.utils.ts`) ユーティリティ関数に集約されます。
+    -   `handleApiRequest` は内部でレスポンスマッパーを呼び出し、最終的な `NextResponse` を生成して返します。
+
+    ```typescript
+    // app/api/users/route.ts (抜粋例)
+    import { handleApiRequest } from '@/shared/utils/api.utils';
+    import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
+    // ... 他のインポート ...
+
+    export async function POST(req: NextRequest) {
+      return handleApiRequest(req, async (parsedBody) => {
+        // DIコンテナからUseCaseインスタンスを取得
+        const createUserUsecase = container.resolve(CreateUserUsecase);
+        const dto = validateAndTransformDto(CreateUserRequestDto, parsedBody); // Zod等でバリデーション&変換
+        const result = await createUserUsecase.execute(dto);
+        return result; // Result<User, AppError> を返す
+      }, 201); // 成功時のステータスコードを指定 (例: 201 Created)
+    }
+    ```
+
+このアプローチにより、エラー処理のロジックが各層で適切に分離され、一貫性のあるエラーレスポンスをクライアントに返すことが可能になります。
 
 ## WebSocket実装
 

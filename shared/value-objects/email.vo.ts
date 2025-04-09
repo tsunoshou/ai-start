@@ -5,86 +5,82 @@
  *
  * @author tsunoshou
  * @date 2025-04-05
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import { Result, ok, err } from 'neverthrow';
+import { z } from 'zod';
+
+import { ValidationError } from '@/shared/errors/validation.error';
+
+import { BaseValueObject } from './base.vo'; // BaseValueObject をインポート
+
+// Schema for email validation
+const EMAIL_SCHEMA = z
+  .string()
+  .trim()
+  .email({ message: 'Invalid email format.' })
+  .max(255, { message: 'Email must be 255 characters or less.' }); // Add max length
+
+// Zodスキーマから型を推論
+type EmailValue = z.infer<typeof EMAIL_SCHEMA>;
 
 /**
- * Emailアドレスを表す値オブジェクトクラス。
- *
- * 不変性を持ち、常に有効なメールアドレス形式であることを保証します。
- * `create` 静的メソッドを使用してインスタンスを生成してください。
+ * @class Email
+ * @extends BaseValueObject<string>
+ * @description Represents an email address as a Value Object.
+ * Ensures the email is valid and normalized (lowercase).
  *
  * @example
- * const emailResult = Email.create('test@example.com');
+ * const emailResult = Email.create(' Test@Example.COM ');
  * if (emailResult.isOk()) {
- *   const email = emailResult.value;
- *   console.log(email.value); // 'test@example.com'
- * } else {
- *   console.error(emailResult.error.message); // エラーメッセージ
+ *   console.log(emailResult.value.value); // 'test@example.com'
  * }
- *
- * const invalidResult = Email.create('invalid-email');
- * console.log(invalidResult.isErr()); // true
  */
-export class Email {
-  private readonly _value: string;
-
-  /** Emailの有効な形式を表す正規表現 */
-  private static readonly emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
-
+export class Email extends BaseValueObject<EmailValue> {
   /**
-   * Emailクラスのインスタンスをプライベートに生成します。
-   * バリデーションは `create` メソッドで行うため、ここでは代入のみ行います。
-   * @param {string} value - メールアドレス文字列。
+   * Private constructor to enforce creation via static factory method.
+   * Normalizes the email to lowercase.
+   * @param {string} value - The validated email string.
+   * @private
    */
-  private constructor(value: string) {
-    this._value = value;
+  private constructor(value: EmailValue) {
+    // 値を小文字に正規化して保存
+    super(value.toLowerCase());
   }
 
   /**
-   * Emailアドレス文字列の形式を検証します。
-   * @param {string} value - 検証するメールアドレス文字列。
-   * @returns {boolean} 有効な形式であれば true、そうでなければ false。
+   * Creates an Email instance from a string.
+   * Validates that the string is a valid email format and meets length constraints.
+   * @param {unknown} email - The raw email input.
+   * @returns {Result<Email, ValidationError>} Ok with Email instance or Err with ValidationError.
    */
-  private static isValid(value: string): boolean {
-    if (!value) {
+  public static create(email: unknown): Result<Email, ValidationError> {
+    // zod スキーマでバリデーション
+    const parseResult = EMAIL_SCHEMA.safeParse(email);
+    if (!parseResult.success) {
+      const errorMessage = parseResult.error.errors[0]?.message || 'Invalid email.';
+      return err(
+        new ValidationError(errorMessage, {
+          cause: parseResult.error,
+          value: email,
+          validationTarget: 'ValueObject',
+          metadata: { valueObjectName: 'Email' },
+        })
+      );
+    }
+    // Use the validated data from Zod
+    // バリデーション成功後、プライベートコンストラクタでインスタンス化 (小文字化も行われる)
+    return ok(new Email(parseResult.data));
+  }
+
+  // equals メソッドは BaseValueObject から継承されるため、ここでは不要
+  /*
+  public equals(other: Email): boolean {
+    if (other === null || other === undefined) {
       return false;
     }
-    // 簡単な形式チェック
-    return Email.emailRegex.test(value);
-    // 必要であればより厳密なバリデーションやライブラリ (例: validator.js) の使用を検討
+    return this.value === other.value;
   }
-
-  /**
-   * Emailインスタンスを生成するための静的ファクトリメソッド。
-   * 入力文字列のバリデーションを行い、成功すれば Result.Ok を、失敗すれば Result.Err を返します。
-   *
-   * @param {string} value - メールアドレス文字列。
-   * @returns {Result<Email, Error>} 生成結果。成功時はEmailインスタンス、失敗時はErrorを含むResult。
-   */
-  public static create(value: string): Result<Email, Error> {
-    if (!Email.isValid(value)) {
-      return err(new Error(`Invalid email format: ${value}`));
-    }
-    return ok(new Email(value.trim())); // 前後の空白を除去
-  }
-
-  /**
-   * Emailアドレスの文字列表現を取得します。
-   * @returns {string} メールアドレス文字列。
-   */
-  get value(): string {
-    return this._value;
-  }
-
-  /**
-   * 他のEmailインスタンスと値が等しいかを比較します。
-   * @param {Email} other - 比較対象のEmailインスタンス。
-   * @returns {boolean} 値が等しければ true、そうでなければ false。
-   */
-  public equals(other: Email): boolean {
-    return this._value === other.value;
-  }
+  */
 }

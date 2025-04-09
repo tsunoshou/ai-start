@@ -1,30 +1,61 @@
 import 'reflect-metadata';
-import { container } from 'tsyringe'; // Lifecycle のインポートを削除
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { container } from 'tsyringe';
 
-// --- 基本的な依存関係の登録例 ---
+// Import DB Config
 
-// DBクライアント (Drizzle Client) - シングルトン性は db.ts の実装で担保
-import { DB } from '@/infrastructure/database/db'; // エクスポート名に合わせて DB をインポート
-container.register('DrizzleClient', {
-  useValue: DB, // インポートした DB を使用
+// Import Interfaces & Tokens
+
+// Import Implementations
+import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
+import { DeleteUserUsecase } from '@/application/usecases/user/delete-user.usecase';
+import { GetUserByIdUsecase } from '@/application/usecases/user/get-user-by-id.usecase';
+import { ListUsersUsecase } from '@/application/usecases/user/list-users.usecase';
+import { UpdateUserProfileUsecase } from '@/application/usecases/user/update-user-profile.usecase';
+import { ENV } from '@/config/environment';
+import {
+  UserRepositoryInterface,
+  UserRepositoryToken,
+} from '@/domain/repositories/user.repository.interface';
+import { UserRepository } from '@/infrastructure/database/repositories/user.repository';
+import { ConsoleLogger } from '@/shared/logger/console.logger';
+import { LoggerInterface } from '@/shared/logger/logger.interface';
+import { LoggerToken } from '@/shared/logger/logger.token';
+
+// --- Dependency Registration ---
+
+// Database Connection (Singleton)
+const POOL = new Pool({ connectionString: ENV.DATABASE_URL });
+const DB = drizzle(POOL);
+container.register<typeof DB>('Database', { useValue: DB });
+
+// Logger
+container.register<LoggerInterface>(LoggerToken, {
+  useClass: ConsoleLogger,
 });
 
-// リポジトリインターフェースと実装の紐付け (トークン使用)
-// import { IUserRepository } from '@/domain/repositories/IUserRepository';
-// import { UserRepository } from '@/infrastructure/database/repositories/UserRepository';
-// container.register<IUserRepository>('IUserRepository', {
-//   useClass: UserRepository,
-// });
+// Repositories
+container.register<UserRepositoryInterface>(UserRepositoryToken, {
+  useClass: UserRepository,
+});
 
-// アプリケーションサービス/ユースケース
-// import { CreateUserUsecase } from '@/application/usecases/user/CreateUserUsecase';
-// container.register(CreateUserUsecase, { lifecycle: Lifecycle.Transient }); // ユースケースはリクエストごとに生成する場合など
+// Usecases
+container.register<CreateUserUsecase>(CreateUserUsecase, {
+  useClass: CreateUserUsecase,
+});
+container.register<GetUserByIdUsecase>(GetUserByIdUsecase, {
+  useClass: GetUserByIdUsecase,
+});
+container.register<UpdateUserProfileUsecase>(UpdateUserProfileUsecase, {
+  useClass: UpdateUserProfileUsecase,
+});
+container.register<ListUsersUsecase>(ListUsersUsecase, {
+  useClass: ListUsersUsecase,
+});
+container.register<DeleteUserUsecase>(DeleteUserUsecase, {
+  useClass: DeleteUserUsecase,
+});
 
-// --- DIコンテナのエクスポート ---
-
-/**
- * アプリケーション全体で使用するDIコンテナインスタンス。
- * アプリケーションのエントリーポイント（API Routes, Server Actionsなど）で
- * このコンテナから必要なインスタンスを解決（resolve）して使用します。
- */
-export { container };
+// --- Export Container ---
+export default container;

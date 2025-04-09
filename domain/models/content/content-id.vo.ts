@@ -9,43 +9,61 @@
  * @version 1.0.0
  */
 
-import { Identifier } from '@/shared/types/common.types';
-import { Brand } from '@/shared/types/utility.types';
-import { createIdentifier, generateIdentifier } from '@/shared/utils/identifier.utils';
+import { Result, ok, err } from 'neverthrow';
+
+import { BaseError } from '@/shared/errors/base.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
+import { generateUuidV4String, validateUuidV4String } from '@/shared/utils/identifier.utils';
+import { BaseId } from '@/shared/value-objects/base-id.vo';
+// Import the new utility functions
 
 /**
- * 学習コンテンツ（ビデオなど）の一意な識別子を表す型。
- * UUID形式の文字列を基にしたブランド型です。
- *
- * @see {@link Identifier} - ベースとなる識別子の型定義
- * @see {@link Brand} - 型安全性を高めるためのユーティリティ型
- *
- * @example
- * // 新しい ContentId を生成
- * const newId: ContentId = generateContentId();
- *
- * // 既存のUUID文字列から ContentId を作成
- * const existingId: ContentId = createContentId('pqr67890-e89b-12d3-a456-426614174000');
- *
- * // UUID形式でない場合はエラー
- * // const invalidId = createContentId('invalid-uuid'); // -> Error
- *
- * console.log(newId);
- * console.log(existingId);
+ * @class ContentId
+ * @extends BaseId<string>
+ * @description Represents the unique identifier for a Content entity (e.g., video, article).
  */
-export type ContentId = Brand<Identifier, 'ContentId'>;
+export class ContentId extends BaseId<string> {
+  /**
+   * Private constructor to enforce creation via static factory methods.
+   * @param {string} value - The UUID string value.
+   * @private
+   */
+  private constructor(value: string) {
+    super(value);
+  }
 
-/**
- * 新しい ContentId を生成します。
- * @returns {ContentId} 新しく生成されたコンテンツID。
- */
-export const generateContentId = (): ContentId => generateIdentifier<ContentId>();
+  /**
+   * Creates a ContentId instance from a string.
+   * Validates that the string is a valid UUID v4 using the utility function.
+   * @param {string} id - The UUID string.
+   * @returns {Result<ContentId, BaseError>} Ok with ContentId instance or Err with BaseError.
+   */
+  public static create(id: string): Result<ContentId, BaseError> {
+    // 1. Validate the input string using the utility
+    const validationResult = validateUuidV4String(id);
+    if (validationResult.isErr()) {
+      return err(validationResult.error); // Propagate the error
+    }
+    // 2. If valid, create the instance
+    return ok(new ContentId(validationResult.value));
+  }
 
-/**
- * 既存の識別子文字列から ContentId を作成します。
- * UUID v4 形式である必要があります。
- * @param {string} id - コンテンツIDとして使用するUUID文字列。
- * @returns {ContentId} 作成されたコンテンツID。
- * @throws {Error} UUID v4 形式でない場合にエラーをスローします。
- */
-export const createContentId = (id: string): ContentId => createIdentifier<ContentId>(id);
+  /**
+   * Generates a new ContentId with a v4 UUID.
+   * @returns {Result<ContentId, BaseError>} Ok with the new ContentId instance, or Err if UUID generation fails.
+   */
+  public static generate(): Result<ContentId, BaseError> {
+    try {
+      // 1. Generate a new UUID string using the utility
+      const newUuid = generateUuidV4String();
+      // 2. Create the instance
+      return ok(new ContentId(newUuid));
+    } catch (error) {
+      return err(
+        new BaseError(ErrorCode.InternalServerError, 'Failed to generate new ContentId', {
+          cause: error instanceof Error ? error : undefined,
+        })
+      );
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # 共通型定義・DB型定義
 
-最終更新日: 2025-04-03
+最終更新日: 2025-04-09
 
 ## 本ドキュメントの目的と位置づけ
 
@@ -12,7 +12,9 @@
 
 ## 型定義の基本方針
 
-AiStartプロジェクトでは型安全性を最優先し、各レイヤーに適切な型定義を配置して、重複を避けつつ責務の明確な分離を実現します。Typescriptの型システム、**`neverthrow` ライブラリによる Result 型を用いたエラーハンドリング**、および **`tsyringe` による依存性注入** を活用して、ドメインの概念を明確に表現し、コンパイル時の型チェックによって多くのバグを未然に防ぎます。
+AiStartプロジェクトでは型安全性を最優先し、各レイヤーに適切な型定義を配置して、重複を避けつつ責務の明確な分離を実現します。Typescriptの型システム、**`neverthrow` ライブラリによる Result 型を用いたエラーハンドリング（`AppError` とそのサブクラスを使用）**、および **`tsyringe` による依存性注入** を活用して、ドメインの概念を明確に表現し、コンパイル時の型チェックによって多くのバグを未然に防ぎます。
+
+**共通の `Result` 型エイリアスとして `AppResult<T>` を使用します。これは `Result<T, AppError>` のエイリアスであり、コードの記述を簡潔にし、標準のエラー型が `AppError` であることを明確にします。**
 
 ### 型の階層構造
 
@@ -40,8 +42,8 @@ AiStartプロジェクトでは型安全性を最優先し、各レイヤーに�
 
 【共有リソース層】
 ├── ユーティリティ型
-├── エラー型（名詞+Error）
-│   └── 列挙型（Enum、例: `ExportFormat`, `SupportedLanguage`）
+├── エラー型（名詞+Error、**主に `AppError` とそのサブクラス `ValidationError` などを使用**）
+│   └── 列挙型（Enum、例: `ErrorCode`, `ExportFormat`, `SupportedLanguage`）
 └── 共通レスポンスラッパー型
     └── QueryObject/ReadModel 型
 
@@ -147,33 +149,43 @@ AiStartプロジェクトでは、様々な種類の型が存在します。そ�
 - **意図**: レイヤー間のデータ転送に特化し、ドメインロジックを持たない単純なデータ構造
 - **特徴**: 読み取り専用で不変、最小限の検証のみ、プレゼンテーション向けに最適化
 - **使用場面**: API応答、レイヤー間のデータ交換、UI表示用データ
+- **現状**: **DTO (`application/dtos/*.dto.ts`) は `zod` スキーマを使用して定義され、`z.infer` によって型が導出されます。これにより、型の定義とバリデーションルールが一元管理され、一貫性が保たれます。例えば `UserDTO` は以下のように定義されます。**
 
 ```typescript
-// エンティティ例（ビジネスルールを含む）
-interface User extends EntityBase {
-  id: UserId;
-  email: Email;
-  role: UserRole;
-  
-  // ビジネスメソッド
-  canAccessResource(resource: Resource): boolean;
-  upgradeToAdmin(): void;
-}
+// DTO例（Zodスキーマと型推論を使用）
+import { z } from 'zod';
 
-// DTO例（単純なデータ構造）
-interface UserDTO {
-  readonly id: string;
-  readonly email: string;
-  readonly role: string;
-  readonly createdAt: string;
-}
+// Zodスキーマ定義 (application/dtos/user.dto.ts 参照)
+export const userDtoSchema = z.object({
+  id: z.string().uuid({ message: 'User ID must be a valid UUID.' }),
+  name: z
+    .string()
+    .min(1, 'User name cannot be empty.')
+    .max(50, 'User name must be 50 characters or less.'),
+  email: z.string().email({ message: 'Invalid email format.' }),
+  createdAt: z.string().datetime({ message: 'Invalid ISO 8601 format for createdAt.' }),
+  updatedAt: z.string().datetime({ message: 'Invalid ISO 8601 format for updatedAt.' }),
+  // パスワードハッシュなどは意図的に除外
+}).describe('Data Transfer Object for User entity');
+
+// スキーマから型を推論
+export type UserDTO = z.infer<typeof userDtoSchema>;
+
+// --- 旧 UserDTO インターフェース定義 (参考) ---
+// interface UserDTO {
+//   readonly id: string;
+//   readonly email: string;
+//   readonly name: string;
+//   readonly createdAt: string; // ISODateTimeString が望ましい
+//   readonly updatedAt: string; // ISODateTimeString が望ましい
+// }
 ```
 
 #### 値オブジェクト vs プリミティブ型
 
 **値オブジェクト**
 - **意図**: 概念的に単一の値を表現し、ドメイン固有のルールをカプセル化する
-- **特徴**: 不変性を持ち、等価性は値に基づく、自己検証機能を持つ
+- **特徴**: 不変性を持ち、等価性は値に基づく、自己検証機能を持つ。**`BaseValueObject` または `BaseId` 抽象クラスを継承し、コンストラクタでの直接インスタンス化を防ぎ、`create` 静的ファクトリメソッド内で `zod` スキーマを利用してバリデーションを行う。**
 - **使用場面**: 複雑なドメイン概念表現、ドメイン固有ルールの適用
 
 **プリミティブ型（+型エイリアス）**
@@ -182,32 +194,30 @@ interface UserDTO {
 - **使用場面**: 単純な値の表現、パフォーマンスクリティカルな処理
 
 ```typescript
-// 値オブジェクト例
-class EmailAddress {
-  private readonly value: string;
-  
-  constructor(email: string) {
-    if (!this.isValid(email)) {
-      throw new Error('Invalid email format');
-    }
-    this.value = email;
-  }
-  
-  private isValid(email: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-  
-  toString(): string {
-    return this.value;
-  }
-  
-  equals(other: EmailAddress): boolean {
-    return this.value === other.value;
-  }
-}
+// 値オブジェクト例 (BaseValueObject/zod 利用)
+import { Result, ok, err } from 'neverthrow';
+import { z } from 'zod';
+import { BaseValueObject } from '@/shared/value-objects/base.vo';
+import { ValidationError } from '@/shared/errors/validation.error';
 
-// 型エイリアス例
-type Email = string;
+const EMAIL_SCHEMA = z.string().email();
+type EmailValue = z.infer<typeof EMAIL_SCHEMA>;
+
+export class Email extends BaseValueObject<EmailValue> {
+  private constructor(value: EmailValue) {
+    super(value);
+  }
+
+  public static create(email: unknown): Result<Email, ValidationError> {
+    const parseResult = EMAIL_SCHEMA.safeParse(email);
+    if (!parseResult.success) {
+      return err(new ValidationError('Invalid email format.', { cause: parseResult.error, value: email }));
+    }
+    return ok(new Email(parseResult.data));
+  }
+  // equals メソッドは BaseValueObject から継承
+}
+// ... (旧 EmailAddress の例は削除) ...
 ```
 
 #### インターフェース vs タイプエイリアス
@@ -225,21 +235,121 @@ type Email = string;
 ```typescript
 // インターフェース例
 interface Repository<T extends EntityBase> {
-  findById(id: string): Promise<T | null>;
-  findAll(): Promise<T[]>;
-  save(entity: T): Promise<T>;
-  delete(id: string): Promise<boolean>;
+  findById(id: string): Promise<AppResult<T | null>>; // Result -> AppResult に変更
+  findAll(): Promise<AppResult<T[]>>; // Result -> AppResult に変更
+  save(entity: T): Promise<AppResult<T>>; // Result -> AppResult に変更
+  delete(id: string): Promise<AppResult<boolean>>; // Result -> AppResult に変更
 }
 
 // タイプエイリアス例
-type Result<T> = 
-  | { status: 'success'; data: T; }
-  | { status: 'error'; error: Error; };
+type AppResult<T> = Result<T, AppError>; // neverthrow の Result のエイリアス（AppError をデフォルトエラー型に）
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 ```
 
-#### フロントエンド固有型
+### エラーハンドリング: Result と AppError
+
+**方針**
+- 失敗する可能性のある操作（特にI/O操作やビジネスルールの検証）は、共通の型エイリアス **`AppResult<T>`** (`Result<T, AppError>`) を返す。
+- エラー型 `E` には、原則として `AppError` またはそのサブクラス（例: `ValidationError`, `InfrastructureError`）を使用する。
+- `Error` 型を直接 `Result` のエラー型として使用することは避ける。
+- 各エラーには、識別のための `ErrorCode` enum メンバーを必ず含める。
+- 必要に応じて、エラーの原因 (`cause`) や追加情報 (`metadata`) を `AppError` に含める。
+- バリデーションエラーには、専用の `ValidationError` を使用し、どの値がどのような理由で不正だったかの情報を含める。**値オブジェクトの `create` メソッドはバリデーション失敗時に `ValidationError` を返す。**
+
+**`AppError` の基本構造**
+- `code`: `ErrorCode` enum の値。
+- `message`: エラーメッセージ（人間が読める形式）。
+- `metadata` (optional): エラーに関する追加情報（オブジェクト形式）。バリデーションエラーの詳細、エンティティIDなど。
+- `cause` (optional): 元となったエラーオブジェクト。
+
+**`ValidationError` の構造** (`AppError` を継承)
+- `code`: `ErrorCode.ValidationError` 固定。
+- `message`: バリデーションエラーメッセージ。
+- `metadata`: `cause` (ZodErrorなど)、`value` (検証対象の値)、`validationTarget` (どこでの検証か)、`valueObjectName` などを含む。
+
+**使い分け**
+- **`AppError`**: 一般的なアプリケーションエラー（DBエラー、設定エラー、予期せぬ内部エラーなど）。
+- **`ValidationError`**: 入力値や値オブジェクトのバリデーション失敗時。
+- **その他の `AppError` サブクラス**: 必要に応じて、特定のレイヤーや種類の エラー（例: `InfrastructureError`）を表すために作成する。
+
+```typescript
+// Result と AppError の使用例 (Usecase)
+import { Result, ok, err } from 'neverthrow';
+import { AppError } from '@/shared/errors/app.error';
+import { ErrorCode } from '@/shared/errors/error-code.enum';
+import { UserDTO } from '@/application/dtos/user.dto';
+import { userRepository, userMapper } from './dependencies'; // 依存関係は適宜解決
+
+async function findUser(userId: string): Promise<Result<UserDTO, AppError>> {
+  try {
+    const userResult = await userRepository.findById(userId);
+    if (userResult.isErr()) {
+      // findById が返す AppError をそのまま返すか、必要ならラップする
+      return err(userResult.error);
+    }
+    if (!userResult.value) {
+      return err(new AppError(ErrorCode.NotFound, `User with ID ${userId} not found.`));
+    }
+    const user = userResult.value;
+    const dtoResult = userMapper.toDTO(user);
+    if (dtoResult.isErr()) {
+      // マッパーエラーをラップ
+      return err(new AppError(ErrorCode.InternalServerError, 'Failed to map user to DTO', { cause: dtoResult.error }));
+    }
+    return ok(dtoResult.value);
+  } catch (error) {
+    // 予期せぬエラーをラップ
+    return err(new AppError(ErrorCode.InternalServerError, 'Unexpected error fetching user', { cause: error }));
+  }
+}
+
+// Result と ValidationError の使用例 (Value Object)
+import { Result, ok, err } from 'neverthrow';
+import { ValidationError } from '@/shared/errors/validation.error';
+
+class Email {
+  readonly value: string;
+
+  private constructor(email: string) {
+    this.value = email;
+  }
+
+  public static create(email: unknown): Result<Email, ValidationError> {
+    if (typeof email !== 'string' || !email.includes('@')) { // Simple validation
+      return err(new ValidationError('Invalid email format', {
+         value: email,
+         validationTarget: 'ValueObject',
+         metadata: { valueObjectName: 'Email' }
+       }));
+    }
+    return ok(new Email(email));
+  }
+}
+```
+
+### `ErrorCode` enum
+
+アプリケーション全体で共通のエラーコードを `shared/errors/error-code.enum.ts` に定義します。エラーの種類に応じて適切なコードを選択してください。
+
+**主要なエラーコード:**
+- `UnknownError`: 未特定のエラー
+- `ValidationError`: バリデーション失敗
+- `NotFound`: リソースが見つからない
+- `Unauthorized`: 認証失敗
+- `Forbidden`: アクセス権限なし
+- `InternalServerError`: サーバー内部エラー
+- `DatabaseError`: DB操作エラー
+- `PasswordHashingFailed`: パスワードハッシュ化失敗
+- `PasswordVerificationFailed`: パスワード検証失敗 (**New!**)
+- `ConflictError`: リソース競合 (例: Email重複)
+- `DbUniqueConstraintViolation`: DB一意性制約違反 (リポジトリ層でConflictErrorに変換されることが多い)
+- `InvalidIdentifierFormat`: ID形式不正
+- ... その他、必要に応じて追加 (例: `NetworkError`, `ConfigurationError`, `AiServiceError`)
+
+新しい種類のエラーが発生した場合は、適切な `ErrorCode` を追加してください。
+
+### フロントエンド固有型
 
 **Props型**
 - **意図**: コンポーネント間のデータ・コールバック受け渡しを型安全に行う
@@ -389,6 +499,7 @@ interface EntityMapper<Entity, Dto> {
 - DateOnly - 日付のみを表す型（YYYY-MM-DD形式）
 - Email - メールアドレスを表すブランド型
 - Money - 金額と通貨を表す複合型
+- PasswordHash - パスワードハッシュを表す値オブジェクト
 - TimeStampFields - 作成日時と更新日時のフィールドを含む型
 - EntityBase - 全エンティティの基底となる型
 
@@ -2087,3 +2198,28 @@ interface VideoPlaylist {
 ```
 
 // ... existing code ...
+
+// 値オブジェクト例（UserName）
+class UserName {
+  private readonly value: string;
+
+  constructor(name: string) {
+    // ここでは簡易的なバリデーションのみ記載。
+    // 実際のコードではZodなどを使用してより詳細なバリデーションを行う。
+    if (!name || name.length > 50) { 
+      throw new Error('Invalid user name');
+    }
+    this.value = name;
+  }
+
+  toString(): string {
+    return this.value;
+  }
+
+  equals(other: UserName): boolean {
+    return this.value === other.value;
+  }
+}
+
+// 型エイリアス例
+type Email = string;

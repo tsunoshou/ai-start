@@ -132,8 +132,21 @@ module.exports = {
         modifiers: ['const', 'global'], // export されていないトップレベルの const など
         format: ['UPPER_CASE'],
         filter: {
-          regex: '^(metadata|config|React)$', // 例外
+          // 既存の例外に加えて、末尾が Schema の変数を UPPER_CASE 強制から除外
+          // さらに logger のような非プリミティブなオブジェクトも除外
+          regex:
+            '^(metadata|config|React|.*Schema|logger|.*[cC]lient|.*[sS]ervice|.*[rR]epository|.*[mM]apper)$',
           match: false,
+        },
+      },
+      // loggerなどのオブジェクト変数に対する特別ルール
+      {
+        selector: 'variable',
+        modifiers: ['const'],
+        format: ['camelCase'],
+        filter: {
+          regex: '^(logger|.*[cC]lient|.*[sS]ervice|.*[rR]epository|.*[mM]apper)$',
+          match: true,
         },
       },
       // Reactのようなライブラリインポートは例外として許可
@@ -159,6 +172,19 @@ module.exports = {
         format: ['camelCase'],
         leadingUnderscore: 'allow',
       },
+      // ★★★ 修正: HTTPヘッダー形式のプロパティのみ命名規則チェックを無効化 ★★★
+      {
+        selector: ['objectLiteralProperty'],
+        filter: {
+          // HTTPヘッダー形式 (例: Content-Type) にマッチする正規表現
+          regex: '^([A-Z][a-zA-Z0-9]*(-[A-Z][a-zA-Z0-9]*)*)$',
+          match: true,
+        },
+        // マッチしたプロパティ（HTTPヘッダー形式）については、命名規則チェックを適用しない
+        format: null,
+      },
+      // ★★★ 注意: これより前のルールで camelCase が objectLiteralProperty に適用されている想定 ★★★
+      // (デフォルトセレクタが camelCase を指定しているため、通常はこれでOK)
     ],
   },
   settings: {
@@ -215,6 +241,23 @@ module.exports = {
       files: ['**/presentation/hooks/use-toast.ts'],
       rules: {
         '@typescript-eslint/naming-convention': 'off',
+      },
+    },
+    // ロガー関連ファイルでのコンソール使用を許可
+    {
+      files: [
+        '**/shared/logger/**/*.ts',
+        '**/__tests__/**/*.test.ts',
+        '**/__tests__/**/*.test.tsx',
+        '**/__tests__/**/*.spec.ts',
+        '**/__tests__/**/*.spec.tsx',
+        '**/*.test.ts',
+        '**/*.test.tsx',
+        '**/*.spec.ts',
+        '**/*.spec.tsx',
+      ],
+      rules: {
+        'no-console': 'off',
       },
     },
   ],
