@@ -152,13 +152,14 @@ export class User extends BaseEntity<UserId> {
    * @returns {Result<User, BaseError>} 更新されたUserインスタンス、またはエラー。
    */
   public changeName(newName: UserName): Result<User, BaseError> {
+    const now = DateTimeStringModule.DateTimeString.now();
     const updatedUser = new User(
       this.id,
       this.email,
       newName,
       this.passwordHash,
       this.createdAt,
-      this.updatedAt
+      now
     );
     return ok(updatedUser);
   }
@@ -170,13 +171,14 @@ export class User extends BaseEntity<UserId> {
    * @returns {Result<User, BaseError>} 更新されたUserインスタンス、またはエラー。
    */
   public changeEmail(newEmail: Email): Result<User, BaseError> {
+    const now = DateTimeStringModule.DateTimeString.now();
     const updatedUser = new User(
       this.id,
       newEmail,
       this.name,
       this.passwordHash,
       this.createdAt,
-      this.updatedAt
+      now
     );
     return ok(updatedUser);
   }
@@ -188,13 +190,14 @@ export class User extends BaseEntity<UserId> {
    * @returns {Result<User, BaseError>} 更新されたUserインスタンス、またはエラー。
    */
   public changePassword(newPasswordHash: PasswordHash): Result<User, BaseError> {
+    const now = DateTimeStringModule.DateTimeString.now();
     const updatedUser = new User(
       this.id,
       this.email,
       this.name,
       newPasswordHash,
       this.createdAt,
-      this.updatedAt
+      now
     );
     return ok(updatedUser);
   }
