@@ -61,9 +61,9 @@ export class AIServiceFactory {
 
     // デフォルトはダミーのOpenAIサービス（警告を表示）
     logger.warn({
-      message: 'No AI provider API key found in environment variables. Using dummy OpenAI service.'
+      message: 'No AI provider API key found in environment variables. Using dummy OpenAI service.',
     });
-    
+
     return container.resolve(OpenAIService);
   }
 }

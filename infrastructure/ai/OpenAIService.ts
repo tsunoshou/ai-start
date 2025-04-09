@@ -82,7 +82,7 @@ export class OpenAIService implements AIService {
     // この部分はOpenAI SDKを使用して実装
     this.logger.info({
       message: 'OpenAI chat called with model',
-      model: options.model
+      model: options.model,
     });
 
     // ダミーのレスポンスを返す（実際の実装では削除）
@@ -113,7 +113,7 @@ export class OpenAIService implements AIService {
     // この部分はOpenAI SDKを使用して実装
     this.logger.info({
       message: 'OpenAI chat stream called with model',
-      model: options.model
+      model: options.model,
     });
 
     // ダミーのストリーミング（実際の実装では削除）

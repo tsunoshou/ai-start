@@ -24,7 +24,7 @@ const QUERY_CLIENT = postgres(ENV.DATABASE_URL, {
             message: 'Executing SQL Query',
             query,
             parameters,
-            paramTypes
+            paramTypes,
           });
         }
       : undefined,

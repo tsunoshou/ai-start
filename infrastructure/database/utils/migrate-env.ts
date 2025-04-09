@@ -19,20 +19,20 @@ async function migrateSpecificEnvironment() {
 
   try {
     logger.info({
-      message: `環境 [${envName}] のデータベースマイグレーションを開始します`
+      message: `環境 [${envName}] のデータベースマイグレーションを開始します`,
     });
 
     // 特定のデータベースに対してマイグレーションを実行
     await runMigrationToSpecificDB(databaseUrl);
 
     logger.info({
-      message: `環境 [${envName}] のデータベースマイグレーションが完了しました`
+      message: `環境 [${envName}] のデータベースマイグレーションが完了しました`,
     });
     process.exit(0);
   } catch (error) {
     logger.error({
       message: `環境 [${envName}] のデータベースマイグレーション中にエラーが発生しました`,
-      error
+      error,
     });
     process.exit(1);
   }

@@ -48,7 +48,7 @@ export async function testConnection(): Promise<boolean> {
   } catch (error) {
     logger.error({
       message: 'PostgreSQL接続エラー',
-      error
+      error,
     });
     return false;
   }

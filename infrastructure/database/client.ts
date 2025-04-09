@@ -30,7 +30,7 @@ const IS_POOLER =
   CONNECTION_STRING.includes('pooler.supabase.com') || CONNECTION_STRING.includes('pgbouncer=true');
 
 logger.info({
-  message: `データベース接続タイプ: ${IS_POOLER ? '接続プーラー' : '直接接続'}`
+  message: `データベース接続タイプ: ${IS_POOLER ? '接続プーラー' : '直接接続'}`,
 });
 
 /**
@@ -58,7 +58,7 @@ export async function runMigrations() {
   } catch (error) {
     logger.error({
       message: 'マイグレーション中にエラーが発生しました',
-      error
+      error,
     });
     throw error;
   } finally {
@@ -102,13 +102,13 @@ export async function testConnection() {
     logger.info({
       message: 'データベース接続成功',
       currentTime: result[0].current_time,
-      connectionType: IS_POOLER ? '接続プーラー' : '直接接続'
+      connectionType: IS_POOLER ? '接続プーラー' : '直接接続',
     });
     return true;
   } catch (error) {
     logger.error({
       message: 'データベース接続エラー',
-      error
+      error,
     });
     return false;
   }
@@ -135,20 +135,20 @@ export async function runMigrationToSpecificDB(connectionString: string) {
   try {
     const dbInfo = connectionString.split('@')[1]?.split('/')[0] || '不明';
     logger.info({
-      message: `データベース ${dbInfo} へのマイグレーションを開始します...`
+      message: `データベース ${dbInfo} へのマイグレーションを開始します...`,
     });
-    
+
     await migrate(drizzle(migrationClient), {
       migrationsFolder: './infrastructure/database/migrations',
     });
-    
+
     logger.info({
-      message: `データベース ${dbInfo} へのマイグレーション完了`
+      message: `データベース ${dbInfo} へのマイグレーション完了`,
     });
   } catch (error) {
     logger.error({
       message: 'マイグレーション中にエラーが発生しました',
-      error
+      error,
     });
     throw error;
   } finally {

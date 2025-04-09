@@ -58,7 +58,7 @@ export async function testDatabaseConnection(): Promise<ConnectionTestResult> {
   } catch (error) {
     logger.error({
       message: 'データベース接続エラー',
-      error
+      error,
     });
     return createResult(false, 'データベース接続エラー');
   }
@@ -84,7 +84,7 @@ export async function testSupabaseConnection(): Promise<ConnectionTestResult> {
     if (error) {
       logger.error({
         message: 'Supabase接続エラー',
-        error
+        error,
       });
       return createResult(false, 'Supabase接続テスト失敗');
     }
@@ -93,7 +93,7 @@ export async function testSupabaseConnection(): Promise<ConnectionTestResult> {
   } catch (error) {
     logger.error({
       message: 'Supabase接続エラー',
-      error
+      error,
     });
     return createResult(false, 'Supabase接続エラー');
   }
@@ -122,7 +122,7 @@ export async function testOpenAIConnection(): Promise<ConnectionTestResult> {
       const error = await response.text();
       logger.error({
         message: 'OpenAI接続エラー',
-        error
+        error,
       });
       return createResult(false, 'OpenAI接続テスト失敗');
     }
@@ -131,7 +131,7 @@ export async function testOpenAIConnection(): Promise<ConnectionTestResult> {
   } catch (error) {
     logger.error({
       message: 'OpenAI接続エラー',
-      error
+      error,
     });
     return createResult(false, 'OpenAI接続エラー');
   }

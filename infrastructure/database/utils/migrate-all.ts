@@ -19,7 +19,9 @@ async function migrateAllEnvironments() {
     // 開発環境のデータベースマイグレーション
     if (ENV.DATABASE_URL_DEVELOPMENT) {
       await runMigrationToSpecificDB(ENV.DATABASE_URL_DEVELOPMENT);
-      logger.info({ message: '開発環境（ai-start-dev）のデータベースマイグレーションが完了しました' });
+      logger.info({
+        message: '開発環境（ai-start-dev）のデータベースマイグレーションが完了しました',
+      });
     } else {
       logger.warn({ message: '開発環境のデータベースURLが設定されていません。スキップします。' });
     }
@@ -28,10 +30,12 @@ async function migrateAllEnvironments() {
     if (ENV.DATABASE_URL_STAGING) {
       await runMigrationToSpecificDB(ENV.DATABASE_URL_STAGING);
       logger.info({
-        message: 'ステージング環境（ai-start-staging）のデータベースマイグレーションが完了しました'
+        message: 'ステージング環境（ai-start-staging）のデータベースマイグレーションが完了しました',
       });
     } else {
-      logger.warn({ message: 'ステージング環境のデータベースURLが設定されていません。スキップします。' });
+      logger.warn({
+        message: 'ステージング環境のデータベースURLが設定されていません。スキップします。',
+      });
     }
 
     // 本番環境のデータベースマイグレーション
@@ -47,7 +51,7 @@ async function migrateAllEnvironments() {
   } catch (error) {
     logger.error({
       message: 'データベースマイグレーション中にエラーが発生しました',
-      error
+      error,
     });
     process.exit(1);
   }
