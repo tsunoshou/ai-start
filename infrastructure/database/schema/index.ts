@@ -5,4 +5,4 @@
  */
 
 // export * from './users'; // Removed users export
-export * from './simple_test';
+export * from './users.schema';

@@ -1,9 +1,51 @@
 # プロトタイプ/PoC開発のコード例集
 
-最終更新日: 2025-03-26
+**最終更新日:** 2025-04-03
 
-このドキュメントは、`03_prototype_development.md`で説明されているプロトタイプ開発に関連するコードサンプルを集約したものです。
-概念の詳細な説明については、メインドキュメントを参照してください。
+このドキュメントは、`03_prototype_development.md`で説明されているプロトタイプ開発および概念実証（PoC）に関連するコードサンプルを集約する予定です。
+
+現在、このファイルには具体的なコード例は含まれていません。
+プロトタイプ開発が進むにつれて、検証に使用されたコードスニペットや、特定の技術・アーキテクチャ要素の実現可能性を示すためのサンプルがここに追加されます。
+
+## 例： 特定技術の検証コード (プレースホルダ)
+
+```typescript
+// 例: 新しい外部API連携の検証コード
+// import { SomeApiClient } from '@/infrastructure/external/some-api';
+
+async function verifyApiIntegration() {
+  // const client = new SomeApiClient();
+  // try {
+  //   const result = await client.fetchData({ /* parameters */ });
+  //   console.log('API integration successful:', result);
+  // } catch (error) {
+  //   console.error('API integration failed:', error);
+  // }
+}
+
+// verifyApiIntegration();
+```
+
+## 例： アーキテクチャパターンのPoC (プレースホルダ)
+
+```typescript
+// 例: 特定のドメインロジックを実装するサービスパターンのPoC
+// import { SomeDomainService } from '@/application/services/some-domain.service';
+// import { MockUserRepository } from '@/infrastructure/repositories/mocks/mock-user.repository';
+
+async function runPocServiceLogic() {
+  // const mockRepo = new MockUserRepository();
+  // const service = new SomeDomainService(mockRepo);
+  // try {
+  //   const result = await service.execute({ /* input data */ });
+  //   console.log('PoC Service logic executed successfully:', result);
+  // } catch (error) {
+  //   console.error('PoC Service logic execution failed:', error);
+  // }
+}
+
+// runPocServiceLogic();
+```
 
 ## リポジトリパターンとRLSの実装例
 
@@ -13,14 +55,14 @@ export type UserId = string & { readonly _brand: unique symbol };
 export type ProjectId = string & { readonly _brand: unique symbol };
 
 // ID生成・変換関数
-export function createUserId(id: string): UserId {
+export function createUserId(id: string): UserId { // 注: 詳細な実装は 06_utility_functions_examples.md のID生成・変換関数を参照
   if (!isValidUUID(id)) {
     throw new ValidationError('INVALID_ID', 'Invalid UserId format');
   }
   return id as UserId;
 }
 
-export function generateUserId(): UserId {
+export function generateUserId(): UserId { // 注: 詳細な実装は 06_utility_functions_examples.md のID生成・変換関数を参照
   return crypto.randomUUID() as UserId;
 }
 
@@ -44,26 +86,26 @@ import { userMapper } from '@/infrastructure/mappers/userMapper';
 
 export class SupabaseUserRepository implements UserRepository {
   constructor(private readonly session: Session | null) {}
-
+  
   private async getClient() {
     return getAuthenticatedClient(this.session);
   }
-
+  
   async findById(id: UserId): Promise<User | null> {
     try {
       const client = await this.getClient();
-
+      
       const { data, error } = await client
         .from('users')
         .select('*')
         .eq('id', id.toString())
         .maybeSingle();
-
+        
       if (error) {
         if (error.code === 'PGRST116') return null; // レコードが見つからない
         throw new DataError('DATABASE_ERROR', error.message, { userId: id.toString() });
       }
-
+      
       return data ? userMapper.toDomain(data) : null;
     } catch (error) {
       if (error instanceof DataError) {
@@ -76,7 +118,7 @@ export class SupabaseUserRepository implements UserRepository {
       );
     }
   }
-
+  
   // 他のメソッドの実装...
 }
 ```
@@ -89,7 +131,7 @@ export class SupabaseUserRepository implements UserRepository {
 // domain/models/value-objects/prompt-template.ts
 export type PromptTemplateId = string & { readonly _brand: unique symbol };
 
-export function createPromptTemplateId(id: string): PromptTemplateId {
+export function createPromptTemplateId(id: string): PromptTemplateId { // 注: 詳細な実装は 06_utility_functions_examples.md のID生成・変換関数を参照
   if (!id || typeof id !== 'string') {
     throw new ValidationError('INVALID_ID', 'Invalid PromptTemplateId format');
   }
@@ -97,7 +139,7 @@ export function createPromptTemplateId(id: string): PromptTemplateId {
 }
 
 // domain/models/entities/prompt/PromptTemplate.ts
-export interface PromptTemplate extends EntityBase {
+export interface PromptTemplate extends EntityBase { // 注: EntityBase は 05_type_definitions_examples.md 参照
   readonly id: PromptTemplateId;
   readonly name: string;
   readonly description: string;
@@ -117,7 +159,9 @@ export interface PromptTemplateRepository {
 
 // domain/services/prompt/PromptTemplateManager.ts
 export class PromptTemplateManager {
-  constructor(private readonly templateRepository: PromptTemplateRepository) {}
+  constructor(
+    private readonly templateRepository: PromptTemplateRepository
+  ) {}
 
   /**
    * テンプレートIDに基づいてプロンプトテンプレートを取得し、変数を置換する
@@ -127,14 +171,17 @@ export class PromptTemplateManager {
    * @throws {NotFoundError} テンプレートが見つからない場合
    */
   async renderTemplate(
-    templateId: PromptTemplateId,
+    templateId: PromptTemplateId, // 注: PromptTemplateId は 05_type_definitions_examples.md 参照
     variables: Record<string, string>
   ): Promise<string> {
     const template = await this.templateRepository.findById(templateId);
     if (!template) {
-      throw new NotFoundError('TEMPLATE_NOT_FOUND', `Template not found: ${templateId.toString()}`);
+      throw new NotFoundError(
+        'TEMPLATE_NOT_FOUND',
+        `Template not found: ${templateId.toString()}`
+      );
     }
-
+    
     return this.replaceVariables(template.content, variables);
   }
 
@@ -144,7 +191,10 @@ export class PromptTemplateManager {
    * @param variables 置換する変数のマップ
    * @returns 変数置換後の文字列
    */
-  private replaceVariables(template: string, variables: Record<string, string>): string {
+  private replaceVariables(
+    template: string, 
+    variables: Record<string, string>
+  ): string {
     return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
       return variables[key] || match;
     });
@@ -179,7 +229,7 @@ export interface Message extends EntityBase {
 export interface ContextBuildStrategy {
   formatHistory(history: Message[]): AIMessage[];
   formatSystemPrompt(systemPrompt: string): string;
-  optimizeContext(context: AIContext, maxTokens: number): AIContext;
+  optimizeContext(context: AIContext, maxTokens: number): AIContext; // 注: Message, AIMessage, AIContext は 05_type_definitions_examples.md 参照
 }
 
 /**
@@ -195,7 +245,7 @@ export class InitialContextStrategy implements ContextBuildStrategy {
   formatHistory(history: Message[]): AIMessage[] {
     return [];
   }
-
+  
   /**
    * 初期対話用のシステムプロンプト強化
    * @param systemPrompt 基本システムプロンプト
@@ -204,7 +254,7 @@ export class InitialContextStrategy implements ContextBuildStrategy {
   formatSystemPrompt(systemPrompt: string): string {
     return `${systemPrompt}\n重要: これは初期対話です。まず概要説明と状況確認を行ってください。`;
   }
-
+  
   /**
    * 初期対話のコンテキスト最適化
    * システムプロンプトを優先し、不要なコンテキストを削減
@@ -214,38 +264,38 @@ export class InitialContextStrategy implements ContextBuildStrategy {
    */
   optimizeContext(context: AIContext, maxTokens: number): AIContext {
     // システムプロンプトは常に保持
-    const systemMessage = context.messages.find((msg) => msg.role === 'system');
-
+    const systemMessage = context.messages.find(msg => msg.role === 'system');
+    
     if (!systemMessage || context.totalTokens <= maxTokens) {
       return context;
     }
-
+    
     // システムプロンプトのみを保持し、他のメッセージは削除
     const systemTokens = Math.ceil(systemMessage.content.length / 4);
-
+    
     if (systemTokens > maxTokens) {
       // システムプロンプトが大きすぎる場合は切り詰める
       const truncatedContent = systemMessage.content.substring(0, maxTokens * 4 - 100);
       return {
         messages: [{ role: 'system', content: truncatedContent }],
-        totalTokens: Math.ceil(truncatedContent.length / 4),
+        totalTokens: Math.ceil(truncatedContent.length / 4)
       };
     }
-
+    
     // システムメッセージと最後のユーザーメッセージのみを保持
-    const userMessage = context.messages.findLast((msg) => msg.role === 'user');
-
+    const userMessage = context.messages.findLast(msg => msg.role === 'user');
+    
     if (userMessage) {
       return {
         messages: [systemMessage, userMessage],
-        totalTokens:
-          Math.ceil(systemMessage.content.length / 4) + Math.ceil(userMessage.content.length / 4),
+        totalTokens: Math.ceil(systemMessage.content.length / 4) + 
+                    Math.ceil(userMessage.content.length / 4)
       };
     }
-
+    
     return {
       messages: [systemMessage],
-      totalTokens: systemTokens,
+      totalTokens: systemTokens
     };
   }
 }
@@ -264,12 +314,12 @@ export class ContinuousContextStrategy implements ContextBuildStrategy {
   formatHistory(history: Message[]): AIMessage[] {
     return history
       .slice(-10) // 最新10メッセージのみ使用
-      .map((msg) => ({
+      .map(msg => ({
         role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content,
+        content: msg.content
       }));
   }
-
+  
   /**
    * 継続対話用のシステムプロンプト
    * @param systemPrompt 基本システムプロンプト
@@ -278,7 +328,7 @@ export class ContinuousContextStrategy implements ContextBuildStrategy {
   formatSystemPrompt(systemPrompt: string): string {
     return `${systemPrompt}\n継続対話です。これまでの会話を考慮して回答してください。`;
   }
-
+  
   /**
    * 継続対話のコンテキスト最適化
    * 古い履歴から削減して最新の会話の流れを優先
@@ -290,26 +340,28 @@ export class ContinuousContextStrategy implements ContextBuildStrategy {
     if (context.totalTokens <= maxTokens) {
       return context;
     }
-
+    
     // システムメッセージと最近のメッセージを優先
-    const systemMessage = context.messages.find((msg) => msg.role === 'system');
-
+    const systemMessage = context.messages.find(msg => msg.role === 'system');
+    
     // ユーザーとアシスタントのメッセージを抽出（最新順）
-    const conversationMessages = context.messages.filter((msg) => msg.role !== 'system').reverse();
-
+    const conversationMessages = context.messages
+      .filter(msg => msg.role !== 'system')
+      .reverse();
+    
     const optimizedMessages: AIMessage[] = [];
     let currentTokens = 0;
-
+    
     // システムメッセージを追加
     if (systemMessage) {
       optimizedMessages.push(systemMessage);
       currentTokens += Math.ceil(systemMessage.content.length / 4);
     }
-
+    
     // 最新のメッセージから順に追加
     for (const message of conversationMessages) {
       const messageTokens = Math.ceil(message.content.length / 4);
-
+      
       if (currentTokens + messageTokens <= maxTokens) {
         optimizedMessages.push(message);
         currentTokens += messageTokens;
@@ -317,7 +369,7 @@ export class ContinuousContextStrategy implements ContextBuildStrategy {
         break; // トークン制限を超える場合は追加を停止
       }
     }
-
+    
     // メッセージを正しい順序に並べ替え
     optimizedMessages.sort((a, b) => {
       // システムメッセージを最初に
@@ -326,10 +378,10 @@ export class ContinuousContextStrategy implements ContextBuildStrategy {
       // その他のメッセージは追加順（最新のメッセージが最後）
       return 0;
     });
-
+    
     return {
       messages: optimizedMessages,
-      totalTokens: currentTokens,
+      totalTokens: currentTokens
     };
   }
 }
@@ -348,13 +400,13 @@ export class CheckpointContextStrategy implements ContextBuildStrategy {
   formatHistory(history: Message[]): AIMessage[] {
     // 履歴から重要なポイントを抽出（実際の実装ではより洗練された手法を使用）
     const keyMessages = this.extractKeyMessages(history);
-
-    return keyMessages.map((msg) => ({
+    
+    return keyMessages.map(msg => ({
       role: msg.role as 'user' | 'assistant' | 'system',
-      content: msg.content,
+      content: msg.content
     }));
   }
-
+  
   /**
    * 重要なメッセージを抽出
    * @param history メッセージ履歴
@@ -364,38 +416,37 @@ export class CheckpointContextStrategy implements ContextBuildStrategy {
     if (history.length <= 5) {
       return history;
     }
-
+    
     // 重要なメッセージを選択するロジック
     // 実際の実装ではより洗練された方法が必要
     const result: Message[] = [];
-
+    
     // 最初のシステムメッセージ
-    const systemMessage = history.find((msg) => msg.role === 'system');
+    const systemMessage = history.find(msg => msg.role === 'system');
     if (systemMessage) {
       result.push(systemMessage);
     }
-
+    
     // 最初のユーザーメッセージ
-    const firstUserMessage = history.find((msg) => msg.role === 'user');
+    const firstUserMessage = history.find(msg => msg.role === 'user');
     if (firstUserMessage) {
       result.push(firstUserMessage);
     }
-
+    
     // 重要なフラグが付いたメッセージ（例として、メタデータに基づく選択）
-    const importantMessages = history.filter(
-      (msg) =>
-        msg.metadata && (msg.metadata.important === true || msg.metadata.isCheckpoint === true)
+    const importantMessages = history.filter(msg => 
+      msg.metadata && (msg.metadata.important === true || msg.metadata.isCheckpoint === true)
     );
     result.push(...importantMessages);
-
+    
     // 最新の数メッセージを追加
     const recentMessages = history.slice(-3);
     result.push(...recentMessages);
-
+    
     // 重複を排除
     return Array.from(new Set(result));
   }
-
+  
   /**
    * チェックポイント用のシステムプロンプト
    * @param systemPrompt 基本システムプロンプト
@@ -404,7 +455,7 @@ export class CheckpointContextStrategy implements ContextBuildStrategy {
   formatSystemPrompt(systemPrompt: string): string {
     return `${systemPrompt}\nこれはチェックポイントです。これまでの進捗を要約し、次のステップの準備をしてください。`;
   }
-
+  
   /**
    * チェックポイントのコンテキスト最適化
    * 要約を優先し、詳細な履歴は削減
@@ -431,7 +482,7 @@ export enum ConversationType {
   INITIAL = 'initial',
   CONTINUOUS = 'continuous',
   CHECKPOINT = 'checkpoint',
-  OUTPUT_CREATION = 'output_creation',
+  OUTPUT_CREATION = 'output_creation'
 }
 
 // domain/repositories/conversationRepository.ts
@@ -467,27 +518,27 @@ export class ConversationManager {
    * @returns 生成された会話エンティティ
    */
   async startConversation(
-    userId: UserId,
+    userId: UserId, // 注: UserId は 05_type_definitions_examples.md 参照
     conversationType: ConversationType,
     initialPrompt?: string
-  ): Promise<Conversation> {
-    const conversation = createConversation({
-      id: generateId<ConversationId>(),
+  ): Promise<Conversation> { // 注: Conversation は 05_type_definitions_examples.md 参照
+    const conversation = Conversation.create({ // 注: Conversation.create は Conversation エンティティのファクトリメソッド
+      id: generateId<ConversationId>(), // 注: generateId は 06_utility_functions_examples.md 参照
       userId,
       type: conversationType,
       createdAt: new Date(),
-      updatedAt: new Date(),
+      updatedAt: new Date()
     });
-
+    
     await this.conversationRepository.save(conversation);
-
+    
     if (initialPrompt) {
       await this.addSystemMessage(conversation.id, initialPrompt);
     }
-
+    
     return conversation;
   }
-
+  
   /**
    * 会話にメッセージを追加する
    * @param conversationId 会話ID
@@ -499,30 +550,32 @@ export class ConversationManager {
     conversationId: ConversationId,
     content: string,
     role: 'user' | 'assistant' | 'system'
-  ): Promise<Message> {
-    const message = createMessage({
-      id: generateId<MessageId>(),
+  ): Promise<Message> { // 注: Message は 05_type_definitions_examples.md 参照
+    const message = Message.create({ // 注: Message.create は Message エンティティのファクトリメソッド
+      id: generateId<MessageId>(), // 注: generateId は 06_utility_functions_examples.md 参照
       conversationId,
       content,
       role,
-      createdAt: new Date(),
+      createdAt: new Date()
     });
-
+    
     await this.messageRepository.save(message);
     await this.conversationRepository.updateTimestamp(conversationId);
-
+    
     return message;
   }
-
+  
   /**
    * 会話履歴を取得する
    * @param conversationId 会話ID
    * @returns メッセージの配列
    */
-  async getConversationHistory(conversationId: ConversationId): Promise<Message[]> {
+  async getConversationHistory(
+    conversationId: ConversationId
+  ): Promise<Message[]> {
     return this.messageRepository.findByConversationId(conversationId);
   }
-
+  
   /**
    * システムメッセージを追加する
    * @param conversationId 会話ID
@@ -562,7 +615,7 @@ export interface AIResponse {
   model: string;
 }
 
-export type AIServiceErrorCode =
+export type AIServiceErrorCode = 
   | 'API_ERROR'
   | 'RATE_LIMIT_ERROR'
   | 'CONTEXT_LENGTH_ERROR'
@@ -582,10 +635,13 @@ export class AIServiceError extends Error {
 
 // domain/services/ai/AIService.ts
 export interface AIService {
-  generateCompletion(context: AIContext, options?: AIRequestOptions): Promise<AIResponse>;
-
+  generateCompletion(
+    context: AIContext, // 注: AIContext は 05_type_definitions_examples.md 参照
+    options?: AIRequestOptions
+  ): Promise<AIResponse>;
+  
   generateCompletionStream(
-    context: AIContext,
+    context: AIContext, // 注: AIContext は 05_type_definitions_examples.md 参照
     options?: AIRequestOptions,
     callback?: (chunk: string) => void
   ): Promise<AIResponse>;
@@ -595,9 +651,9 @@ export interface AIService {
 export class OpenAIService implements AIService {
   constructor(
     private readonly openai: OpenAIApi,
-    private readonly config: AIServiceConfig
+    private readonly config: AIServiceConfig // 注: AIServiceConfig は 05_type_definitions_examples.md のAI固有型を参照
   ) {}
-
+  
   /**
    * OpenAI APIを使用してテキスト完成（チャット）を生成する
    * @param context AIコンテキスト
@@ -605,36 +661,40 @@ export class OpenAIService implements AIService {
    * @returns AI応答
    * @throws {AIServiceError} API呼び出しに失敗した場合
    */
-  async generateCompletion(context: AIContext, options?: AIRequestOptions): Promise<AIResponse> {
+  async generateCompletion(
+    context: AIContext, // 注: AIContext は 05_type_definitions_examples.md 参照
+    options?: AIRequestOptions
+  ): Promise<AIResponse> {
     try {
-      const messages = context.messages.map((msg) => ({
+      const messages = context.messages.map(msg => ({
         role: msg.role,
-        content: msg.content,
+        content: msg.content
       }));
-
+      
       const response = await this.openai.createChatCompletion({
         model: options?.model || this.config.defaultModel,
         messages,
         temperature: options?.temperature || this.config.defaultTemperature,
         max_tokens: options?.maxTokens || this.config.defaultMaxTokens,
-        stream: false,
+        stream: false
       });
-
+      
       return {
         content: response.data.choices[0].message?.content || '',
         tokenUsage: {
           promptTokens: response.data.usage?.prompt_tokens || 0,
           completionTokens: response.data.usage?.completion_tokens || 0,
           totalTokens: response.data.usage?.total_tokens || 0,
-          cost: this.calculateCost(response.data.usage),
+          cost: this.calculateCost(response.data.usage)
         },
-        model: response.data.model,
+        model: response.data.model
       };
+      
     } catch (error) {
       throw this.handleOpenAIError(error);
     }
   }
-
+  
   /**
    * ストリーミングレスポンス形式でテキスト完成を生成する
    * @param context AIコンテキスト
@@ -644,14 +704,14 @@ export class OpenAIService implements AIService {
    * @throws {AIServiceError} API呼び出しに失敗した場合
    */
   async generateCompletionStream(
-    context: AIContext,
+    context: AIContext, // 注: AIContext は 05_type_definitions_examples.md 参照
     options?: AIRequestOptions,
     callback?: (chunk: string) => void
   ): Promise<AIResponse> {
     // ストリーミング実装（省略）
     throw new Error('Method not implemented');
   }
-
+  
   /**
    * OpenAIエラーを標準化されたAIServiceErrorに変換する
    * @param error 元のエラー
@@ -662,7 +722,7 @@ export class OpenAIService implements AIService {
     if (error.response) {
       const status = error.response.status;
       const data = error.response.data;
-
+      
       if (status === 429) {
         return new AIServiceError(
           'RATE_LIMIT_ERROR',
@@ -690,38 +750,40 @@ export class OpenAIService implements AIService {
         );
       }
     }
-
-    return new AIServiceError('API_ERROR', error.message || 'Unknown error occurred', {
-      originalError: error,
-    });
+    
+    return new AIServiceError(
+      'API_ERROR',
+      error.message || 'Unknown error occurred',
+      { originalError: error }
+    );
   }
-
+  
   /**
    * トークン使用量からコストを計算する
    * @param usage トークン使用量情報
    * @returns 推定コスト（米ドル）
    */
-  private calculateCost(usage?: { prompt_tokens?: number; completion_tokens?: number }): number {
+  private calculateCost(usage?: { prompt_tokens?: number, completion_tokens?: number }): number {
     if (!usage) return 0;
-
+    
     const model = this.config.defaultModel;
     const promptTokens = usage.prompt_tokens || 0;
     const completionTokens = usage.completion_tokens || 0;
-
+    
     // モデルごとの価格（1000トークンあたりの米ドル）
     // 注: 価格は変更される可能性があるため、最新の公式価格を参照すること
-    const pricing: Record<string, { prompt: number; completion: number }> = {
+    const pricing: Record<string, { prompt: number, completion: number }> = {
       'gpt-4-turbo-preview': { prompt: 0.01, completion: 0.03 },
       'gpt-4': { prompt: 0.03, completion: 0.06 },
-      'gpt-3.5-turbo': { prompt: 0.0015, completion: 0.002 },
+      'gpt-3.5-turbo': { prompt: 0.0015, completion: 0.002 }
     };
-
+    
     const price = pricing[model] || pricing['gpt-3.5-turbo'];
-
+    
     // コスト計算（1000トークンあたりの価格）
     const promptCost = (promptTokens / 1000) * price.prompt;
     const completionCost = (completionTokens / 1000) * price.completion;
-
+    
     return promptCost + completionCost;
   }
 }
@@ -744,18 +806,18 @@ describe('PromptTemplateManager', () => {
   let mockRepository: {
     findById: ReturnType<typeof vi.fn<[PromptTemplateId], Promise<PromptTemplate | null>>>;
   };
-
+  
   beforeEach(() => {
     // 型安全なモック作成
     mockRepository = {
-      findById: vi.fn<[PromptTemplateId], Promise<PromptTemplate | null>>(),
+      findById: vi.fn<[PromptTemplateId], Promise<PromptTemplate | null>>()
     };
-
+    
     promptTemplateManager = new PromptTemplateManager(
       mockRepository as unknown as PromptTemplateRepository
     );
   });
-
+  
   it('should render template with variables', async () => {
     // モックセットアップ - 適切な型で作成
     const templateId = createPromptTemplateId('template-1');
@@ -768,35 +830,35 @@ describe('PromptTemplateManager', () => {
       version: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
-      deletedAt: null,
+      deletedAt: null
     };
-
+    
     mockRepository.findById.mockResolvedValue(mockTemplate);
-
+    
     // テスト実行
-    const result = await promptTemplateManager.renderTemplate(templateId, {
-      name: 'John',
-      service: 'AiStart',
-    });
-
+    const result = await promptTemplateManager.renderTemplate(
+      templateId,
+      { name: 'John', service: 'AiStart' }
+    );
+    
     // 検証
     expect(result).toBe('Hello John, welcome to AiStart!');
     expect(mockRepository.findById).toHaveBeenCalledWith(templateId);
   });
-
+  
   it('should throw error when template not found', async () => {
     // モックセットアップ
     const templateId = createPromptTemplateId('non-existent');
     mockRepository.findById.mockResolvedValue(null);
-
+    
     // テスト実行と検証
-    await expect(promptTemplateManager.renderTemplate(templateId, {})).rejects.toThrow(
-      NotFoundError
-    );
-
-    await expect(promptTemplateManager.renderTemplate(templateId, {})).rejects.toThrow(
-      'Template not found'
-    );
+    await expect(
+      promptTemplateManager.renderTemplate(templateId, {})
+    ).rejects.toThrow(NotFoundError);
+    
+    await expect(
+      promptTemplateManager.renderTemplate(templateId, {})
+    ).rejects.toThrow('Template not found');
   });
 });
 ```
@@ -812,18 +874,16 @@ import { users } from './users';
 
 export const conversations = pgTable('conversations', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
-  userId: uuid('user_id')
-    .references(() => users.id)
-    .notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
   type: varchar('type', { length: 50 })
     .notNull()
     .check(
-      'valid_conversation_type',
+      'valid_conversation_type', 
       `type IN ('initial', 'continuous', 'checkpoint', 'output_creation')`
     ),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  metadata: jsonb('metadata'),
+  metadata: jsonb('metadata')
 });
 ```
 
@@ -883,32 +943,38 @@ const envSchema = z.object({
   // アプリケーション
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   NEXT_PUBLIC_APP_URL: z.string().url(),
-
+  
   // データベース
   DATABASE_URL: z.string().min(1),
-
+  
   // 認証
   NEXTAUTH_URL: z.string().url(),
   NEXTAUTH_SECRET: z.string().min(1),
-  BYPASS_AUTH: z
-    .string()
-    .transform((val) => val === 'true')
-    .optional(),
-
+  BYPASS_AUTH: z.string().transform(val => val === 'true').optional(),
+  
   // OpenAI - 01_requirements_definition.mdの外部サービス連携要件と整合
   OPENAI_API_KEY: z.string().min(1),
   OPENAI_ORGANIZATION: z.string().optional(),
-  OPENAI_DEFAULT_MODEL: z
-    .enum(['gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo'])
-    .default('gpt-4-turbo-preview'),
-  OPENAI_DEFAULT_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.7),
-  OPENAI_DEFAULT_MAX_TOKENS: z.coerce.number().positive().default(1000),
-
+  OPENAI_DEFAULT_MODEL: z.enum([
+    'gpt-4-turbo-preview',
+    'gpt-4',
+    'gpt-3.5-turbo'
+  ]).default('gpt-4-turbo-preview'),
+  OPENAI_DEFAULT_TEMPERATURE: z.coerce
+    .number()
+    .min(0)
+    .max(2)
+    .default(0.7),
+  OPENAI_DEFAULT_MAX_TOKENS: z.coerce
+    .number()
+    .positive()
+    .default(1000),
+  
   // Supabase
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-
+  
   // レート制限
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
@@ -954,3 +1020,45 @@ SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
 UPSTASH_REDIS_REST_URL="your-upstash-redis-url"
 UPSTASH_REDIS_REST_TOKEN="your-upstash-redis-token"
 ```
+
+// src/utils/ai/contextManager.ts
+
+import { Message } from '@/types/domain/Message'; // 注: Message型は 05_type_definitions_examples.md 参照
+
+/**
+ * 会話履歴のコンテキスト管理クラス
+ * AIモデルのトークン制限を考慮して最適なコンテキストを管理
+ */
+export class ConversationContext {
+  private messages: Message[] = [];
+  private maxTokenEstimate: number;
+  private tokenCountEstimator: (text: string) => number;
+  
+  /**
+   * コンテキストマネージャーを初期化
+   * 
+   * @param maxTokens - 最大トークン数の目安
+   * @param tokenEstimator - テキストのトークン数を推定する関数
+   */
+  constructor(
+    maxTokens: number = 4000,
+    tokenEstimator: (text: string) => number = defaultTokenEstimator // 注: defaultTokenEstimator は 06_utility_functions_examples.md を参照
+  ) {
+    this.maxTokenEstimate = maxTokens;
+    this.tokenCountEstimator = tokenEstimator;
+  }
+  
+  /**
+   * メッセージをコンテキストに追加
+   * 
+   * @param message - 追加するメッセージ
+   * @returns 追加後の全メッセージ
+   */
+  addMessage(message: Message): Message[] {
+    this.messages.push(message);
+    this.pruneToFitTokenLimit();
+    return this.getMessages();
+  }
+  
+  // ... existing code ...
+} 

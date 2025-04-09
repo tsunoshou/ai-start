@@ -52,3 +52,14 @@ next-env.d.ts
 
 # Vercel
 .vercel/
+
+*storybook.log
+
+# Storybook
+storybook-static/
+
+# Playwright
+/playwright-report/
+
+# Vitest / Test Results
+/test-results/

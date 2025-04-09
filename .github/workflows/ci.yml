@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  create: # ブランチやタグが作成されたときにトリガー
   pull_request:
     branches: [main, development, 'release/*']
   push:
@@ -21,11 +22,31 @@ jobs:
       - name: Node.jsセットアップ
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22.x'
           cache: 'npm'
+
+      - name: npm バージョン設定
+        run: |
+          npm install -g npm@10.9.2  # 開発環境のnpmバージョンに合わせる
+          npm --version
+          # npm設定の確認と調整
+          npm config set legacy-peer-deps=true # 必要に応じて追加
+          npm config list
+
+      - name: 環境情報表示
+        run: |
+          node -v
+          npm -v
+          echo "OS情報:"
+          lsb_release -a
+          echo "パッケージマネージャ情報:"
+          npm list -g --depth=0
 
       - name: 依存関係インストール
         run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps # VitestのStorybookテストでPlaywrightを使うため追加
 
       - name: コード形式チェック
         run: npm run format:check
@@ -36,13 +57,31 @@ jobs:
       - name: 型チェック
         run: npx tsc --noEmit
 
-      - name: テスト実行
-        run: npm test
+      - name: ユニット/統合テスト実行
+        run: npm run test:unit # Vitestを実行
+
+      - name: mainブランチへのPRソースブランチ検証
+        # mainブランチへのプルリクエストの場合のみ実行
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        run: |
+          SOURCE_BRANCH="${{ github.head_ref }}"
+          # ソースブランチが release/* または hotfix/* パターンにマッチするかチェック
+          if [[ "$SOURCE_BRANCH" =~ ^release/.*$ ]] || [[ "$SOURCE_BRANCH" =~ ^hotfix/.*$ ]]; then
+            echo "✅ Source branch '$SOURCE_BRANCH' is allowed for merging into main."
+            exit 0
+          else
+            echo "❌ ERROR: Merging into 'main' is only allowed from 'release/*' or 'hotfix/*' branches."
+            echo "Source branch '$SOURCE_BRANCH' is not allowed."
+            exit 1
+          fi
+
+  # --- E2Eテストジョブは別のワークフロー (staging-e2e-test.yml) に分離 ---
 
   # セキュリティスキャンのみ残す（ビルドはVercelに任せる）
   security-scan:
     name: セキュリティチェック
     runs-on: ubuntu-latest
+    # lint-and-test ジョブが完了してから実行
     needs: lint-and-test
     timeout-minutes: 5
 
@@ -61,6 +100,64 @@ jobs:
       - name: セキュリティ監査実行
         run: npm audit --production || true # エラーがあっても続行
 
+  # --- ここからE2Eテストジョブを追加 ---
+  e2e-test:
+    name: E2Eテスト実行 (Staging)
+    runs-on: ubuntu-latest
+    # リリースブランチへのプッシュまたはリリースブランチの作成時に実行
+    needs: lint-and-test
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) || (github.event_name == 'create' && github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/'))
+    timeout-minutes: 15
+    # GitHub Environments の 'staging' を指定
+    environment:
+      name: staging
+      url: https://staging.ai-start.net # Environmentに表示されるURL (固定)
+
+    steps:
+      - uses: actions/checkout@v4
+        # push イベントなので、トリガーとなった release/* ブランチがチェックアウトされる
+
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x' # lint-and-test ジョブと合わせる
+          cache: 'npm'
+
+      - name: npm バージョン設定
+        run: |
+          npm install -g npm@10.9.2
+          npm --version
+
+      - name: 依存関係インストール
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Playwright E2Eテスト実行
+        id: e2e_tests
+        run: npm run test:e2e
+        env:
+          # 固定のステージングURLを指定
+          PLAYWRIGHT_BASE_URL: https://staging.ai-start.net
+
+          # --- staging Environment Secrets を参照 ---
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} # APIテスト認証用
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }} # Vercel保護バイパス用
+          # 必要に応じて他のシークレットも追加
+          # AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          # TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          # TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+
+      - name: Playwrightレポートアップロード
+        uses: actions/upload-artifact@v4
+        if: always() # テストが失敗してもレポートをアップロード
+        with:
+          name: playwright-report-staging
+          path: playwright-report/
+          retention-days: 30
 # ビルドはVercelで自動的に行われるためコメントアウト
 # ビルドのチェックだけ行いたい場合は残してください
 #  build-check:

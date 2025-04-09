@@ -8,7 +8,6 @@ import {
   isStaging,
   isProduction,
 } from '../../../config/environment';
-import { Database } from '../types/supabase';
 
 // 環境変数からSupabase接続情報を取得
 const SUPABASE_URL = getSupabaseUrl();
@@ -23,7 +22,7 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
  * Supabaseクライアントのインスタンス
  * 型定義を適用してタイプセーフな操作を提供
  */
-export const SUPABASE = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const SUPABASE = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

@@ -1,6 +1,6 @@
 # プロジェクトセットアップ概要
 
-最終更新日: 2025-03-31
+最終更新日: 2025-04-09
 
 ## 目的
 
@@ -8,54 +8,151 @@
 
 ## 主要技術スタックとバージョン
 
-以下は、プロジェクトで使用されている主要な技術要素と、`package.json` または実行環境から確認されたバージョンです。
+以下は、プロジェクトで使用されている主要な技術要素と、`package-lock.json` に記録されている厳密なバージョンです。
 
-*   **Node.js**: `v23.7.0` (*注: `docs/01_requirements_definition.md` では v22 LTS 指定*)
-*   **Next.js**: `^14.1.3`
-*   **React**: `^18.2.0`
-*   **TypeScript**: `^5.3.3`
-*   **Tailwind CSS**: `^3.4.1`
-*   **Auth.js (Core)**: `^0.38.0`
-*   **Auth.js (NextAuth v5 Beta)**: `^5.0.0-beta.3`
-*   **Drizzle ORM**: `^0.41.0`
-*   **Drizzle Kit**: `^0.30.6` (*`devDependencies`*)
-*   **PostgreSQL Driver (`pg`)**: `^8.14.1`
-*   **node-pg-migrate**: `^7.9.1` (*`devDependencies`*)
-*   **ESLint**: `^8.57.0` (*`devDependencies`*)
-*   **Prettier**: `^3.2.5` (*`devDependencies`*)
-*   **TanStack Query (React Query)**: `^5.28.2`
+**Core Frameworks & Runtime:**
+*   **Node.js**: v22.x (*実行環境*)
+*   **npm**: 10.9.2 (*パッケージマネージャー*)
+*   **Next.js**: 14.2.26
+*   **React**: 18.3.1
+*   **TypeScript**: 5.8.2
+
+**UI & Styling:**
+*   **Tailwind CSS**: 3.4.17
+    *   `postcss`: 8.4.42 (*dependencies*)
+    *   `autoprefixer`: 10.4.19 (*devDependencies*)
+    *   `prettier-plugin-tailwindcss`: 0.6.11 (*devDependencies*) - Prettier 連携
+    *   `tailwindcss-animate`: 1.0.7 (*dependencies*) - アニメーション用ユーティリティ
 *   **shadcn/ui**: (バージョン管理なし、CLIで導入)
-*   **Lucide React**: `^0.359.0`
-*   **Husky**: `^9.1.7` (*`devDependencies`*)
-*   **lint-staged**: `^15.5.0` (*`devDependencies`*)
+    *   `class-variance-authority`: 0.7.1 (*dependencies*) - コンポーネントバリアント管理
+    *   `clsx`: 2.1.1 (*dependencies*) - クラス名結合ユーティリティ
+    *   `cmdk`: 1.1.1 (*dependencies*) - コマンドメニュー
+    *   `react-hook-form`: 7.55.0 (*dependencies*) - フォーム管理
+    *   `react-day-picker`: 8.10.1 (*dependencies*) - カレンダーコンポーネント
+*   **Radix UI**: (shadcn/uiの基盤)
+    *   `@radix-ui/react-accordion`: 1.2.3 (*dependencies*)
+    *   `@radix-ui/react-alert-dialog`: 1.1.6 (*dependencies*)
+    *   `@radix-ui/react-avatar`: 1.1.3 (*dependencies*)
+    *   その他Radixコンポーネント多数
+*   **Lucide React**: 0.359.0
+
+**Database & ORM:**
 *   **Database**: PostgreSQL (Supabase 提供)
-*   **Supabase JS Client**: `^2.44.2`
-*   **Supabase Auth Helpers**: `^0.9.0`
+*   **Drizzle ORM**: 0.41.0 (*dependencies*)
+    *   `Drizzle Kit`: 0.30.6 (*`devDependencies`*) - CLI ツール
+*   **PostgreSQL Drivers/Clients:**
+    *   `pg`: 8.14.1 (*dependencies*) - Node.js ドライバー
+    *   `@types/pg`: 8.11.11 (*dependencies*)
+    *   `postgres`: 3.4.3 (*dependencies*) - Node.js クライアント
+    *   `@vercel/postgres`: 0.10.0 (*dependencies*) - Vercel 接続用
+*   **Migration Tool:**
+    *   `node-pg-migrate`: 7.9.1 (*`devDependencies`*)
+
+**State Management & Data Fetching:**
+*   **TanStack Query (React Query)**: 5.71.5 (*dependencies*)
+
+**Authentication:**
+*   **Auth.js (Core)**: 0.38.0 (*dependencies*)
+*   **Auth.js (NextAuth v5 Beta)**: 5.0.0-beta.25 (*dependencies*)
+*   **Supabase SSR**: 0.6.1 (*dependencies*, `@supabase/ssr`)
+
+**Testing:**
+*   **Vitest**: 3.1.1 (*`devDependencies`*) - Unit/Integration テストフレームワーク
+    *   `@vitejs/plugin-react`: 4.3.4 (*devDependencies*) - Vite React プラグイン
+    *   `@vitest/browser`: 3.1.1 (*devDependencies*) - ブラウザモード
+    *   `@vitest/coverage-v8`: 3.1.1 (*devDependencies*) - カバレッジ
+    *   `jsdom`: 26.0.0 (*devDependencies*) - DOM 環境エミュレーション
+*   **Playwright**: 1.51.1 (*devDependencies*) - E2E テストフレームワーク
+    *   `@playwright/test`: 1.51.1 (*`devDependencies`*) - テストランナー
+*   **Testing Library:**
+    *   `@testing-library/react`: 14.3.1 (*`devDependencies`*) - React テストユーティリティ
+    *   `@testing-library/jest-dom`: 6.6.3 (*devDependencies*) - DOM マッチャー
+    *   `@types/testing-library__jest-dom`: 5.14.9 (*devDependencies*)
+*   **Testcontainers:**
+    *   `testcontainers`: 10.24.0 (*devDependencies*) - テストコンテナ基本ライブラリ
+    *   `@testcontainers/postgresql`: 10.24.0 (*devDependencies*) - PostgreSQL用テストコンテナ
+
+**Linting & Formatting:**
+*   **ESLint**: 8.57.0 (*`devDependencies`*)
+    *   `@typescript-eslint/eslint-plugin`: 7.18.0 (*devDependencies*)
+    *   `@typescript-eslint/parser`: 7.18.0 (*devDependencies*)
+    *   `eslint-config-next`: 14.2.26 (*devDependencies*)
+    *   `eslint-config-prettier`: 9.1.0 (*devDependencies*)
+    *   `eslint-plugin-import`: 2.31.0 (*devDependencies*)
+    *   `eslint-plugin-react`: 7.37.5 (*devDependencies*)
+    *   `eslint-plugin-storybook`: 0.12.0 (*`devDependencies`*) - ESLint 連携
+*   **Prettier**: 3.2.5 (*`devDependencies`*)
+*   **Git Hooks:**
+    *   `Husky`: 9.1.7 (*`devDependencies`*)
+    *   `lint-staged`: 15.5.0 (*`devDependencies`*)
+    *   `rimraf`: 6.0.1 (*devDependencies*) - ファイル/ディレクトリ削除ツール
+    *   `glob`: 11.0.1 (*devDependencies*) - パターンマッチング
+
+**Build & Development Tools:**
+*   **esbuild**: 0.25.2 (*devDependencies*, version overridden) - ビルドツール
+*   **tsx**: 4.7.0 (*devDependencies*) - TypeScript 実行環境
+*   **dotenv**: 16.4.5 (*dependencies*) - 環境変数読み込み
+*   **Type Definitions:**
+    *   `@types/node`: 20.17.28 (*devDependencies*)
+    *   `@types/react`: 18.3.20 (*devDependencies*)
+    *   `@types/react-dom`: 18.3.5 (*devDependencies*)
+
+**Internationalization (i18n):**
+*   **next-intl**: 3.26.5 (*dependencies*)
+*   **next-international**: 1.3.1 (*dependencies*)
+
+**Dependency Injection (DI):**
+*   **tsyringe**: 4.8.0 (*dependencies*)
+*   **reflect-metadata**: 0.2.1 (*dependencies*)
+
+**Backend Services (Supabase):**
+*   **Supabase JS Client**: 2.44.2 (*dependencies*)
+*   **Supabase CLI:**
+    *   `supabase`: 2.20.5 (*devDependencies*)
+    *   `supabase-cli`: 0.0.21 (*devDependencies*)
+
+**Component Development & Documentation (Storybook):**
+*   **Storybook**: 8.6.12 (*`devDependencies`*)
+    *   `@storybook/addon-essentials`: 8.6.12 (*`devDependencies`*) - 基本アドオン
+    *   `@storybook/experimental-addon-test`: 8.6.12 (*`devDependencies`*) - テストアドオン
+    *   `@storybook/nextjs`: 最新版 (*`devDependencies`*) - Next.js 連携（従来の`@storybook/experimental-nextjs-vite`から更新）
+    *   `@storybook/addon-onboarding`: 8.6.12 (*devDependencies*)
+    *   `@storybook/blocks`: 8.6.12 (*devDependencies*)
+    *   `@storybook/react`: 8.6.12 (*devDependencies*)
+    *   `@storybook/test`: 8.6.12 (*devDependencies*)
+    *   `eslint-plugin-storybook`: 0.12.0 (*`devDependencies`*) - ESLint 連携
+    *   `@chromatic-com/storybook`: 3.2.6 (*devDependencies*) - Chromatic 連携
+
+**Other Libraries:**
+*   **openai**: 4.91.1 (*dependencies*) - OpenAI API クライアント
+*   **zod**: 3.22.4 (*dependencies*) - スキーマバリデーション
 
 ## セットアップリスト
 
 1.  **プロジェクト初期化 & 基本設定**:
-    *   **Next.js (v14.1.3, React 18.2.0)** プロジェクト (`ai-start`) を **TypeScript (v5.3.3)** で作成。
+    *   **Next.js (v14.2.26, React 18.3.1)** プロジェクト (`ai-start`) を **TypeScript (v5.8.2)** で作成。
     *   Git リポジトリを初期化。
-    *   `package.json` にプロジェクト情報、スクリプト、依存関係を定義 (現バージョン: `0.2.0`)。
+    *   `package.json` にプロジェクト情報、スクリプト、依存関係を定義 (現バージョン: `0.4.0`)。
     *   `tsconfig.json` で TypeScript コンパイラオプションを設定 (strict モード有効)。
-    *   **Node.js (v23.7.0)** を開発環境として使用 (要件定義との差異あり)。
+    *   **Node.js (v22.x)** を開発環境として使用 (Vercel環境との互換性のため)。
 
 2.  **コード品質 & フォーマット**:
-    *   **ESLint (v8.57.0)** と **Prettier (v3.2.5)** を導入し、設定ファイル (`.eslintrc.json`, `.prettierrc.js`, `.prettierignore`) でルールを構成。
+    *   **ESLint (v8.57.0)** と **Prettier (v3.2.5)** を導入し、設定ファイル (`.eslintrc.js`, `.prettierrc.js`, `.prettierignore`) でルールを構成。
     *   **Husky (v9.1.7)** と **lint-staged (v15.5.0)** を設定し、コミット前の自動チェックを実装。
 
 3.  **UI 開発**:
-    *   **Tailwind CSS (v3.4.1)** を導入し、設定ファイル (`tailwind.config.ts`, `postcss.config.js`) を構成。
+    *   **Tailwind CSS (v3.4.17)** を導入し、設定ファイル (`tailwind.config.js`, `postcss.config.js`) を構成。
     *   **shadcn/ui** を導入・設定 (`components.json`) し、UI コンポーネントの基盤を構築。
+    *   全ての shadcn/ui コンポーネント (Button, Card, Dialog, Toast など) をインストール済み。
     *   **Lucide React (v0.359.0)** アイコンライブラリを導入。
+    *   ディレクトリ構造を `presentation/components/ui` および `shared/utils/ui` に整理。
 
 4.  **クライアントサイド状態管理**:
-    *   **TanStack Query (React Query v5.28.2)** を導入し、データフェッチングとキャッシュ管理を設定。
+    *   **TanStack Query (React Query v5.71.5)** を導入し、データフェッチングとキャッシュ管理を設定。
 
 5.  **認証**:
-    *   **Auth.js (Core v0.38.0, next-auth v5.0.0-beta.3)** を導入し、認証基盤を設定 (`/lib/auth.ts` 等)。
-    *   **Supabase Auth Helpers (v0.9.0)** も依存関係に追加済み。
+    *   **Auth.js (Core v0.38.0, next-auth v5.0.0-beta.25)** を導入し、認証基盤を設定 (`/lib/auth.ts` 等)。
+    *   **Supabase SSR (v0.6.1)** を導入 (`@supabase/ssr`)。
 
 6.  **データベース & ORM**:
     *   データベースとして **PostgreSQL** (Supabase 提供) を選択。
@@ -79,7 +176,7 @@
 9.  **バージョン管理 & ブランチ戦略**:
     *   基本的な Git ブランチ戦略を定義・運用。
     *   上記設定変更をコミットし、`development` ブランチへ統合。
-    *   `package.json` のバージョンを **`0.2.0`** に更新。
+    *   `package.json` のバージョンを **`0.4.0`** に更新。
 
 10. **ドキュメンテーション**:
     *   `docs/` ディレクトリを作成し、プロジェクトの目的、要件、アーキテクチャ、実装ルールなどを定義する Markdown ドキュメント群 (`01_requirements_definition.md`, `02_architecture_design.md`, etc.) を作成・整備。
@@ -95,7 +192,7 @@
             *   サブドメイン (`www`, `staging`, `dev`): `CNAME` レコード, TTL `3600`, 値 `cname.vercel-dns.com.` (Vercel 指定 CNAME)
     *   **ブランチと環境・ドメインの対応**:
         *   `main` ブランチ -> Vercel **Production** 環境 -> `ai-start.net` (および `www.ai-start.net`)
-        *   `release/*` ブランチ -> Vercel **Staging** 環境 (カスタムドメイン) -> `staging.ai-start.net`
+        *   `release/*` ブランチ -> Vercel **staging** 環境 (カスタムドメイン) -> `staging.ai-start.net`
         *   `development` ブランチ -> Vercel **Preview** 環境 (カスタムドメイン) -> `dev.ai-start.net`
         *   その他 Feature ブランチ -> Vercel **Preview** 環境 (自動生成 URL)
     *   **ビルド設定**: Vercel の標準 Next.js ビルドプリセットを使用。
@@ -105,7 +202,7 @@
     *   PostgreSQL データベース、認証、ストレージなどのバックエンドサービスを提供。
     *   **環境ごとの Supabase プロジェクト設定**:
         *   `main` ブランチ用 (Production): `ai_start_prod`
-        *   `release/*` ブランチ用 (Staging): `ai_start_staging`
+        *   `release/*` ブランチ用 (staging): `ai_start_staging`
         *   `development` ブランチ用 (Development/Preview): `ai_start_dev`
     *   **環境変数**: Vercel 環境変数として設定 (詳細は上記参照)。
     *   **認証**: Supabase Auth を利用 (プロバイダー設定等はプロジェクト進行に合わせて実装)。
@@ -113,26 +210,37 @@
     *   **ストレージ**: Supabase Storage を利用 (具体的なバケット設定等はプロジェクト進行に合わせて実装)。
 
 13. **テスト**:
-    *   **フレームワーク**: Jest を導入 (`jest.config.js`, `jest.setup.js` で設定)。
-    *   **ライブラリ**: React Testing Library を使用。
-    *   **カバレッジ**: ユニットテスト、統合テスト、E2E テストを実装予定 (詳細は `docs/09_testing_implementation.md` 参照)。
+    *   **フレームワーク**: **Vitest** (ユニット/統合テスト) と **Playwright** (E2Eテスト) を導入 (`vitest.config.ts`, `playwright.config.ts` で設定)。
+    *   **ライブラリ**: **`@testing-library/react`** を使用。
+    *   **テストセットアップ**: `tests/setupTests.ts` で Vitest のグローバル設定や **`@testing-library/jest-dom`** マッチャーの統合を行う。
+    *   **CI/CD連携**: GitHub Actions (`.github/workflows/ci.yml`) でユニット/統合テスト (`npm run test:unit`) と E2Eテスト (`npm run test:e2e`) を自動実行するよう設定済み。
+    *   **カバレッジ**: ユニットテスト、統合テスト、E2E テストを実装 (詳細は `docs/09_testing_implementation.md` 参照)。
 
 14. **ローカル開発環境**:
-    *   **Supabase CLI**: ローカルでのマイグレーション管理、型生成、DB 操作に使用。
+    *   **Supabase CLI (`supabase-cli`)**: ローカルでのマイグレーション管理、型生成、DB 操作に使用。
     *   **環境変数**: `.env.local` ファイルにローカル Supabase プロジェクトの接続情報などを設定。
     *   **起動コマンド**: `npm run dev` で開発サーバーを起動。
     *   (詳細は `docs/01_requirements_definition.md` の「環境分離戦略」参照)
 
 15. **国際化 (i18n)**:
-    *   **ライブラリ**: `next-intl` を導入。
-    *   **設定**: 言語リソース (`/messages`), 設定ファイル (`i18n.ts`) 等を構成。
+    *   **ライブラリ**: **`next-intl`** および **`next-international`** を導入。
+    *   **設定**: 言語リソース (`i18n/locales/`)、設定ファイル (`i18n/client.ts`, `i18n/server.ts` 等) を構成。
     *   (実装ルール詳細は `docs/04_implementation_rules.md` 参照)
 
 16. **依存性注入 (DI)**:
-    *   **ライブラリ**: `tsyringe` を導入。
-    *   **設定**: リフレクションメタデータ (`reflect-metadata`) を利用。
+    *   **ライブラリ**: **`tsyringe`** を導入。
+    *   **設定**: **`reflect-metadata`** を利用。
     *   (具体的な利用パターンは `docs/01_requirements_definition.md` および実装コード参照)
+
+17. **UIコンポーネント開発 & ドキュメンテーション (Storybook)**:
+    *   **Storybook (v8.6.12)** を導入し、UI コンポーネントの開発、テスト、ドキュメンテーション環境を構築。
+    *   `npx storybook@latest init` コマンドで初期セットアップを実行。
+    *   設定ファイル (`.storybook/main.ts`, `.storybook/preview.ts` など) を生成。
+    *   **2024-09-10更新**: `@storybook/experimental-nextjs-vite`から`@storybook/nextjs`に更新し、Next.js連携を強化。
+    *   npm スクリプト (`storybook`, `build-storybook`) を `package.json` に追加。
+    *   ESLint 設定 (`.eslintrc.js`) に `eslint-plugin-storybook` を統合。
+    *   サンプルストーリー (`src/stories/`) を生成。
 
 ---
 
-*このドキュメントは、プロジェクトの進行に合わせて適宜更新する必要があります。* 
+*このドキュメントは、プロジェクトの進行に合わせて適宜更新する必要があります。*

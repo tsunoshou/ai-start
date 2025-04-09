@@ -1,1549 +1,473 @@
-# サーバー側の実装
+# サーバー実装
 
-最終更新日: 2025-03-26
+最終更新日: 2025-04-03
 
 ## 本ドキュメントの目的
 
-このドキュメントは、AiStartプロジェクトのサーバー側実装に関する具体的な設計と実装方針を定義しています。関連ドキュメントとの役割の違いは以下のとおりです：
+このドキュメントは、AiStartプロジェクトにおけるサーバーサイドアプリケーションの実装詳細について記述します。関連ドキュメントとの役割の違いは以下のとおりです：
 
 - **01_requirements_definition.md**：「何を」実現するのか（What）
-- **02_architecture_design.md**：「どのように」実現するのか（How）
-- **03_prototype_development.md**：プロトタイプでの検証事項（Verify）
-- **04_implementation_rules.md**：「どのように書くか」（Write）
-- **05_type_definitions.md**：「どのような型を定義するか」（Type）
-- **06_utility_functions.md**：「どのようなユーティリティ関数を使うか」（Utilize）
-- **07_server_implementation.md**：「サーバー側をどう実装するか」（Server）
+- **02_architecture_design.md**：「どのように」実現するのか（How - アーキテクチャレベル）
+- **04_implementation_rules.md**：「どのように書くか」（Write - 実装レベル規約）
+- **07_server_implementation.md**：「どのように実装されているか」（Implement - サーバー具体例）
 
-## サーバーコンポーネントの構造
+02で定義されたアーキテクチャ設計に基づき、04で定められた実装ルールに従って、具体的なサーバーサイドの実装パターン、API設計、主要コンポーネントの構造などを説明します。
 
-### サーバーアプリケーションの階層構造
+## サーバーアプリケーションの構造
 
-AiStartのサーバー側実装は、02_architecture_design.mdで定義された階層構造に基づき、以下の層から構成されます：
+サーバーアプリケーションは、[02_architecture_design.md](/docs/restructuring/02_architecture_design.md) で定義されたDDD風ヘキサゴナルアーキテクチャに基づき、以下の主要な層（レイヤー）で構成されます。
 
-1. **ドメイン層**：ビジネスルールとエンティティを含む中心的な層
-2. **アプリケーション層**：ユースケースとDTOを実装するビジネスロジック層
-3. **インフラストラクチャ層**：外部サービス、DB、AIプロバイダーとの連携
-4. **プレゼンテーション層**：API Routes、APIエンドポイントの実装
+app/ # Next.js App Router (プレゼンテーション層の一部)
+├── (auth)/
+├── (dashboard)/
+├── api/ # API Routes (プレゼンテーション層)
+└── [...locale]/
+domain/ # ドメイン層
+├── models/
+├── services/
+├── repositories/ # インターフェース
+└── events/
+application/ # アプリケーション層
+├── usecases/
+└── dtos/
+infrastructure/ # インフラストラクチャ層
+├── database/
+│ ├── schema/
+│ ├── migrations/
+│ └── repositories/ # 実装
+├── ai/
+├── mappers/
+├── auth/
+└── external-services/
 
-各層は明確な責務を持ち、内側の層は外側の層に依存しないように設計されています。依存関係は02_architecture_design.mdの「依存性逆転の原則」に従い、インターフェースを通じて実現します。
 
-### ディレクトリ構造
+各層の責務と依存関係は `02_architecture_design.md` の定義に従います。依存関係は常に内側（ドメイン層）に向かいます。
 
-02_architecture_design.mdで定義されたディレクトリ構造に厳密に準拠します：
+## API設計原則
 
-```
-src/
-├── app/                      # Next.js App Router
-│   ├── (auth)/               # 認証関連ルート (グループ)
-│   ├── (dashboard)/          # ダッシュボード関連ルート (グループ)
-│   ├── api/                  # API Routes
-│   │   ├── auth/             # 認証関連API
-│   │   ├── v1/               # APIバージョン1
-│   │   │   ├── users/        # ユーザー関連API
-│   │   │   ├── projects/     # プロジェクト関連API
-│   │   │   └── ...           # その他のリソースAPI
-│   │   └── webhooks/         # Webhook受信用エンドポイント
-│   └── [...locale]/          # 国際化ルート
-│
-├── domain/                   # ドメイン層
-│   ├── models/               # ドメインモデル
-│   │   ├── entities/         # エンティティ
-│   │   └── value-objects/    # 値オブジェクト
-│   ├── services/             # ドメインサービス
-│   ├── repositories/         # リポジトリインターフェース
-│   └── events/               # ドメインイベント
-│
-├── application/              # アプリケーション層
-│   ├── usecases/             # ユースケース
-│   │   ├── user/             # ユーザー関連ユースケース
-│   │   ├── project/          # プロジェクト関連ユースケース
-│   │   ├── program/          # プログラム関連ユースケース
-│   │   └── ...               # その他のユースケース
-│   └── dtos/                 # データ転送オブジェクト
-│
-├── infrastructure/           # インフラストラクチャ層
-│   ├── database/             # データベース関連
-│   │   ├── schema/           # Drizzle Schema
-│   │   ├── migrations/       # DBマイグレーション
-│   │   └── repositories/     # リポジトリ実装
-│   ├── ai/                   # AI関連
-│   │   ├── providers/        # 各AIプロバイダーの実装
-│   │   ├── adapters/         # AIアダプター
-│   │   └── prompt-templates/ # プロンプトテンプレート
-│   ├── mappers/              # データマッパー
-│   ├── auth/                 # 認証・認可
-│   │   ├── strategies/       # 認証戦略
-│   │   ├── providers/        # 認証プロバイダー連携
-│   │   └── guards/           # 認可ガード
-│   ├── external-services/    # 外部サービス連携
-│   ├── websockets/           # WebSocket関連
-│   │   ├── handlers/         # WebSocketハンドラ
-│   │   └── events/           # WebSocketイベント定義
-│   └── jobs/                 # バックグラウンドジョブ
-│       ├── definitions/      # ジョブ定義
-│       ├── handlers/         # ジョブハンドラ
-│       └── scheduler.ts      # ジョブスケジューラ
-│
-├── presentation/             # プレゼンテーション層
-│   ├── components/           # Reactコンポーネント
-│   ├── hooks/                # Reactフック
-│   ├── providers/            # コンテキストプロバイダー
-│   └── utils/                # プレゼンテーション層のユーティリティ
-│
-├── shared/                   # 共有リソース
-│   ├── types/                # 共通型定義
-│   ├── utils/                # 共通ユーティリティ関数
-│   │   ├── validation.ts     # バリデーション
-│   │   ├── error.ts          # エラー処理
-│   │   └── helpers.ts        # ヘルパー関数
-│   ├── constants/            # 定数
-│   └── errors/               # エラー定義
-│
-├── config/                   # アプリケーション設定
-│   ├── environment.ts        # 環境変数定義
-│   ├── constants.ts          # 定数定義
-│   └── logger.ts             # ロガー設定
-│
-├── i18n/                     # 国際化リソース
-│   ├── locales/              # 言語リソース
-│   ├── config.ts             # i18n設定
-│   └── types/                # i18n関連型定義
-│
-└── tests/                    # テスト
-    ├── unit/                 # 単体テスト
-    ├── integration/          # 統合テスト
-    └── e2e/                  # E2Eテスト
-```
+APIエンドポイントの設計においては、以下の原則に従います。
 
-この構造は、02_architecture_design.mdで定義された「クリーンアーキテクチャ」「ドメイン駆動設計」「モジュール分割」の原則に厳密に従っています。また、04_implementation_rules.mdで定義された命名規則を遵守しています。
+1.  **リソース指向**: URIはリソース（名詞）を表し、HTTPメソッド（GET, POST, PUT, PATCH, DELETE）が操作（動詞）を表す。
+    -   例: `GET /api/projects`, `POST /api/projects`, `GET /api/projects/{projectId}`
 
-## APIレイヤー設計
+2.  **階層構造の適切な表現**: リソース間の親子関係や所属関係をURIパスで表現する。
+    -   例: `GET /api/projects/{projectId}/steps`
 
-### API設計方針
+3.  **一貫性のあるレスポンス形式**:
+    -   成功時: `200 OK`, `201 Created`, `204 No Content` など。**`shared/utils/api.utils.ts` の `apiSuccess` が生成する `{ success: true, data: ... }` 形式を標準とします。**
+    -   エラー時: 標準化されたエラーレスポンス形式（[05_type_definitions.md](/docs/05_type_definitions.md) 参照）を使用し、適切なHTTPステータスコード（4xx, 5xx）を返す。 **`shared/utils/api.utils.ts` の `apiError` が生成する `{ success: false, error: { code, message, details? } }` 形式を標準とし、`handleApiError` ユーティリティによって `AppError` や `ZodError` から自動生成されます。** `AppResult` 型のエラー情報を適切に変換する。
 
-AiStartプロジェクトでは、01_requirements_definition.mdに基づき、RESTful APIをメインのAPI形式として採用します。クライアントサイドのシングルページアプリケーション（SPA）と効率的に連携するために、以下の設計原則に従います：
+4.  **HATEOAS (Hypermedia as the Engine of Application State) の適用**: レスポンスに関連リソースへのリンクを含めることで、APIの自己記述性と発見可能性を高める（必要に応じて）。
 
-1. **リソース指向設計**：APIエンドポイントはリソース（名詞）を表し、HTTPメソッドで操作を示す
-2. **階層構造の適切な表現**：リソース間の関係を直感的なURLパス構造で表現
-3. **一貫したレスポンス形式**：成功・エラー時のレスポンス形式を統一
-4. **JSON形式の標準化**：すべてのリクエスト/レスポンスでJSONを使用
-5. **HATEOAS原則の適用**：API応答にリソース間の関連リンクを含める
+5.  **バージョニング**: 将来的な変更に備え、APIバージョニング戦略を検討（初期段階ではv1を想定）。URIパスにバージョンを含める (`/api/v1/...`)。
 
-### エンドポイント構造
+6.  **冪等性 (Idempotency)**: GET, PUT, DELETEメソッドは冪等性を保証する。POSTは冪等性を保証しない。PATCHは条件付きで冪等。
 
-エンドポイントは04_implementation_rules.mdに定義された命名規則に従い、以下の構造で設計します：
+## 主要な実装パターン
 
-```
-/api/v1/[リソース名]                     # リソースのコレクション
-/api/v1/[リソース名]/:id                 # 特定のリソース
-/api/v1/[親リソース名]/:id/[子リソース名]    # 親リソースに関連する子リソース
-```
+### 依存性注入 (Dependency Injection) (`tsyringe` 利用)
 
-#### 主要なエンドポイント一覧
+[02_architecture_design.md](/docs/restructuring/02_architecture_design.md) および [04_implementation_rules.md](/docs/restructuring/04_implementation_rules.md) で定義された通り、`tsyringe` を用いて依存性注入を実装します。
 
-| エンドポイント                             | HTTPメソッド | 説明                                | 権限                          |
-| ------------------------------------------ | ------------ | ----------------------------------- | ----------------------------- |
-| `/api/auth/login`                          | POST         | ユーザーログイン                    | Public                        |
-| `/api/auth/logout`                         | POST         | ログアウト処理                      | User                          |
-| `/api/auth/refresh`                        | POST         | トークンリフレッシュ                | User                          |
-| `/api/auth/register`                       | POST         | ユーザー登録（ユーザー作成と認証）  | Public                        |
-| `/api/auth/verify-email`                   | POST         | メール検証                          | Public                        |
-| `/api/auth/reset-password`                 | POST         | パスワードリセット                  | Public                        |
-| `/api/auth/mfa/setup`                      | POST         | 多要素認証の設定                    | User                          |
-| `/api/auth/mfa/verify`                     | POST         | 多要素認証の検証                    | User                          |
-| `/api/v1/users`                            | GET          | ユーザー一覧取得                    | Admin                         |
-| `/api/v1/users`                            | POST         | ユーザー登録                        | Public                        |
-| `/api/v1/users/:id`                        | GET          | ユーザー詳細取得                    | User(自身)/Admin              |
-| `/api/v1/users/:id`                        | PUT          | ユーザー情報更新                    | User(自身)/Admin              |
-| `/api/v1/users/:id`                        | DELETE       | ユーザー削除                        | User(自身)/Admin              |
-| `/api/v1/settings`                         | GET          | ユーザー設定取得                    | User                          |
-| `/api/v1/settings`                         | PUT          | ユーザー設定更新                    | User                          |
-| `/api/v1/projects`                         | GET          | プロジェクト一覧取得                | User                          |
-| `/api/v1/projects`                         | POST         | プロジェクト作成                    | User                          |
-| `/api/v1/projects/:id`                     | GET          | プロジェクト詳細取得                | Project.member                |
-| `/api/v1/projects/:id`                     | PUT          | プロジェクト更新                    | Project.owner/editor          |
-| `/api/v1/projects/:id`                     | DELETE       | プロジェクト削除                    | Project.owner                 |
-| `/api/v1/projects/:id/members`             | GET          | プロジェクトメンバー一覧            | Project.member                |
-| `/api/v1/projects/:id/members`             | POST         | メンバー追加                        | Project.owner                 |
-| `/api/v1/programs`                         | GET          | プログラム一覧取得                  | User                          |
-| `/api/v1/programs`                         | POST         | プログラム作成                      | Editor/Admin                  |
-| `/api/v1/programs/:id`                     | GET          | プログラム詳細取得                  | User                          |
-| `/api/v1/programs/:id`                     | PUT          | プログラム情報更新                  | Editor/Admin                  |
-| `/api/v1/programs/:id`                     | DELETE       | プログラム削除                      | Admin                         |
-| `/api/v1/programs/:id/reviews`             | GET          | プログラムレビュー取得              | User                          |
-| `/api/v1/programs/:id/reviews`             | POST         | プログラムレビュー投稿              | User                          |
-| `/api/v1/programs/:id/steps`               | GET          | ステップ一覧取得                    | User                          |
-| `/api/v1/steps`                            | POST         | ステップ作成                        | Editor/Admin                  |
-| `/api/v1/steps/:id`                        | GET          | ステップ詳細取得                    | User                          |
-| `/api/v1/steps/:id`                        | PUT          | ステップ更新                        | Editor/Admin                  |
-| `/api/v1/steps/:id`                        | DELETE       | ステップ削除                        | Editor/Admin                  |
-| `/api/v1/steps/:id/complete`               | POST         | ステップ完了マーク                  | User                          |
-| `/api/v1/steps/:id/video-content`          | GET          | ステップ補助ビデオコンテンツ取得    | User                          |
-| `/api/v1/steps/:id/conversations`          | GET          | 会話履歴取得                        | Step.participant              |
-| `/api/v1/steps/:id/attachments`            | GET          | ステップ添付ファイル一覧            | Step.participant              |
-| `/api/v1/steps/:id/attachments`            | POST         | ステップ添付ファイル追加            | Step.participant              |
-| `/api/v1/conversations/:id/messages`       | GET          | メッセージ一覧取得                  | Conversation.participant      |
-| `/api/v1/conversations/:id/messages`       | POST         | メッセージ送信                      | Conversation.participant      |
-| `/api/v1/outputs`                          | GET          | 成果物一覧取得                      | User                          |
-| `/api/v1/outputs/:id`                      | GET          | 成果物詳細取得                      | Output.owner/Project.member   |
-| `/api/v1/outputs/:id`                      | PUT          | 成果物更新                          | Output.owner                  |
-| `/api/v1/outputs/:id/versions`             | GET          | 成果物バージョン履歴                | Output.owner/Project.member   |
-| `/api/v1/outputs/:id/export`               | POST         | 成果物エクスポート（PDF/Word/HTML） | Output.owner/Project.member   |
-| `/api/v1/outputs/templates`                | GET          | 成果物テンプレート一覧              | User                          |
-| `/api/v1/outputs/consolidate`              | POST         | 複数成果物の統合                    | Project.owner/editor          |
-| `/api/v1/files`                            | POST         | ファイルアップロード                | User                          |
-| `/api/v1/files/:id`                        | GET          | ファイルダウンロード                | File.owner/関連Project.member |
-| `/api/v1/files/:id`                        | DELETE       | ファイル削除                        | File.owner/Project.owner      |
-| `/api/v1/projects/:id/attachments`         | GET          | プロジェクト添付ファイル一覧        | Project.member                |
-| `/api/v1/projects/:id/attachments`         | POST         | プロジェクト添付ファイル追加        | Project.editor/owner          |
-| `/api/v1/attachments/:id/analyze`          | POST         | 添付ファイル内容の分析・要約        | Attachment.owner              |
-| `/api/v1/search`                           | GET          | 全文検索API                         | User                          |
-| `/api/v1/notifications`                    | GET          | 通知一覧取得                        | User                          |
-| `/api/v1/notifications/:id/read`           | POST         | 通知既読設定                        | User                          |
-| `/api/v1/analytics/usage`                  | GET          | 使用状況統計                        | User/Admin                    |
-| `/api/v1/analytics/projects/:id`           | GET          | プロジェクト統計                    | Project.owner/Admin           |
-| `/api/v1/webhooks/register`                | POST         | Webhook登録                         | Admin                         |
-| `/api/v1/invitations`                      | POST         | プロジェクト招待作成                | Project.owner                 |
-| `/api/v1/invitations/:id/accept`           | POST         | 招待受け入れ                        | User                          |
-| `/api/v1/prompts`                          | GET          | プロンプトテンプレート一覧          | Editor/Admin                  |
-| `/api/v1/prompts`                          | POST         | プロンプトテンプレート作成          | Editor/Admin                  |
-| `/api/v1/prompts/:id`                      | GET          | プロンプトテンプレート取得          | Editor/Admin                  |
-| `/api/v1/prompts/:id`                      | PUT          | プロンプトテンプレート更新          | Editor/Admin                  |
-| `/api/v1/prompts/:id/versions`             | GET          | プロンプトバージョン履歴取得        | Editor/Admin                  |
-| `/api/v1/prompts/test`                     | POST         | プロンプトテスト実行                | Editor/Admin                  |
-| `/api/v1/ai/completions`                   | POST         | AI補完リクエスト                    | User                          |
-| `/api/v1/ai/embeddings`                    | POST         | 埋め込みベクトル生成                | User                          |
-| `/api/v1/ai/freeform-chat`                 | POST         | フリーフォームAI対話                | User                          |
-| `/api/v1/ai/freeform-chat/:id/history`     | GET          | フリーフォーム対話履歴取得          | User                          |
-| `/api/v1/subscriptions`                    | GET          | サブスクリプション情報取得          | User                          |
-| `/api/v1/subscriptions/plans`              | GET          | 利用可能なプラン一覧取得            | Public                        |
-| `/api/v1/subscriptions/checkout`           | POST         | サブスクリプション支払い処理        | User                          |
-| `/api/v1/subscriptions/cancel`             | POST         | サブスクリプション解約              | User                          |
-| `/api/v1/subscriptions/invoices`           | GET          | 請求書履歴取得                      | User                          |
-| `/api/v1/risk-assessment`                  | POST         | ビジネスプランのリスク評価          | User                          |
-| `/api/v1/risk-assessment/factors`          | GET          | リスク要因一覧取得                  | User                          |
-| `/api/v1/risk-assessment/:id/improvements` | GET          | 改善提案取得                        | User                          |
-| `/api/v1/case-studies`                     | GET          | 歴史的事例一覧取得                  | User                          |
-| `/api/v1/case-studies/:id`                 | GET          | 特定事例の詳細取得                  | User                          |
-| `/api/v1/translations`                     | GET          | 翻訳リソース一覧取得                | User                          |
-| `/api/v1/translations/:lang`               | GET          | 特定言語の翻訳取得                  | User                          |
-| `/api/v1/translations/:lang/:key`          | GET/PUT      | 特定キーの翻訳取得/更新             | User/Admin                    |
+1.  **コンテナ設定**:
+    -   **`config/container.config.ts`** でDIコンテナ (`tsyringe` の `container`) を設定し、必要な依存関係を登録します。
+    -   データベース接続 (`drizzle` インスタンス）、ロガー (`LoggerInterface`)、リポジトリ (`UserRepositoryInterface`)、ユースケース (`CreateUserUsecase` など）を登録します。
 
-### ユーティリティAPIエンドポイント
+    ```typescript
+    // 例: config/container.config.ts
+    import 'reflect-metadata';
+    import { drizzle } from 'drizzle-orm/node-postgres';
+    import { Pool } from 'pg';
+    import { container } from 'tsyringe';
+    import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
+    import { ENV } from '@/config/environment';
+    import {
+      UserRepositoryInterface,
+      UserRepositoryToken,
+    } from '@/domain/repositories/user.repository.interface';
+    import { UserRepository } from '@/infrastructure/database/repositories/user.repository';
+    import { ConsoleLogger } from '@/shared/logger/console.logger';
+    import { LoggerInterface } from '@/shared/logger/logger.interface';
+    import { LoggerToken } from '@/shared/logger/logger.token';
+    // ... 他のユースケースやリポジトリのインポート ...
 
-以下のエンドポイントは、システム管理や開発者の利便性向上のために提供されます：
+    // --- データベース接続 (Singleton) ---
+    const pool = new Pool({ connectionString: ENV.DATABASE_URL });
+    const db = drizzle(pool);
+    container.register<typeof db>('Database', { useValue: db });
 
-#### 1. システムステータスエンドポイント
+    // --- Logger ---
+    container.register<LoggerInterface>(LoggerToken, {
+      useClass: ConsoleLogger,
+    });
 
-| エンドポイント         | HTTPメソッド | 説明                                                   | 必要な権限 |
-| ---------------------- | ------------ | ------------------------------------------------------ | ---------- |
-| `/api/health`          | GET          | サービスのヘルスチェック                               | Public     |
-| `/api/health/detailed` | GET          | 詳細なヘルスステータス（DB、キャッシュ、外部サービス） | Admin      |
-| `/api/status`          | GET          | システム全体のステータス情報                           | Admin      |
+    // --- リポジトリ (トークンを使用) ---
+    container.register<UserRepositoryInterface>(UserRepositoryToken, {
+      useClass: UserRepository,
+    });
+    // ... 他のリポジトリ登録 ...
 
-#### 2. API情報とドキュメント
+    // --- ユースケース (具象クラスを直接登録) ---
+    container.register(CreateUserUsecase, { useClass: CreateUserUsecase });
+    // ... 他のユースケース登録 ...
 
-| エンドポイント      | HTTPメソッド | 説明                                      | 必要な権限 |
-| ------------------- | ------------ | ----------------------------------------- | ---------- |
-| `/api`              | GET          | APIバージョン情報と利用可能なリソース一覧 | Public     |
-| `/api/v1`           | GET          | v1 APIの詳細情報と機能一覧                | Public     |
-| `/api/v1/docs`      | GET          | OpenAPI形式のAPI仕様書                    | Public     |
-| `/api/v1/changelog` | GET          | APIの変更履歴                             | Public     |
+    export default container;
+    ```
 
-#### 3. バッチ処理用エンドポイント
+2.  **クラスへの適用**:
+    -   注入可能にするクラスには `@injectable()` デコレータを付与します。
+    -   依存性を注入する箇所（コンストラクタインジェクション推奨）では `@inject(トークン)` または `@inject(クラス名)` デコレータを使用します。
 
-| エンドポイント           | HTTPメソッド | 説明                       | 必要な権限         |
-| ------------------------ | ------------ | -------------------------- | ------------------ |
-| `/api/v1/batch`          | POST         | 複数操作の一括実行         | 各操作に必要な権限 |
-| `/api/v1/projects/batch` | POST         | 複数プロジェクトの一括操作 | Project.owner      |
-| `/api/v1/users/batch`    | POST         | 複数ユーザーの一括操作     | Admin              |
-| `/api/v1/outputs/batch`  | POST         | 複数成果物の一括処理       | Output.owner       |
+    ```typescript
+    // 例: application/usecases/user/create-user.usecase.ts
+    import { inject, injectable } from 'tsyringe';
+    import { ok, err } from 'neverthrow';
+    import { UserDTO } from '@/application/dtos/user.dto';
+    import {
+      UserRepositoryInterface,
+      UserRepositoryToken,
+    } from '@/domain/repositories/user.repository.interface';
+    import { User } from '@/domain/models/user/user.entity';
+    import { UserName } from '@/domain/models/user/user-name.vo';
+    import { Email } from '@/shared/value-objects/email.vo';
+    import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+    import { hashPassword } from '@/shared/utils/security/password.utils';
+    import { AppResult } from '@/shared/types/common.types';
+    import { AppError } from '@/shared/errors/app.error';
+    import { ErrorCode } from '@/shared/errors/error-code.enum';
+    import { LoggerInterface } from '@/shared/logger/logger.interface';
+    import { LoggerToken } from '@/shared/logger/logger.token';
+    import { UserMapper } from '@/infrastructure/mappers/user.mapper';
 
-### バッチ処理の仕様
+    // ... CreateUserInput 型定義 ...
 
-バッチ処理リクエストの形式：
+@injectable()
+    export class CreateUserUsecase {
+      constructor(
+        @inject(UserRepositoryToken) private readonly userRepository: UserRepositoryInterface,
+        @inject(LoggerToken) private readonly logger: LoggerInterface
+      ) {}
 
-```json
-{
-  "operations": [
-    {
-      "method": "POST|PUT|DELETE",
-      "path": "/api/v1/resource/:id",
-      "body": { /* リクエストボディ */ }
-    },
-    // 複数の操作を指定
-  ],
-  "options": {
-    "stopOnError": true|false,
-    "returnResponses": true|false
-  }
-}
-```
+      async execute(input: CreateUserInput): Promise<AppResult<UserDTO>> {
+        // 1. Input Validation & Value Object Creation (例: UserName, Email)
+        // ... zod/VO を使ったバリデーション ...
+        // エラー時は err(new AppError(ErrorCode.ValidationError, ...)) を返す
 
-バッチ処理レスポンスの形式：
+        // 2. Password Hashing
+        const hashedPasswordResult = await hashPassword(input.passwordPlainText, this.logger);
+        if (hashedPasswordResult.isErr()) {
+          this.logger.error(...);
+          return err(new AppError(ErrorCode.PasswordHashingFailed, ..., { cause: hashedPasswordResult.error }));
+        }
+        const passwordHashVoResult = PasswordHash.create(hashedPasswordResult.value);
+        // ... passwordHashVoResult のエラーハンドリング ...
 
-```json
-{
-  "results": [
-    {
-      "status": 200,
-      "path": "/api/v1/resource/:id",
-      "data": {
-        /* レスポンスデータ */
+        // 3. Domain Entity Creation
+        const userCreateResult = User.create({ name: nameVo, email: emailVo, passwordHash: passwordHashVo });
+        if (userCreateResult.isErr()) {
+          this.logger.error(...);
+          return err(new AppError(ErrorCode.DomainRuleViolation, ..., { cause: userCreateResult.error }));
+        }
+        const userEntity = userCreateResult.value;
+
+        // 4. Repository Interaction (save)
+        const saveResult = await this.userRepository.save(userEntity);
+        if (saveResult.isErr()) {
+          this.logger.error(...);
+          // エラーは既に AppError か InfrastructureError なので、そのまま返すか、必要に応じてラップ
+          return err(saveResult.error);
+        }
+
+        this.logger.info({
+          message: 'User created successfully',
+          operation: 'createUser',
+          userId: userEntity.id.value,
+        });
+
+        // 5. Output Mapping (to DTO)
+        const output = UserMapper.toDTO(userEntity);
+
+        return ok(output);
       }
     }
-    // 各操作の結果
-  ],
-  "meta": {
-    "totalOperations": 5,
-    "successCount": 4,
-    "errorCount": 1
-  }
-}
-```
-
-#### 標準クエリパラメータ
-
-すべての一覧取得APIでは、以下の標準クエリパラメータをサポートします：
-
-| パラメータ | 型     | 説明                                          | デフォルト  |
-| ---------- | ------ | --------------------------------------------- | ----------- |
-| `page`     | number | ページ番号（1始まり）                         | 1           |
-| `limit`    | number | 1ページあたりの件数                           | 20          |
-| `sort`     | string | ソートフィールド（プレフィックス `-` で降順） | `createdAt` |
-| `fields`   | string | 取得フィールドの指定（カンマ区切り）          | すべて      |
-| `filter`   | object | フィルタリング条件（JSON形式）                | なし        |
-| `search`   | string | 全文検索キーワード                            | なし        |
-
-例: `/api/v1/projects?page=2&limit=10&sort=-updatedAt&fields=id,name,description&filter={"status":"active"}`
-
-#### レスポンス形式
-
-一覧取得APIの標準レスポンス形式：
-
-```json
-{
-  "data": [
-    {
-      /* リソースオブジェクト */
-    },
-    {
-      /* リソースオブジェクト */
-    }
-  ],
-  "meta": {
-    "page": 1,
-    "limit": 20,
-    "totalItems": 50,
-    "totalPages": 3
-  },
-  "links": {
-    "self": "/api/v1/resources?page=1&limit=20",
-    "first": "/api/v1/resources?page=1&limit=20",
-    "prev": null,
-    "next": "/api/v1/resources?page=2&limit=20",
-    "last": "/api/v1/resources?page=3&limit=20"
-  }
-}
-```
-
-個別リソース取得APIの標準レスポンス形式：
-
-```json
-{
-  "data": {
-    /* リソースオブジェクト */
-  },
-  "links": {
-    "self": "/api/v1/resources/123",
-    "related": {
-      "subresources": "/api/v1/resources/123/subresources"
-    }
-  }
-}
-```
-
-### バージョニング戦略
-
-APIバージョニングは、02_architecture_design.mdで定義された以下の方針に従います：
-
-1. **URLパスベースのバージョニング**：`/api/v1/`、`/api/v2/`のような形式
-2. **後方互換性の維持**：新バージョンリリース後も旧バージョンを一定期間サポート
-   - 廃止予定のAPIには `X-Deprecation-Date` ヘッダーで廃止日を明示
-   - 廃止の最低90日前に通知
-3. **マイナーバージョン対応**：追加のみの変更はX-API-Versionヘッダーで制御
-   - 例: `X-API-Version: 1.2` でv1.2の機能を有効化
-4. **変更ログの維持**：各バージョン間の変更を明示的に文書化
-   - `/api/changelog.json` でプログラム的に取得可能
-5. **廃止通知プロセス**：APIバージョン廃止の事前通知期間と移行ガイド提供
-   - API Deprecation Planを公開
-   - 移行スクリプト提供（可能な場合）
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「APIバージョニング」セクションを参照してください。
-
-## 認証・認可実装
-
-### 認証方式
-
-認証システムは、01_requirements_definition.mdで定義された要件に基づき、Auth.jsを活用した多要素認証システムを実装します：
-
-1. **JWTベースの認証**：
-
-   - アクセストークン（短期: 15分）とリフレッシュトークン（長期: 7日）の2トークン方式
-   - トークンの署名にはRS256アルゴリズムを使用（非対称暗号）
-   - トークンには以下の情報を含む：
-     - `sub`: ユーザーID
-     - `roles`: 権限情報の配列
-     - `tenantId`: テナントID（マルチテナント対応）
-     - `exp`: 有効期限
-     - `jti`: 一意のトークンID（無効化用）
-
-2. **Auth.jsとの統合**：
-
-   - Auth.jsによるセッション管理と認証プロバイダー連携
-   - カスタムコールバックによるJWTトークン発行・検証
-   - `/api/auth/*` エンドポイントを使用した標準的な認証フロー
-
-3. **認証プロバイダー**：
-
-   - メール/パスワード認証（MFA対応）
-   - OAuth2プロバイダー
-     - Google (OpenID Connect)
-     - GitHub
-     - Microsoft (Azure AD)
-     - Apple ID (Webのみ)
-   - 必要に応じてSAML連携（エンタープライズ向け）
-
-4. **多要素認証（MFA）**：
-   - TOTPベースの認証アプリケーション対応（Google Authenticator等）
-   - SMSワンタイムパスワード
-   - Emailワンタイムパスワード
-   - WebAuthn/FIDO2対応（生体認証/セキュリティキー）
-
-### 認可方式
-
-認可システムは、02_architecture_design.mdに定義されたセキュリティ設計に基づき、以下の方式を実装します：
-
-1. **ロールベースアクセス制御（RBAC）**：
-
-   - 基本ロール
-     - `Guest`: 認証不要の公開リソースへのアクセスのみ
-     - `User`: 基本的なリソース作成と自身のリソースへのアクセス
-     - `Editor`: コンテンツ作成・編集が可能
-     - `Admin`: ほぼすべてのリソースへの管理権限
-     - `SuperAdmin`: システム全体の管理権限
-   - リソースタイプごとの操作権限マトリクス（05_type_definitions.mdの「権限型」に基づく）
-   - ユーザーへの複数ロール割り当てサポート
-
-2. **リソースレベルの権限**：
-
-   - プロジェクト、プログラムレベルでのアクセス制御
-   - リソース固有の権限
-     - `owner`: 所有者（すべての権限）
-     - `editor`: 編集者（読み取り/更新）
-     - `viewer`: 閲覧者（読み取りのみ）
-   - アクセス制御リスト（ACL）による詳細な権限管理
-
-3. **Row Level Security (RLS)の活用**：
-   - PostgreSQLのRLS機能を活用した行レベルのアクセス制御
-   - DB接続時のセッションパラメータ設定
-     ```sql
-     SET LOCAL app.current_user_id = 'user_id';
-     SET LOCAL app.tenant_id = 'tenant_id';
-     SET LOCAL app.user_roles = 'role1,role2';
-     ```
-   - テナント分離とユーザー権限に基づくデータフィルタリング
-   - 各テーブルに対する具体的なRLSポリシー例（05_type_definitions.mdのスキーマ定義に連動）
-
-### セキュリティ対策
-
-04_implementation_rules.mdで定義されたセキュリティ実装基準に基づき、以下の対策を実装します：
-
-1. **CSRF対策**：
-
-   - Cookie設定
-     - `SameSite=Lax`（デフォルト）
-     - `Secure`フラグ（HTTPS環境のみ）
-     - `HttpOnly`フラグ（JavaScript非アクセス）
-   - Double Submit Cookie対策
-     - リクエストヘッダーとCookieの値比較
-   - リクエストソース検証
-     - `Origin`/`Referer`ヘッダーの検証
-
-2. **レート制限**：
-
-   - トークンバケットアルゴリズムによるレート制限
-     - グローバル制限: 1000リクエスト/時間/IP
-     - 認証エンドポイント: 10リクエスト/分/IP
-     - 一般API: 100リクエスト/分/ユーザー
-   - IP/ユーザーごとの制限設定
-   - エンドポイント別の制限値設定
-   - Redisを使用した分散環境対応
-
-3. **セキュアヘッダー**：
-
-   - Content-Security-Policy (CSP)
-     ```
-     default-src 'self';
-     script-src 'self' https://trusted-cdn.com;
-     style-src 'self' https://trusted-cdn.com;
-     img-src 'self' https://trusted-cdn.com data:;
-     connect-src 'self' https://api.example.com;
-     ```
-   - HTTP Strict Transport Security (HSTS)
-     ```
-     Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-     ```
-   - その他のセキュリティヘッダー
-     ```
-     X-Frame-Options: DENY
-     X-XSS-Protection: 1; mode=block
-     X-Content-Type-Options: nosniff
-     Referrer-Policy: strict-origin-when-cross-origin
-     Permissions-Policy: geolocation=(), camera=(), microphone=()
-     ```
-
-4. **入力検証とサニタイゼーション**：
-   - 06_utility_functions.mdで定義されたバリデーション関数の活用
-   - Zodスキーマによる厳格な型チェックと検証
-   - HTMLコンテンツの適切なサニタイズ
-   - SQLインジェクション対策（パラメータ化クエリの使用）
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「セキュリティ対策」セクションを参照してください。
-
-## ビジネスロジック
-
-### アーキテクチャパターン
-
-02_architecture_design.mdに定義されたアーキテクチャ設計に基づき、以下のパターンを採用します：
-
-1. **レイヤードアーキテクチャ**：
-
-   - 明確に分離された責務を持つ層構造
-   - 上位層から下位層への依存方向の一貫性
-   - インターフェースを通じた層間の疎結合
-
-2. **ドメイン駆動設計（DDD）の部分適用**：
-
-   - 明確に定義されたドメインモデル
-   - 豊かな挙動を持つエンティティ
-   - 値オブジェクトによる不変性の確保
-   - ドメインサービスによるエンティティ横断処理
-
-3. **CQRS原則の適用**：
-   - 読み取り操作（Query）と書き込み操作（Command）の分離
-   - 複雑な読み取りクエリの最適化
-   - データ更新操作の一貫性確保
-
-#### CQRS実装パターン
-
-02_architecture_design.mdで定義されたCQRS原則に基づき、以下のパターンで実装します：
-
-1. **コマンド処理**：
-
-   - 明示的なコマンドオブジェクトの定義
-     ```typescript
-     interface CreateProjectCommand {
-       type: 'CREATE_PROJECT';
-       payload: {
-         name: string;
-         description: string;
-         ownerId: string;
-         // その他のプロジェクト作成に必要なデータ
-       };
-       metadata: CommandMetadata;
-     }
-     ```
-   - コマンドハンドラーによる処理と検証
-     ```typescript
-     class CreateProjectCommandHandler implements CommandHandler<CreateProjectCommand> {
-       constructor(
-         private projectRepository: IProjectRepository,
-         private userRepository: IUserRepository
-         // 必要な依存関係
-       ) {}
-
-       async handle(command: CreateProjectCommand): Promise<Result<Project>> {
-         // バリデーション
-         // ビジネスルールの適用
-         // データ永続化
-         // イベント発行
-       }
-     }
-     ```
-   - トランザクション境界の明確な定義
-   - ドメインイベントの発行
-
-2. **クエリ処理**：
-
-   - 専用の読み取りモデルの定義
-     ```typescript
-     interface ProjectSummaryReadModel {
-       id: string;
-       name: string;
-       description: string;
-       ownerName: string;
-       memberCount: number;
-       lastActivityAt: Date;
-       // 表示に最適化されたデータ構造
-     }
-     ```
-   - 効率的なクエリの実装
-     ```typescript
-     class GetProjectSummariesQueryHandler implements QueryHandler<GetProjectSummariesQuery> {
-       constructor(
-         private readDatabase: ReadDatabase
-         // 必要な依存関係
-       ) {}
-
-       async handle(query: GetProjectSummariesQuery): Promise<Result<ProjectSummaryReadModel[]>> {
-         // 専用のインデックスやビューを活用した高速クエリ
-         // 結合済みのデータ取得
-         // キャッシュの活用
-       }
-     }
-     ```
-   - 読み取り専用データストアの利用
-   - キャッシュ戦略の統合
-
-3. **イベントソーシング（必要に応じて）**：
-
-   - イベントストアの実装
-   - イベントの時系列記録
-   - ドメイン状態の再構築
-   - スナップショット戦略
-
-4. **読み書きモデルの同期**：
-
-   - イベント購読による読み取りモデル更新
-   - 最終的整合性の実現
-   - バックグラウンドプロセスによる同期
-   - 整合性監視と修復メカニズム
-
-5. **パフォーマンス最適化**：
-   - 読み取りモデルの非正規化
-   - 集計値の事前計算
-   - クエリ専用インデックスの活用
-   - キャッシュ戦略の最適化
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「CQRS実装」セクションを参照してください。
-
-### ドメインサービス
-
-ドメインサービスは、05_type_definitions.mdで定義されたドメインモデルに基づき、以下の実装方針で作成します：
-
-1. **サービスの責務**：
-
-   - 単一エンティティの枠を超える処理
-   - エンティティ間の調整と連携
-   - ビジネスルールの適用と検証
-
-2. **サービス分類**：
-
-   - ユーザードメインサービス：ユーザー管理、認証・認可
-   - プロジェクトドメインサービス：プロジェクト管理、共同作業
-   - プログラムドメインサービス：学習プログラム、ステップ管理
-   - AIドメインサービス：AIモデル連携、プロンプト管理
-
-3. **実装パターン**：
-   - 純粋な関数としてのサービスメソッド
-   - 明示的な依存性注入
-   - トランザクション境界の明確化
-   - イベント発行による副作用の分離
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「ドメインサービス」セクションを参照してください。
-
-### ドメインイベントの実装
-
-02_architecture_design.mdで定義されたイベント駆動アーキテクチャに基づき、ドメインイベントを以下の方針で実装します：
-
-1. **イベント定義**：
-
-   - ドメインごとのイベント分類
-     ```typescript
-     interface ProjectCreatedEvent {
-       type: 'PROJECT_CREATED';
-       payload: {
-         projectId: string;
-         name: string;
-         ownerId: string;
-         createdAt: Date;
-         // その他の関連データ
-       };
-       metadata: EventMetadata;
-     }
-     ```
-   - イベントのバージョニング
-   - イベントスキーマの明示的な定義
-
-2. **イベント発行**：
-
-   - ドメインロジック内からのイベント発行
-     ```typescript
-     class ProjectService {
-       constructor(
-         private projectRepository: IProjectRepository,
-         private eventBus: IEventBus
-         // その他の依存関係
-       ) {}
-
-       async createProject(command: CreateProjectCommand): Promise<Result<Project>> {
-         // プロジェクト作成ロジック
-
-         // イベント発行
-         await this.eventBus.publish(
-           new ProjectCreatedEvent({
-             projectId: project.id,
-             name: project.name,
-             ownerId: project.ownerId,
-             createdAt: new Date(),
-             // その他の関連データ
-           })
-         );
-
-         return Result.ok(project);
-       }
-     }
-     ```
-   - トランザクションとイベント発行の整合性確保
-   - 冪等性保証のためのイベントID付与
-
-3. **イベント購読**：
-
-   - イベントハンドラーの登録
-     ```typescript
-     class NotificationService implements EventHandler<ProjectCreatedEvent> {
-       constructor(
-         private notificationRepository: INotificationRepository
-         // その他の依存関係
-       ) {}
-
-       async handle(event: ProjectCreatedEvent): Promise<void> {
-         // プロジェクト作成通知の処理
-         await this.notificationRepository.create({
-           userId: event.payload.ownerId,
-           type: 'PROJECT_CREATED',
-           title: `プロジェクト「${event.payload.name}」が作成されました`,
-           // その他の通知データ
-         });
-       }
-     }
-     ```
-   - 複数ハンドラーによるイベント処理
-   - 非同期処理とバックグラウンド実行
-   - エラー処理と再試行ロジック
-
-4. **イベントストリーム管理**：
-
-   - イベントの永続化と履歴保持
-   - イベントの時系列整列
-   - イベントフィルタリングと集約
-   - ストリーム分割と結合
-
-5. **イベントソーシング（特定ドメイン向け）**：
-
-   - イベントからの状態再構築
-   - スナップショット戦略
-   - 履歴データの分析と監査
-   - 時点指定のデータ復元
-
-6. **非同期処理の連鎖**：
-   - イベント間の依存関係管理
-   - プロセスマネージャーによる複雑なワークフロー
-   - 長時間実行プロセスの状態追跡
-   - 分散トランザクションの調整
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「ドメインイベント」セクションを参照してください。
-
-### ユースケース実装
-
-ユースケースの実装は、01_requirements_definition.mdで定義された機能要件に基づき、以下の方針で行います：
-
-1. **ユースケースごとのサービスメソッド**：
-
-   - 明確な命名規則（動詞 + 名詞）による意図の明示
-   - 単一責任の原則に基づいた処理の分離
-   - 明示的な入力パラメータと戻り値型
-
-2. **バリデーション統合**：
-
-   - 06_utility_functions.mdで定義されたバリデーション関数の活用
-   - 入力データの前処理とドメイン型への変換
-   - ビジネスルールの適用と違反チェック
-
-3. **エラー処理**：
-   - 明示的なエラー型の定義と返却
-   - ユースケース固有のエラー条件の明確化
-   - トランザクション境界内での整合性確保
-
-## データアクセス層
-
-### データアクセスパターン
-
-データアクセス層は、02_architecture_design.mdで定義されたデータアクセス戦略に基づき、以下のパターンで実装します：
-
-1. **リポジトリパターン**：
-
-   - ドメインモデルとデータストアの分離
-   - データアクセス操作の抽象化
-   - トランザクション管理の一元化
-
-2. **リポジトリの責務**：
-
-   - エンティティの永続化（CRUD操作）
-   - 検索条件に基づくエンティティの取得
-   - データの集計と変換
-
-3. **実装方針**：
-   - エンティティタイプごとの専用リポジトリ
-   - インターフェースによる実装の抽象化
-   - データストアの詳細隠蔽
-
-### ORM/クエリビルダ
-
-05_type_definitions.mdで定義されたデータベーススキーマに基づき、以下のORM/クエリビルダ実装を行います：
-
-1. **Drizzle ORM採用**：
-
-   - 型安全なSQLクエリビルダー
-   - PostgreSQL固有機能の活用
-   - マイグレーション管理の自動化
-
-2. **クエリ構築パターン**：
-
-   - 条件付きクエリの組み立て
-   - JOIN操作の型安全な実装
-   - ページネーションの標準実装
-
-3. **パフォーマンス最適化**：
-   - 必要なカラムのみの選択
-   - インデックスを活用したクエリ
-   - バッチ処理によるN+1問題の回避
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「Drizzle ORM実装」セクションを参照してください。
-
-### トランザクション管理
-
-トランザクション管理は、データの整合性を確保するために以下の方針で実装します：
-
-1. **トランザクション境界**：
-
-   - サービスレイヤーでのトランザクション開始・終了
-   - 必要に応じたトランザクション伝搬
-   - ネストトランザクションのサポート
-
-2. **エラー処理**：
-
-   - トランザクション内でのエラー発生時の自動ロールバック
-   - 部分的なエラーからの回復戦略
-   - デッドロック検出と再試行ロジック
-
-3. **分散トランザクション**：
-   - 複数のデータソースを跨ぐ操作の整合性確保
-   - 補償トランザクションによる整合性回復
-   - イベント駆動による最終的整合性の実現
-
-## エラーハンドリング
-
-### エラー種別
-
-エラー処理は、06_utility_functions.mdで定義されたエラー型定義に基づき、以下のカテゴリに分類します：
-
-1. **システムエラー**：
-
-   - インフラストラクチャの問題
-   - 外部サービス連携の失敗
-   - 予期せぬ例外
-
-2. **ドメインエラー**：
-
-   - ビジネスルール違反
-   - 権限不足
-   - リソース競合
-
-3. **バリデーションエラー**：
-
-   - 入力データの形式不正
-   - 必須項目の欠落
-   - データ制約違反
-
-4. **認証・認可エラー**：
-   - 未認証アクセス
-   - 権限不足
-   - トークン無効/期限切れ
-
-### エラーレスポンス
-
-APIエラーレスポンスは、04_implementation_rules.mdで定義されたフォーマットに従い、以下の標準形式で返却します：
-
-```json
-{
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "人間が読める形のメッセージ",
-    "details": [
-      // オプショナルな詳細情報
-    ],
-    "requestId": "トレース用ID"
-  }
-}
-```
-
-HTTPステータスコードは以下のように使い分けます：
-
-1. **400 Bad Request**：クライアント入力の問題
-2. **401 Unauthorized**：認証の問題
-3. **403 Forbidden**：認可の問題
-4. **404 Not Found**：リソースが存在しない
-5. **409 Conflict**：リソース競合
-6. **422 Unprocessable Entity**：ビジネスルール違反
-7. **500 Internal Server Error**：サーバー内部エラー
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「エラーレスポンス」セクションを参照してください。
-
-### トラブルシュート
-
-エラーのトラブルシューティングを容易にするため、以下の方針を実装します：
-
-1. **詳細なログ記録**：
-
-   - エラーの発生コンテキスト（リクエスト情報、ユーザー情報など）
-   - スタックトレースの保存
-   - 関連する内部状態の記録
-
-2. **一意のリクエストID**：
-
-   - すべてのリクエストに一意のIDを割り当て
-   - ログとエラーレスポンスでの一貫したID参照
-   - 分散システム間でのトレース連携
-
-3. **段階的なエラー情報開示**：
-   - 開発環境での詳細エラー情報提供
-   - 本番環境での安全なエラーメッセージ
-   - 管理者向け詳細ログアクセス機能
-
-## パフォーマンス・キャッシュ
-
-### キャッシュ戦略
-
-02_architecture_design.mdで定義されたパフォーマンス要件に基づき、以下のキャッシュ戦略を実装します：
-
-1. **マルチレイヤーキャッシュ**：
-
-   - ブラウザキャッシュ：静的リソース
-   - CDNキャッシュ：公開コンテンツ
-   - アプリケーションキャッシュ：動的データ
-   - データベースキャッシュ：クエリ結果
-
-2. **キャッシュ粒度**：
-
-   - エンティティレベルキャッシュ
-   - クエリ結果キャッシュ
-   - ビュー/集計データキャッシュ
-
-3. **キャッシュ無効化**：
-   - 更新時の明示的な無効化
-   - 依存関係に基づく連鎖無効化
-   - TTLベースの自動期限切れ
-
-### レイヤーキャッシュ
-
-アプリケーションの各レイヤーにおけるキャッシュ実装方針は以下のとおりです：
-
-1. **データアクセスレイヤー**：
-
-   - 頻繁に参照されるエンティティのキャッシュ
-   - クエリ結果セットのキャッシュ
-   - リレーション解決結果のキャッシュ
-
-2. **サービスレイヤー**：
-
-   - 計算結果のメモ化
-   - ビジネスルール評価結果のキャッシュ
-   - 外部サービス呼び出し結果のキャッシュ
-
-3. **APIレイヤー**：
-   - レスポンスキャッシュ
-   - 認可結果のキャッシュ
-   - レート制限カウンターのキャッシュ
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「レイヤーキャッシュ」セクションを参照してください。
-
-### 外部キャッシュ
-
-Redisを使用した外部キャッシュは、06_utility_functions.mdで定義されたキャッシュユーティリティを用いて以下の方針で実装します：
-
-1. **Redis活用ケース**：
-
-   - セッションストア
-   - レート制限カウンター
-   - 分散ロック
-   - 一時データストア
-   - パブリッシュ/サブスクライブメッセージング
-
-2. **データ構造の最適化**：
-
-   - 効率的なシリアライズ形式
-   - Redisデータ型（Hash, Set, Sorted Set等）の活用
-   - メモリ使用量の最適化
-
-3. **障害対策**：
-   - 接続エラーのグレースフルな処理
-   - フォールバックメカニズム
-   - キャッシュウォーミング戦略
-
-## 非同期処理・バックグラウンド処理
-
-### メッセージキュー
-
-01_requirements_definition.mdで定義された非同期処理要件に基づき、以下のメッセージキュー実装を行います：
-
-1. **キューの実装**：
-
-   - Redis Streams/Lists によるキュー実装
-   - 優先度キューのサポート
-   - Dead Letter Queue（DLQ）の実装
-
-2. **メッセージ形式**：
-
-   - JSON形式のメッセージペイロード
-   - メタデータ（送信時刻、送信者情報など）
-   - 冪等性キーの付与
-
-3. **発行/購読パターン**：
-   - トピックベースのメッセージングモデル
-   - イベントソーシングとの連携
-   - フィルタリングとルーティング
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「メッセージキュー」セクションを参照してください。
-
-### バックグラウンドジョブ
-
-バックグラウンドジョブの実装は、02_architecture_design.mdで定義されたジョブ処理アーキテクチャに基づき、以下の方針で行います：
-
-1. **ジョブ管理システム**：
-
-   - ジョブの定義と登録
-   - ジョブのスケジューリングと実行
-   - ジョブの進捗追跡
-   - ジョブの結果管理
-
-2. **ジョブタイプ**：
-
-   - 一回限りのジョブ
-   - 定期実行ジョブ
-   - トリガーベースのジョブ
-   - 長時間実行ジョブ
-
-3. **エラー処理**：
-   - リトライポリシーの設定
-   - 失敗ジョブの隔離
-   - エラー通知メカニズム
-
-### スケジューリング
-
-スケジュール実行ジョブは、以下のパターンで実装します：
-
-1. **CRON式定義**：
-
-   - 標準CRON形式による実行スケジュール定義
-   - タイムゾーン対応
-   - 日付制約の設定（開始日、終了日）
-
-2. **実行制御**：
-
-   - 同時実行の制御（ロック機構）
-   - リソース使用量の制限
-   - 実行順序の依存関係定義
-
-3. **監視と報告**：
-   - 実行履歴の記録
-   - 異常検知と通知
-   - パフォーマンス統計の収集
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「スケジュールジョブ」セクションを参照してください。
-
-### WebSocketの実装
-
-リアルタイム通信とイベント駆動型の機能を実現するため、WebSocketは以下の方針で実装します：
-
-1. **接続管理と認証**：
-
-   - JWTトークンを使用したWebSocket接続認証
-   - セッション情報の検証とユーザー関連付け
-   - 接続タイムアウトと自動再接続の処理
-   - 接続状態の監視と統計収集
-
-2. **メッセージ形式とプロトコル**：
-
-   ```json
-   {
-     "type": "EVENT_TYPE",
-     "payload": {
-       /* イベント固有のデータ */
-     },
-     "meta": {
-       "timestamp": "ISO日時",
-       "requestId": "リクエストID",
-       "sender": "送信元識別子"
-     }
-   }
-   ```
-
-3. **イベントタイプ**：
-
-   - `connection` - 接続管理関連イベント
-   - `notification` - ユーザー通知イベント
-   - `activity` - アクティビティストリームイベント
-   - `data` - データ変更イベント
-   - `presence` - プレゼンス状態イベント
-   - `error` - エラーイベント
-
-4. **WebSocketセキュリティ**：
-
-   - 認証情報の定期的な再検証
-   - メッセージの入力検証とサニタイゼーション
-   - レート制限の適用
-   - 悪意ある接続の検出と遮断
-
-5. **スケーラビリティと分散環境対応**：
-
-   - Redis Pub/Subを活用した複数インスタンス間の同期
-   - 接続数に応じた動的スケーリング
-   - 負荷分散と冗長性確保
-   - クラスター化された接続管理
-
-6. **クライアント状態管理**：
-   - 接続ユーザーのプレゼンス追跡
-   - 購読チャネルの管理
-   - クライアント機能のプログレッシブエンハンスメント
-   - 接続品質モニタリングとフォールバック戦略
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「WebSocket実装」セクションを参照してください。
-
-## ロギング・モニタリング
-
-### ログ戦略
-
-06_utility_functions.mdで定義されたロギングユーティリティを活用し、以下のログ戦略を実装します：
-
-1. **ログレベル**：
-
-   - ERROR：回復不能な問題
-   - WARN：潜在的な問題
-   - INFO：重要な処理の開始・完了
-   - DEBUG：開発用の詳細情報
-   - TRACE：最も詳細な診断情報
-
-2. **ログフォーマット**：
-
-   - JSON形式の構造化ログ
-   - タイムスタンプ（ISO 8601形式）
-   - サービス名、コンポーネント名
-   - リクエストID、セッションID
-   - ユーザーコンテキスト（匿名化）
-
-3. **出力先**：
-   - 開発環境：コンソール
-   - テスト/本番環境：ファイル + 集中ログ管理システム
-   - 重大エラー：アラート通知システム
-
-### メトリクス収集
-
-システムパフォーマンスのモニタリングのため、以下のメトリクスを収集します：
-
-1. **アプリケーションメトリクス**：
-
-   - APIリクエスト数と応答時間
-   - エラー発生率
-   - アクティブユーザー数
-   - 同時接続数
-
-2. **リソースメトリクス**：
-
-   - CPU/メモリ使用率
-   - ディスクI/O
-   - ネットワークトラフィック
-   - データベース接続数
-
-3. **ビジネスメトリクス**：
-   - ユーザー登録数
-   - プロジェクト作成数
-   - AI API呼び出し数
-   - コンバージョン率
-
-### アラート設定
-
-システム異常の早期検知のため、以下のアラート設定を実装します：
-
-1. **アラート条件**：
-
-   - エラー率閾値超過
-   - 応答時間閾値超過
-   - リソース使用率閾値超過
-   - 重要サービスの死活監視
-
-2. **通知チャネル**：
-
-   - Eメール
-   - Slack
-   - SMSまたはモバイルプッシュ通知
-   - オンコール管理システム連携
-
-3. **アラートポリシー**：
-   - 重大度に応じた通知先設定
-   - 時間帯に応じた通知先調整
-   - アラート集約と重複排除
-   - エスカレーションポリシー
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「アラート設定」セクションを参照してください。
-
-## APIドキュメント
-
-### ドキュメント生成
-
-APIドキュメントは、以下の方針で生成・管理します：
-
-1. **OpenAPI仕様採用**：
-
-   - OpenAPI 3.0形式による仕様定義
-   - リクエスト/レスポンスの型定義
-   - エラーコードと説明の文書化
-   - 認証方式の明示
-
-2. **自動生成プロセス**：
-
-   - Zodスキーマからの自動変換
-   - 実装コードからの型情報抽出
-   - JsDocコメントからの説明文抽出
-   - CI/CDパイプラインでの自動更新
-
-3. **インタラクティブドキュメント**：
-   - Swagger UIによる閲覧・検索
-   - リクエスト試行機能の提供
-   - サンプルコードの自動生成
-   - カスタムスタイリングとブランディング
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「APIドキュメント生成」セクションを参照してください。
-
-### ドキュメント管理
-
-APIドキュメントの管理は、以下の方針で行います：
-
-1. **バージョン管理**：
-
-   - APIバージョンごとのドキュメント管理
-   - 変更履歴の明示
-   - 非推奨APIの明示
-
-2. **アクセス制御**：
-
-   - 公開APIと内部APIの分離
-   - 認証付きドキュメントアクセス
-   - 役割に応じた表示内容の調整
-
-3. **更新プロセス**：
-   - コード変更と同期した自動更新
-   - レビュープロセスの統合
-   - 変更通知メカニズム
-
-### クライアント生成
-
-APIクライアントの自動生成は、以下の方針で実装します：
-
-1. **クライアント種別**：
-
-   - TypeScript/JavaScriptクライアント
-   - React Hooksベースのクライアント
-   - モバイルアプリ用クライアント（必要に応じて）
-
-2. **生成プロセス**：
-
-   - OpenAPI仕様からの自動生成
-   - 型安全性の確保
-   - エラーハンドリングの統合
-   - 認証情報の適切な管理
-
-3. **配布方式**：
-   - NPMパッケージとしての公開
-   - バージョン管理とセマンティックバージョニング
-   - 変更履歴の文書化
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「APIクライアント生成」セクションを参照してください。
-
-## 多言語対応（国際化）
-
-01_requirements_definition.mdで定義された多言語対応要件に基づき、以下の実装方針で国際化機能を提供します：
-
-### 翻訳リソース管理
-
-翻訳リソースは、以下の方針で管理します：
-
-1. **リソースの構造化**：
-
-   - 04_implementation_rules.mdで定義された翻訳キーの命名規則に従ったJSON構造
-   - 言語ごとのリソースファイル分離
-   - 動的な翻訳読み込みと遅延ロード
-
-2. **翻訳管理API**：
-
-   ```
-   /api/v1/translations              # 翻訳リソース一覧取得
-   /api/v1/translations/:lang        # 特定言語の翻訳取得
-   /api/v1/translations/:lang/:key   # 特定キーの翻訳取得/更新
-   ```
-
-3. **翻訳キャッシュ**：
-   - サーバーサイドキャッシュによるパフォーマンス最適化
-   - バージョン管理によるキャッシュ制御
-   - 言語ごとのキャッシュ分離
-
-### 多言語コンテンツ管理
-
-ユーザー生成コンテンツの多言語対応は、以下のパターンで実装します：
-
-1. **翻訳キー管理**：
-
-   - 静的コンテンツへの翻訳キー割り当て
-   - 翻訳キーの階層化による管理効率向上
-   - 欠落翻訳の自動検出と通知
-
-2. **翻訳ワークフロー自動化**：
-
-   - 新規翻訳キーの自動抽出
-   - 翻訳更新時の差分管理
-   - 翻訳ステータスの追跡
-
-3. **言語ごとのコンテンツバージョン**：
-
-   - 言語ごとのコンテンツ管理
-   - バージョン履歴の保持
-   - 言語間の同期状態追跡
-
-4. **未翻訳コンテンツのフォールバック**：
-
-   - 翻訳が存在しない場合のデフォルト言語表示
-   - 部分的翻訳の組み合わせ
-   - 自動翻訳サービスとの連携（オプション）
-
-5. **動的コンテンツの翻訳管理**：
-   - ユーザー生成コンテンツの翻訳状態管理
-   - オンデマンド翻訳リクエスト
-   - 翻訳メタデータの保存
-
-### 言語検出と選択
-
-ユーザーの言語設定と自動検出は、以下の方針で実装します：
-
-1. **Accept-Language処理**：
-
-   - リクエストヘッダーからの言語優先順位取得
-   - 言語タグの解析と正規化
-   - サポート言語との照合
-
-2. **ユーザー言語設定**：
-
-   - ユーザープロファイルへの言語設定保存
-   - UI/UXでの言語選択支援
-   - 認証済みユーザーの言語設定の永続化
-
-3. **コンテンツベース言語検出**：
-
-   - 入力テキストからの言語推定
-   - 自然言語処理による言語識別
-   - 混合言語コンテンツの処理
-
-4. **地域IPに基づくデフォルト言語**：
-
-   - ジオロケーションデータに基づく初期言語提案
-   - リージョン設定との連携
-   - プライバシー考慮のオプトアウト機能
-
-5. **UI言語と通知言語の分離**：
-   - インターフェース言語と通知言語の独立設定
-   - コンテンツタイプごとの言語設定
-   - ドメイン/サブドメインごとの言語設定
-
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「多言語対応」セクションを参照してください。
-
-## サーバーサイドテスト戦略
-
-04_implementation_rules.mdで定義されたテスト実装パターンに基づき、サーバーサイドのテストを以下の方針で実装します：
-
-### ユニットテスト
-
-ユニットテストは、個々のコンポーネントを分離してテストします：
-
-1. **テスト対象**：
-
-   - ドメインサービス
-   - ユースケース
-   - バリデーションロジック
-   - ユーティリティ関数
-   - ヘルパークラス
-
-2. **テストパターン**：
-
-   - 入力値テスト（正常系/異常系）
-   - 境界値テスト
-   - モックを使用した依存性分離
-   - 例外発生テスト
-
-3. **実装例**：
+    ```
+
+3.  **スコープ管理**:
+    -   `@singleton()`: アプリケーション全体で単一のインスタンス。DBクライアントや設定オブジェクトなどに使用。
+    -   `@scoped(Lifecycle.ResolutionScoped)`: 依存関係が解決されるたびに新しいインスタンス（デフォルト）。
+    -   `@scoped(Lifecycle.ContainerScoped)`: コンテナごとに単一のインスタンス。
+    -   **リクエストスコープ**: Next.js の API Routes や Server Actions ごとにインスタンスを生成したい場合（例: リクエスト固有のユーザー情報、トランザクション管理）、`tsyringe` の子コンテナ (`container.createChildContainer()`) をリクエスト処理の開始時に生成し、終了時に破棄するパターンを検討します。これにより、リクエスト固有の依存性（例: 認証済みユーザー情報オブジェクト）を安全に注入できます。
+
+4.  **API Routes / Server Actions での使用**:
+    -   各ハンドラー関数でDIコンテナから必要なユースケースを取得します。
+    -   **`shared/utils/api.utils.ts` の `processApiRequest` を使用することで、リクエスト処理、バリデーション、ハンドラー実行、レスポンス生成を簡潔に記述できます。**
 
    ```typescript
-   // ユーザーサービスのユニットテスト
-   describe('UserService', () => {
-     let userService: UserService;
-     let mockUserRepository: MockUserRepository;
+    // 例: app/api/users/route.ts
+    import 'reflect-metadata';
+    import { NextRequest } from 'next/server';
+    import { z } from 'zod';
+    import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
+    import container from '@/config/container.config';
+    import { processApiRequest } from '@/shared/utils/api.utils'; // ★ インポート
 
-     beforeEach(() => {
-       mockUserRepository = new MockUserRepository();
-       userService = new UserService(mockUserRepository);
-     });
+    // Zod スキーマで入力データを定義・検証
+    const createUserSchema = z.object({
+      name: z.string().min(1, 'Name is required').max(50),
+      email: z.string().email('Invalid email format'),
+      passwordPlainText: z.string().min(8, 'Password must be at least 8 characters'),
+    });
 
-     it('should create a user with valid data', async () => {
-       // テスト実装
-     });
+    export async function POST(request: NextRequest) {
+      // ★ processApiRequest を使用して処理を委譲
+      return processApiRequest(request, {
+        bodySchema: createUserSchema, // Zod スキーマでボディを検証
+        successStatus: 201, // 成功時のステータスコード
+        handler: async (createUserDto) => {
+          // ★ DI コンテナからユースケースを取得
+          const createUserUsecase = container.resolve(CreateUserUsecase);
+          // ★ ユースケースを実行 (createUserDto は検証済みのデータ)
+          const result = await createUserUsecase.execute(createUserDto);
 
-     it('should throw validation error for invalid email', async () => {
-       // テスト実装
-     });
+          // ★ AppResult のエラーをスローすると processApiRequest が handleApiError で処理
+          if (result.isErr()) {
+            throw result.error;
+          }
 
-     it('should not create user with duplicate email', async () => {
-       // テスト実装
-     });
-   });
-   ```
+          // ★ 成功時のデータを返す
+          return result.value;
+        },
+      });
+    }
+    ```
 
-4. **テストカバレッジ目標**：
-   - ドメインサービス: 100%
-   - ユースケース: 100%
-   - ユーティリティ: 100%
-   - エンティティ/値オブジェクト: 95%以上
+### リポジトリの実装とエラーハンドリング
 
-### 統合テスト
+リポジトリインターフェースは `domain/repositories` に、その実装は `infrastructure/database/repositories` に配置され、**`infrastructure/database/repositories/base.repository.ts` の `BaseRepository` クラスを継承することで、共通のCRUD操作が提供されます。**
 
-統合テストは、複数のコンポーネントの連携をテストします：
+各リポジトリメソッドの標準動作として以下が定義されています（`BaseRepository` により保証）：
 
-1. **テスト対象**：
+1. **`findById` / `findByEmail` 等の検索メソッド**: 
+   - **戻り値**: `Promise<AppResult<TDomain | null>>`
+   - エンティティが見つからない場合は `ok(null)` を返します。
+   - DB接続エラーなどの技術的エラーの場合は `err(InfrastructureError)` を返します。
+   - マッピングエラー（DBレコードからドメインエンティティへの変換失敗）の場合も `err(InfrastructureError)` を返します。
 
-   - APIエンドポイント
-   - リポジトリ実装
-   - サービス間連携
-   - トランザクション処理
+2. **`delete` メソッド**:
+   - **戻り値**: `Promise<AppResult<void>>`
+   - 冪等性を保証するため、対象エンティティが存在しない場合でも **成功 (`ok(undefined)`)** として扱います。
+   - DB接続エラーなどの技術的エラーの場合は `err(InfrastructureError)` を返します。
 
-2. **テスト環境**：
+3. **`save` メソッド（作成/更新）**:
+   - **戻り値**: `Promise<AppResult<void>>`
+   - ユニーク制約違反（例: 既存のメールアドレスで新規ユーザー作成）の場合：
+     - **`err(AppError)` を返し、エラーコードは `ErrorCode.ConflictError` が設定されます。**
+     - `BaseRepository` 内で、DBエラー（特定の `error.code`）を検知し、`ConflictError` に変換します。
+   - マッピングエラー（ドメインエンティティからDBレコード形式への変換失敗）の場合は `err(InfrastructureError)` を返します。
+   - DB接続エラーなどの技術的エラーの場合は `err(InfrastructureError)` を返します。
 
-   - テスト用データベース（実DBまたはインメモリDB）
-   - モック外部サービス
-   - テスト用設定
+#### エラーコンテキスト情報の追加
 
-3. **実装例**：
+`AppError` クラスとそのサブクラス (`InfrastructureError`, `ValidationError`) は、エラーデバッグに役立つコンテキスト情報（メタデータ）を追加するためのメソッドを提供します。
 
-   ```typescript
-   // プロジェクト作成APIの統合テスト
-   describe('Project API', () => {
-     let app: Express;
-     let testDb: TestDatabase;
+```typescript
+import { AppError, InfrastructureError, ValidationError, ErrorCode } from '@/shared/errors';
 
-     beforeAll(async () => {
-       testDb = await setupTestDatabase();
-       app = createTestApp(testDb);
-     });
+// 例1: リポジトリでの InfrastructureError
+return err(
+  new InfrastructureError(
+    ErrorCode.DatabaseError,
+    `Failed to find user by email ${email.value}`,
+    { cause: dbError }
+  ).withMetadata({ operation: 'findByEmail', email: email.value })
+);
 
-     afterAll(async () => {
-       await teardownTestDatabase(testDb);
-     });
+// 例2: ユースケースでの ValidationError
+return err(
+  new ValidationError('Invalid user name format', {
+    cause: nameResult.error, // ZodError など
+    value: input.name,
+  }).withEntityContext('user', input.userId ?? 'unknown', 'updateProfile')
+);
 
-     it('should create a project via API', async () => {
-       // テスト実装
-     });
+// 例3: 既存のエラーにコンテキストを追加
+if (saveResult.isErr()) {
+  return err(saveResult.error.withMetadata({ step: 'saveUser' }));
+}
+```
 
-     it('should retrieve project list with pagination', async () => {
-       // テスト実装
-     });
-   });
-   ```
+ロガー (`LoggerInterface`) は、エラーオブジェクトを第2引数に受け取った場合、自動的に `cause` や `metadata` をログに出力するように実装されています (例: `ConsoleLogger`)。
 
-4. **テストデータ管理**：
-   - テスト前の既知状態へのリセット
-   - シード値によるデータ初期化
-   - テスト間の分離保証
+### ロギングの実装とベストプラクティス
 
-### E2Eテスト
+アプリケーション全体で一貫したロギングを実現するために、**`shared/logger/logger.interface.ts` で定義された `LoggerInterface`** を中心としたロギング機構を採用しています。**`shared/logger/logger.token.ts` の `LoggerToken`** を使用して、具体的なロガー実装（例: `shared/logger/console.logger.ts` の `ConsoleLogger`）がDIコンテナを通じて注入されます。
 
-エンドツーエンドテストは、実際のユーザーフローを模したテストを実施します：
+##### ロガーの構造
 
-1. **テスト対象**：
+1.  **インターフェース定義 (`LoggerInterface`)**: `info`, `warn`, `error`, `debug` の各メソッドを定義します。`error` メソッドはエラーオブジェクト (`unknown`) を第二引数として受け取ることができます。
 
-   - 完全なユーザーフロー
-   - 認証/認可フロー
-   - 複雑なビジネスプロセス
+2.  **DI設定**: `config/container.config.ts` で `LoggerToken` に対して具体的なロガー実装（例: `ConsoleLogger`）を登録します。
 
-2. **テスト環境**：
+3.  **利用**: 各クラス（Usecase, Repository, Service など）のコンストラクタで `LoggerInterface` を `@inject(LoggerToken)` で注入し、ログ出力に使用します。
 
-   - 本番に近い構成のテスト環境
-   - 実際のDB接続
-   - モック外部サービス
+    ```typescript
+    import { inject, injectable } from 'tsyringe';
+    import { LoggerInterface, LoggerToken } from '@/shared/logger';
 
-3. **テストシナリオ例**：
+@injectable()
+    export class MyService {
+      constructor(@inject(LoggerToken) private readonly logger: LoggerInterface) {}
 
-   - ユーザー登録～プロジェクト作成～メンバー招待～共同編集
-   - パスワードリセットフロー
-   - プログラム作成～ステップ実行～成果物生成
+      doSomething(input: string) {
+        this.logger.info({ message: 'Starting doSomething', input });
+        try {
+          // ... 処理 ...
+          this.logger.debug({ message: 'Intermediate step successful', data: ... });
+          // ...
+        } catch (error) {
+          this.logger.error({ message: 'Failed to doSomething', input }, error);
+          // ... エラーハンドリング ...
+        }
+      }
+    }
+    ```
 
-4. **ツールとフレームワーク**：
-   - Jest + Supertest
-   - Playwright/Puppeteer（UI連携テスト）
-   - CI/CDパイプライン統合
+##### ログレベルの使い分け
 
-### パフォーマンステスト
+-   **`debug`**: 開発中の詳細なトレース情報。本番環境では通常出力しない。
+-   **`info`**: 通常の操作ログ、リクエストの開始/終了、重要な状態変化など。
+-   **`warn`**: 予期しないが、即座にエラーではない状況。軽微な設定ミス、非推奨APIの使用、リトライ可能な一時的なエラーなど。
+-   **`error`**: 処理の失敗、例外のキャッチ、外部サービスの接続不可など、対応が必要な問題。
 
-パフォーマンステストは、システムの非機能要件を検証します：
+##### 構造化ログ
 
-1. **テスト対象**：
+可能な限り **構造化ログ** (`LogData` オブジェクト形式) を使用します。これにより、ログの解析や集計が容易になります。
 
-   - API応答時間
-   - 同時接続処理能力
-   - データベースクエリパフォーマンス
-   - メモリ使用効率
+```typescript
+// 悪い例
+this.logger.error('Failed to process user ' + userId + ' due to: ' + error.message);
 
-2. **テスト手法**：
+// 良い例 (構造化ログ)
+this.logger.error({
+  message: 'Failed to process user',
+  userId: userId,
+  operation: 'processUserData'
+}, error);
+```
 
-   - 負荷テスト（徐々に負荷を上げる）
-   - ストレステスト（耐久限界の検証）
-   - スパイクテスト（急激な負荷変動）
-   - 長時間実行テスト
+ロガーの実装（例: `ConsoleLogger`）は、エラーオブジェクトが渡された場合、その `message`, `stack`, `cause`, `metadata` などの詳細情報もログに含めるようにします。
 
-3. **測定指標**：
-   - 応答時間（平均、95パーセンタイル、最大）
-   - スループット（RPS）
-   - エラー率
-   - リソース使用率
+## APIエンドポイント一覧
 
-### テスト自動化と継続的実行
+プロジェクトで提供される主要なAPIエンドポイントの構造を示します。詳細なリクエスト/レスポンス形式は、関連する型定義や実装を参照してください。
 
-テストの自動化と継続的実行の仕組みを構築します：
+### 一般ユーザー向けAPI (/api/v1 想定)
 
-1. **CI/CD統合**：
+このプレフィックス下のAPIは、認証された一般ユーザー (`User` ロール) が基本的な操作を行うために使用します。
+**中間ロール (例: `Editor`) のアクセス**: 特定の操作 (例: コンテンツ編集) については、`Editor` ロールもこのプレフィックス下のAPIを利用する場合があります。その場合、アクセス権限は後述の**ミドルウェア層**でロールに基づいて厳格にチェックされます。
 
-   - プッシュ/PRごとのユニットテスト実行
-   - マージ前の統合テスト実行
-   - 夜間ビルドでのE2Eテスト実行
-   - スケジュールされたパフォーマンステスト
+├── auth/ # 認証関連 (公開アクセス可能)
+│ ├── google/callback
+│ ├── github/callback
+│ ├── signout
+│ └── session
+├── projects/ # プロジェクト管理 (原則 User ロール, 一部 Editor/Admin も GET 可能など)
+│ ├── GET / # 自身のプロジェクト一覧取得 (ReadModel利用)
+│ ├── POST / # プロジェクト新規作成
+│ ├── GET /{projectId} # プロジェクト詳細取得 (ReadModel/DTO)
+│ ├── PATCH /{projectId} # プロジェクト更新
+│ ├── DELETE /{projectId} # プロジェクト削除
+│ └── GET /{projectId}/steps # 特定プロジェクトのステップ一覧
+├── steps/ # ステップ実行関連 (原則 User ロール)
+│ ├── GET /{stepId} # ステップ詳細取得
+│ ├── PATCH /{stepId} # ステップ更新 (進捗、ユーザー入力など)
+│ └── POST /{stepId}/complete # ステップ完了
+├── conversations/ # AI会話履歴 (原則 User ロール)
+│ ├── POST / # 新規会話開始 or メッセージ追加
+│ ├── GET /{conversationId} # 会話履歴取得
+│ └── GET /project/{projectId} # 特定プロジェクトの会話一覧
+├── ai/ # AIサービス連携 (原則 User ロール)
+│ └── chat # チャットメッセージ送信・応答取得 (ステップ内、相談室など)
+├── outputs/ # 成果物関連 (原則 User ロール)
+│ ├── GET /project/{projectId} # 特定プロジェクトの成果物一覧
+│ ├── GET /{outputId} # 成果物詳細取得
+│ └── POST /{outputId}/export # 成果物エクスポート
+├── subscriptions/ # 自身のサブスクリプション管理 (原則 User ロール)
+│ ├── GET / # 現在のプラン情報取得
+│ ├── POST /checkout # プラン変更・新規契約チェックアウト (Stripe連携)
+│ ├── POST /portal # カスタマーポータル (Stripe連携)
+│ └── GET /plans # 利用可能なプラン一覧取得
+└── users/ # 自身のユーザー情報 (原則 User ロール)
+├── GET /me # 自身のユーザー情報取得
+└── PATCH /me # ユーザー情報更新
 
-2. **テストレポート**：
+### 管理者向けAPI (/api/admin/v1 想定)
 
-   - テスト結果の自動収集
-   - カバレッジレポート生成
-   - 時系列パフォーマンス追跡
-   - 障害分析ダッシュボード
+このプレフィックス下のAPIは、**`Admin` ロールを持つユーザー専用**です。システム全体の管理操作に使用されます。ミドルウェアで `Admin` ロールが強制されます。
 
-3. **テスト品質管理**：
-   - テストコード品質の確保
-   - テスト重複の排除
-   - 脆弱なテストの特定と改善
-   - テストメンテナンスの効率化
+├── users/ # ユーザー管理
+│ ├── GET / # ユーザー一覧取得 (検索・フィルタリング・ページネーション対応)
+│ ├── GET /{userId} # 特定ユーザー詳細取得
+│ ├── PATCH /{userId}/role # ユーザーロール変更
+│ └── PATCH /{userId}/status # ユーザーアカウント状態変更 (有効/無効)
+├── programs/ # プログラム管理
+│ ├── GET / # プログラム一覧取得 (検索・フィルタリング対応)
+│ ├── POST / # プログラム新規作成
+│ ├── GET /{programId} # プログラム詳細取得
+│ ├── PUT /{programId} # プログラム更新
+│ ├── DELETE /{programId} # プログラム削除
+│ └── PATCH /{programId}/publish # プログラム公開/非公開設定
+├── steps/ # ステップ管理
+│ ├── GET /program/{programId} # 特定プログラムのステップ一覧取得
+│ ├── POST /program/{programId} # ステップ新規作成
+│ ├── GET /{stepId} # ステップ詳細取得
+│ ├── PUT /{stepId} # ステップ更新
+│ ├── DELETE /{stepId} # ステップ削除
+│ └── POST /reorder # ステップ順序変更
+├── prompts/ # プロンプト管理
+│ ├── GET / # プロンプト一覧取得
+│ ├── POST / # プロンプト新規作成
+│ ├── GET /{promptId} # プロンプト詳細取得 (バージョン含む)
+│ ├── PUT /{promptId} # プロンプト更新
+│ ├── DELETE /{promptId} # プロンプト削除
+│ └── GET /{promptId}/versions # 特定プロンプトのバージョン履歴
+├── videos/ # ビデオ管理
+│ ├── GET / # ビデオ一覧取得
+│ ├── POST / # ビデオ新規アップロード/登録
+│ ├── GET /{videoId} # ビデオ詳細取得
+│ ├── PUT /{videoId} # ビデオ情報更新
+│ └── DELETE /{videoId} # ビデオ削除
+├── subscription-plans/ # サブスクリプションプラン管理
+│ ├── GET / # プラン一覧取得
+│ ├── POST / # プラン新規作成
+│ ├── GET /{planId} # プラン詳細取得
+│ ├── PUT /{planId} # プラン更新
+│ └── DELETE /{planId} # プラン削除
+└── dashboard/ # 管理ダッシュボード用データ
+└── GET /summary # 主要指標のサマリー取得
 
-> **参照**: 具体的な実装例については「code_examples/07_server_implementation_examples.md」の「サーバーサイドテスト」セクションを参照してください。
+## ユーティリティAPI
+
+開発や運用を支援するためのユーティリティAPIを提供します。
+
+-   `GET /api/health`: サーバーのヘルスチェック用エンドポイント。DB接続なども確認。
+-   `GET /api/docs`: API仕様ドキュメント（Swagger/OpenAPI）へのアクセス（開発環境のみ）。
+
+## 認証・認可ミドルウェア
+
+Next.js のミドルウェア (`middleware.ts`) またはそれに準ずる仕組み (例: 各APIルート/ルートグループに適用するラッパー関数) を使用して、API Routes やページへのアクセス制御を一元的に行います。
+
+1.  **セッション検証**: リクエストに含まれるセッショントークン（JWT）を検証し、有効なユーザーセッションが存在するか確認します。
+2.  **パスとロールに基づいた認可**: リクエストされたパス (例: `/api/v1/projects`, `/api/admin/users`) と HTTP メソッド (GET, POST, PATCH など) に基づき、**要求されるロール**を定義します。
+    *   `/api/admin/**` へのアクセスは `Admin` ロールのみに制限します。
+    *   `/api/v1/**` へのアクセスは、操作内容に応じて必要なロール (例: `User`, `Editor`, `Admin` のいずれか、または `Editor` 以上など) をチェックします。例えば、`PATCH /api/v1/articles/{id}` は `Editor` または `Admin` ロールが必要、といったルールを適用します。
+    *   リクエスト元のユーザーが要求されるロールを持っていない場合は、403 Forbidden エラーを返却します。
+3.  **リソース所有権チェックの考慮**: 必要に応じて、ミドルウェア層またはユースケース層でリソースの所有権チェック (リクエストユーザーが対象リソースを操作する権限を持つか) も行います。
+4.  **ページアクセス制御**: 認証が必要なページ (`/dashboard`, `/admin` など) への未認証アクセスはログインページへリダイレクトします。特定のロールが必要なページ (`/admin` は `Admin` ロールのみ) へのアクセスも制御します。
+5.  **RLS用情報**: 検証済みユーザーIDやロール情報をリクエストコンテキストに追加し、後続の処理（特にRLS）で利用可能にします。
+
+**重要**: 認可ロジックは可能な限りこのミドルウェア層で完結させ、APIハンドラ（Route HandlerやServer Actionの本体）内部での複雑なロールに基づく条件分岐を最小限に抑えることで、セキュリティと保守性を高めます。
+
+## まとめ
+
+本ドキュメントでは、AiStartプロジェクトのサーバーサイド実装に関する主要なパターンと構造を説明しました。DDD風ヘキサゴナルアーキテクチャ、DI、Result型によるエラーハンドリング、QueryObject/ReadModel、SC/CC連携ルールなどを適用することで、保守性、テスト容易性、拡張性の高いサーバーアプリケーションを目指します。具体的な実装は、[04_implementation_rules.md](/docs/restructuring/04_implementation_rules.md) の規約に従い、関連するコード例を参照してください。

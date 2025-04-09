@@ -27,4 +27,10 @@ yarn.lock
 supabase/
 
 # ドキュメント
-docs/**/*.md 
+docs/**/*.md
+
+# Storybook
+stories/
+
+# テストレポート
+playwright-report/ 
