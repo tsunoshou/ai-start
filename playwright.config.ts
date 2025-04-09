@@ -22,6 +22,14 @@ export default defineConfig({
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000', // テスト対象のベースURL
     trace: 'on-first-retry', // 最初のリトライ時にトレースを記録
+    extraHTTPHeaders: {
+      // Vercel のパスワード保護をバイパスするためのヘッダー
+      ...(process.env.VERCEL_AUTOMATION_BYPASS_SECRET && {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+      }),
+      // 他に必要な共通ヘッダーがあればここに追加
+    },
   },
   projects: [
     {
