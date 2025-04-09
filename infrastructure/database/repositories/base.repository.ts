@@ -27,7 +27,8 @@ export abstract class BaseRepository<
   TID extends Identifier<string>,
   TDomain extends EntityBase<TID>,
   TDbSelect extends Record<string, unknown>,
-  TDbInsert extends { updatedAt?: string | Date | DateTimeString; [key: string]: unknown },
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  TDbInsert extends { updated_at?: string | Date; [key: string]: unknown },
   TSchema extends PgTable,
 > {
   constructor(
@@ -111,7 +112,7 @@ export abstract class BaseRepository<
 
   /**
    * Saves (inserts or updates) an entity to the database.
-   * Automatically sets the `updatedAt` field before persisting.
+   * Automatically sets the `updated_at` field before persisting.
    * @param entity The domain entity to save.
    * @returns An AppResult containing void or an AppError.
    */
@@ -121,7 +122,7 @@ export abstract class BaseRepository<
 
     try {
       persistenceData = this._toPersistence(entity);
-      persistenceData.updatedAt = now.value;
+      persistenceData.updated_at = now.value;
     } catch (mappingError) {
       this.logger.error(
         {
