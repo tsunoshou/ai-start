@@ -1,7 +1,7 @@
 import { Result, ok, err } from 'neverthrow';
 
+import { BaseEntity } from '@/domain/models/base/base.entity';
 import { BaseError } from '@/shared/errors/base.error';
-import { EntityBase } from '@/shared/types/entity-base.interface';
 import * as DateTimeStringModule from '@/shared/value-objects/date-time-string.vo';
 import { Email } from '@/shared/value-objects/email.vo';
 import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
@@ -14,13 +14,16 @@ import { UserName } from './user-name.vo';
  * @description Represents a user entity within the system.
  * Contains user identification, credentials, and metadata.
  * Ensures immutability through private readonly properties and controlled creation via static factory method.
+ * Inherits common entity properties and behaviors from BaseEntity.
  *
- * @property {UserId} id - The unique identifier for the user.
+ * @extends BaseEntity<UserId>
+ *
+ * @property {UserId} id - The unique identifier for the user (from BaseEntity).
  * @property {Email} email - The user's email address.
  * @property {UserName} name - The user's display name.
  * @property {PasswordHash} passwordHash - The hashed password for the user.
- * @property {DateTimeString} createdAt - Timestamp when the user was created.
- * @property {DateTimeString} updatedAt - Timestamp when the user was last updated.
+ * @property {DateTimeString} createdAt - Timestamp when the user was created (from BaseEntity).
+ * @property {DateTimeString} updatedAt - Timestamp when the user was last updated (from BaseEntity).
  *
  * @example
  * // Example of creating a new user
@@ -47,9 +50,17 @@ import { UserName } from './user-name.vo';
  *   updatedAt: DateTimeString.create('2023-01-10T12:00:00.000Z')._unsafeUnwrap(),
  * });
  */
-export class User implements EntityBase<UserId> {
+export class User extends BaseEntity<UserId> {
+  /**
+   * User固有のプロパティ
+   */
+  public readonly email: Email;
+  public readonly name: UserName;
+  public readonly passwordHash: PasswordHash;
+
   /**
    * Private constructor to enforce object creation through static factory methods.
+   * Calls the parent constructor of BaseEntity.
    * @param {UserId} id - User ID.
    * @param {Email} email - User email.
    * @param {UserName} name - User name.
@@ -59,13 +70,18 @@ export class User implements EntityBase<UserId> {
    * @private
    */
   private constructor(
-    public readonly id: UserId,
-    public readonly email: Email,
-    public readonly name: UserName,
-    public readonly passwordHash: PasswordHash,
-    public readonly createdAt: DateTimeStringModule.DateTimeString,
-    public readonly updatedAt: DateTimeStringModule.DateTimeString
-  ) {}
+    id: UserId,
+    email: Email,
+    name: UserName,
+    passwordHash: PasswordHash,
+    createdAt: DateTimeStringModule.DateTimeString,
+    updatedAt: DateTimeStringModule.DateTimeString
+  ) {
+    super(id, createdAt, updatedAt);
+    this.email = email;
+    this.name = name;
+    this.passwordHash = passwordHash;
+  }
 
   /**
    * Creates a new User instance.
@@ -130,23 +146,56 @@ export class User implements EntityBase<UserId> {
   }
 
   /**
-   * Checks if this User entity is equal to another User entity based on their IDs.
-   * @param {User | null | undefined} other - The other User entity to compare against.
-   *   Should accept any EntityBase with the same ID type, plus null/undefined.
-   * @returns {boolean} True if the entities have the same ID, false otherwise.
+   * ユーザー名を変更します。
+   * 変更されたプロパティを持つ新しいUserインスタンスを返します。
+   * @param {UserName} newName - 新しいユーザー名。
+   * @returns {Result<User, BaseError>} 更新されたUserインスタンス、またはエラー。
    */
-  public equals(other: EntityBase<UserId> | null | undefined): boolean {
-    if (other === null || other === undefined) {
-      return false;
-    }
-    if (!(other instanceof User)) {
-      return false;
-    }
-    return this.id.equals(other.id);
+  public changeName(newName: UserName): Result<User, BaseError> {
+    const updatedUser = new User(
+      this.id,
+      this.email,
+      newName,
+      this.passwordHash,
+      this.createdAt,
+      this.updatedAt
+    );
+    return ok(updatedUser);
   }
 
-  // --- Potential future methods ---
-  // public changeEmail(newEmail: Email): Result<User, Error> { ... }
-  // public changePassword(newPasswordHash: PasswordHash): Result<User, Error> { ... }
-  // public updateProfile(props: { name?: UserName }): Result<User, Error> { ... }
+  /**
+   * メールアドレスを変更します。
+   * 変更されたプロパティを持つ新しいUserインスタンスを返します。
+   * @param {Email} newEmail - 新しいメールアドレス。
+   * @returns {Result<User, BaseError>} 更新されたUserインスタンス、またはエラー。
+   */
+  public changeEmail(newEmail: Email): Result<User, BaseError> {
+    const updatedUser = new User(
+      this.id,
+      newEmail,
+      this.name,
+      this.passwordHash,
+      this.createdAt,
+      this.updatedAt
+    );
+    return ok(updatedUser);
+  }
+
+  /**
+   * パスワードハッシュを更新します。
+   * 変更されたプロパティを持つ新しいUserインスタンスを返します。
+   * @param {PasswordHash} newPasswordHash - 新しいパスワードハッシュ。
+   * @returns {Result<User, BaseError>} 更新されたUserインスタンス、またはエラー。
+   */
+  public changePassword(newPasswordHash: PasswordHash): Result<User, BaseError> {
+    const updatedUser = new User(
+      this.id,
+      this.email,
+      this.name,
+      newPasswordHash,
+      this.createdAt,
+      this.updatedAt
+    );
+    return ok(updatedUser);
+  }
 }
