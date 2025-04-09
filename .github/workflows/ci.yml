@@ -104,9 +104,9 @@ jobs:
   e2e-test:
     name: E2Eテスト実行 (Staging)
     runs-on: ubuntu-latest
-    # lint-and-test ジョブが完了し、かつ release/* ブランチへのプッシュ時のみ実行
+    # リリースブランチへのプッシュまたはリリースブランチの作成時に実行
     needs: lint-and-test
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) || (github.event_name == 'create' && github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/'))
     timeout-minutes: 15
     # GitHub Environments の 'staging' を指定
     environment:

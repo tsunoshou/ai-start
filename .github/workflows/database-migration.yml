@@ -1,6 +1,7 @@
 name: Database Migration
 
 on:
+  create: # ブランチ作成時にも実行されるよう追加
   push:
     branches:
       - main
@@ -13,6 +14,8 @@ on:
 jobs:
   migrate-database:
     name: Database Migration
+    # createイベントの場合はref_typeがbranchかつref_nameがrelease/で始まる場合のみ実行
+    if: github.event_name != 'create' || (github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/'))
     runs-on: ubuntu-latest
     environment: ${{ (github.ref == 'refs/heads/main' && 'Production') || (startsWith(github.ref, 'refs/heads/release/') && 'staging') || 'Preview' }}
 
