@@ -163,7 +163,7 @@ new Email('taro@example.com')
 ⸻
 
 2. ValueObject 設計ルール
-   • VOはドメイン内で意味を持つ“1つの概念”を表す
+   • VOはドメイン内で意味を持つ"1つの概念"を表す
    • equals(), toString(), validate() を必ず実装
    • 共通ID (UserId, ProjectId など) は shared/value-objects/ にまとめる
 
@@ -252,14 +252,58 @@ UserName, ProjectStatus など意味を持つVO 各ドメイン内 value-objects
 
 🔁 移行マッピング（before → after）
 
-現在の場所 移行後
-domain/models/user packages/user/domain/
-usecases/user/ packages/user/application/usecases/
-mappers/ packages/user/infrastructure/mappers/
-shared/utils.ts packages/shared/utils/
-drizzle.config.ts packages/infrastructure/database/drizzle.client.ts
-.env.local apps/saas-app/.env.local
-package.json apps/saas-app/package.json
+| 現在の場所                                          | 移行後                                                                                       |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| domain/models/user                                  | packages/user/domain/entities/user.entity.ts                                                 |
+| domain/models/base-entity.ts                        | packages/shared/base/base-entity.ts                                                          |
+| domain/repositories/user.repository.ts              | packages/user/domain/repositories/user.repository.interface.ts                               |
+| application/usecases/user/create-user.usecase.ts    | packages/user/application/usecases/create-user.usecase.ts                                    |
+| application/usecases/user/list-users.usecase.ts     | packages/user/application/usecases/list-users.usecase.ts                                     |
+| application/usecases/user/get-user-by-id.usecase.ts | packages/user/application/usecases/get-user-by-id.usecase.ts                                 |
+| application/dtos/user.dto.ts                        | packages/user/application/dtos/user.dto.ts                                                   |
+| infrastructure/mappers/user.mapper.ts               | packages/user/infrastructure/mappers/user.mapper.ts                                          |
+| infrastructure/database/\*                          | packages/infrastructure/database/\*                                                          |
+| infrastructure/database/schema/users.schema.ts      | packages/infrastructure/database/schema/users.schema.ts                                      |
+| infrastructure/auth/\*                              | packages/infrastructure/auth/\*                                                              |
+| infrastructure/ai/\*                                | packages/infrastructure/ai/\*                                                                |
+| shared/value-objects/user-id.vo.ts                  | packages/shared/value-objects/user-id.vo.ts                                                  |
+| shared/types/\*                                     | packages/shared/types/\*                                                                     |
+| shared/errors/\*                                    | packages/shared/errors/\*                                                                    |
+| shared/utils/\*                                     | packages/shared/utils/\*                                                                     |
+| shared/logger/\*                                    | packages/shared/logger/\*                                                                    |
+| shared/enums/\*                                     | packages/shared/enums/\*                                                                     |
+| shared/constants/\*                                 | packages/shared/constants/\*                                                                 |
+| presentation/components/\*                          | packages/ui/components/\*                                                                    |
+| presentation/hooks/\*                               | packages/ui/hooks/\*                                                                         |
+| presentation/providers/\*                           | packages/ui/providers/\*                                                                     |
+| presentation/utils/\*                               | packages/ui/utils/\*                                                                         |
+| app/\*                                              | apps/saas-app/app/\*                                                                         |
+| middleware.ts                                       | apps/saas-app/middleware.ts                                                                  |
+| i18n/\*                                             | packages/i18n/\*                                                                             |
+| tests/e2e/\*                                        | apps/saas-app/tests/e2e/\*                                                                   |
+| tests/integration/\*                                | packages/user/**tests**/integration/\* (およびその他関連するドメインの**tests**ディレクトリ) |
+| tests/unit/\*                                       | packages/user/**tests**/unit/\* (およびその他関連するドメインの**tests**ディレクトリ)        |
+| .env.local                                          | apps/saas-app/.env.local                                                                     |
+| .env.example                                        | apps/saas-app/.env.example                                                                   |
+| drizzle.config.ts                                   | packages/infrastructure/database/drizzle.client.ts                                           |
+| package.json                                        | apps/saas-app/package.json + packages/\*/package.json (各パッケージごと)                     |
+| tsconfig.json                                       | apps/saas-app/tsconfig.json + tsconfig.base.json                                             |
+| next.config.mjs                                     | apps/saas-app/next.config.mjs                                                                |
+| tailwind.config.js                                  | apps/saas-app/tailwind.config.js                                                             |
+| postcss.config.js                                   | apps/saas-app/postcss.config.js                                                              |
+| .eslintrc.js                                        | packages/config/eslint/index.js                                                              |
+| .prettierrc.js                                      | packages/config/prettier/index.js                                                            |
+| .github/\*                                          | .github/\* (ルート直下に配置)                                                                |
+| README.md                                           | README.md (ルート直下) + 各パッケージごとのREADME.md                                         |
+
+## 📝 ルート構造関連ファイルの移行
+
+| 現在の場所    | 移行先                | 備考                             |
+| ------------- | --------------------- | -------------------------------- |
+| package.json  | ルートの package.json | workspaces設定、共通dependencies |
+| /             | turbo.json            | 新規作成 (Turborepo設定ファイル) |
+| /             | pnpm-workspace.yaml   | 新規作成 (workspaces設定)        |
+| tsconfig.json | tsconfig.base.json    | 共通設定・パスエイリアス用       |
 
 ⸻
 
@@ -291,7 +335,7 @@ package.json apps/saas-app/package.json
 
 ✅ 最終メッセージ
 
-AiStartは、いまこの設計を取り入れることで「ただのプロダクト」から「製品を生み出し続ける“製造基盤”」へと進化できます。
+AiStartは、いまこの設計を取り入れることで「ただのプロダクト」から「製品を生み出し続ける"製造基盤"」へと進化できます。
 今このタイミングこそ、構造を設計資産に変える最後のチャンスです。
 適切な整理と設計が、あなたの未来の開発を100倍速にします 🚀🔥
 
@@ -609,7 +653,7 @@ npm公開のすすめ方 1. npm init + name: @your-scope/user 2. pnpm build で 
 
 ⸻
 
-🏁 最後に：この設計が守る“5つの原則”
+🏁 最後に：この設計が守る"5つの原則"
 
 原則 内容
 ① ドメインは自己完結・疎結合 依存関係をDTO・ID・Resultに限定し、横断を避ける
@@ -787,5 +831,251 @@ CLIスクリプト例
 "lint": "turbo run lint"
 }
 }
+
+⸻
+
+## 🔄 段階的移行アプローチ
+
+### ステップ1: 環境設定・ディレクトリ構成準備
+
+1. Turborepo初期設定
+
+   ```
+   npm install -g turbo
+   npm install -D turbo
+   ```
+
+2. モノレポ基本構造作成
+   - `apps/` と `packages/` ディレクトリ作成
+   - `pnpm-workspace.yaml` 設定
+   - `turbo.json` 初期設定
+   - `tsconfig.base.json` 作成
+
+### ステップ2: 共通パッケージの構築
+
+1. shared パッケージ構築
+
+   - `packages/shared/` 作成
+   - TypeやError、Result、BaseEntityなど共通基盤を移行
+
+2. infrastructure パッケージ構築
+
+   - `packages/infrastructure/` 作成
+   - DB、認証、外部サービス連携など共通インフラを移行
+
+3. ui パッケージ構築
+   - `packages/ui/` 作成
+   - 共通コンポーネント、フック、プロバイダを移行
+
+### ステップ3: 最初のドメインパッケージ移行
+
+1. user ドメイン移行
+   - `packages/user/` 構造作成
+   - ドメインモデル、リポジトリインターフェース、ユースケース移行
+   - テスト調整
+
+### ステップ4: Next.jsアプリ調整
+
+1. app本体移行
+   - `apps/saas-app/` 作成
+   - app構造移行
+   - 依存関係を新しいパッケージ参照に変更
+
+### ステップ5: 検証とリファクタリング
+
+1. 動作確認
+
+   - ビルド検証
+   - テスト実行確認
+   - 開発環境での動作確認
+
+2. 残りのドメイン移行・追加
+   - 既存ドメインの完全移行
+   - 新規ドメインは新構造で追加
+
+## 📊 依存関係管理
+
+### パッケージ間依存関係ルール
+
+```mermaid
+graph TD
+    A[apps/saas-app] --> B[packages/user]
+    A --> C[packages/project]
+    A --> D[packages/ui]
+    B --> E[packages/shared]
+    C --> E
+    B --> F[packages/infrastructure]
+    C --> F
+    D --> E
+```
+
+### 許可される依存方向
+
+| パッケージ                           | 依存可能な対象                                 |
+| ------------------------------------ | ---------------------------------------------- |
+| apps/saas-app                        | すべてのpackages/\*                            |
+| packages/user, packages/project, etc | packages/shared, packages/infrastructure       |
+| packages/ui                          | packages/shared                                |
+| packages/infrastructure              | packages/shared                                |
+| packages/shared                      | 外部ライブラリのみ（他パッケージへの依存禁止） |
+
+### 循環依存の防止策
+
+1. **明確な境界**: ドメイン間は直接依存せず、共通基盤（shared）経由で連携
+2. **DTO経由の通信**: ドメイン間は必ずDTOを介して情報をやり取り
+3. **依存チェック**: Turborepoによる依存解析での検出
+4. **慎重なリファクタリング**: 移行中の一時的な依存はfeatureブランチで慎重に管理
+
+⸻
+
+## 📁 ディレクトリ構造詳細とファイル命名規則
+
+### ドメインパッケージ構造（例: userドメイン）
+
+```
+packages/user/
+├── domain/
+│   ├── entities/
+│   │   ├── user.entity.ts              # メインのエンティティ
+│   │   └── user-profile.entity.ts      # 関連エンティティ
+│   ├── value-objects/
+│   │   ├── user-id.vo.ts               # ID用の値オブジェクト
+│   │   ├── user-name.vo.ts             # 名前の値オブジェクト
+│   │   ├── email.vo.ts                 # メールアドレスの値オブジェクト
+│   │   └── password.vo.ts              # パスワード関連の値オブジェクト
+│   ├── repositories/
+│   │   └── user.repository.interface.ts # リポジトリインターフェース
+│   └── services/
+│       └── password-hash.service.ts    # ドメイン固有のサービス
+├── application/
+│   ├── usecases/
+│   │   ├── create-user.usecase.ts      # ユーザー作成
+│   │   ├── get-user-by-id.usecase.ts   # ID検索
+│   │   ├── update-user.usecase.ts      # 更新処理
+│   │   └── delete-user.usecase.ts      # 削除処理
+│   └── dtos/
+│       ├── user.dto.ts                 # 基本DTO
+│       ├── create-user.dto.ts          # 作成用入力DTO
+│       └── update-user.dto.ts          # 更新用入力DTO
+├── infrastructure/
+│   ├── repositories/
+│   │   └── user.repository.ts          # リポジトリ実装
+│   └── mappers/
+│       └── user.mapper.ts              # EntityとDBモデル・DTOの変換
+└── __tests__/
+    ├── unit/
+    │   ├── entities/
+    │   │   └── user.entity.test.ts
+    │   ├── value-objects/
+    │   │   └── email.vo.test.ts
+    │   └── usecases/
+    │       └── create-user.usecase.test.ts
+    └── integration/
+        └── repositories/
+            └── user.repository.test.ts
+```
+
+### 共通パッケージ構造（shared）
+
+```
+packages/shared/
+├── base/                       # 基底クラス・インターフェース
+│   ├── entity.base.ts          # BaseEntity
+│   ├── repository.base.ts      # BaseRepository
+│   └── usecase.base.ts         # BaseUseCase
+├── errors/
+│   ├── app.error.ts            # アプリケーションエラー
+│   ├── domain.error.ts         # ドメインエラー
+│   ├── infrastructure.error.ts # インフラエラー
+│   └── validation.error.ts     # バリデーションエラー
+├── result/
+│   └── result.ts               # 成功/失敗を表現するResult型
+├── types/
+│   ├── common.types.ts         # 共通型定義
+│   ├── pagination.types.ts     # ページネーション関連型
+│   └── date.types.ts           # 日付関連型
+├── value-objects/              # 共通して使われる値オブジェクト
+│   ├── id.vo.ts                # ID基底値オブジェクト
+│   └── date.vo.ts              # 日付値オブジェクト
+└── utils/
+    ├── id.utils.ts             # ID生成ユーティリティ
+    ├── validation.utils.ts     # バリデーションユーティリティ
+    └── date.utils.ts           # 日付操作ユーティリティ
+```
+
+### UI・コンポーネントパッケージ構造
+
+```
+packages/ui/
+├── components/
+│   ├── buttons/
+│   │   ├── button.tsx
+│   │   └── icon-button.tsx
+│   ├── form/
+│   │   ├── text-input.tsx
+│   │   ├── select.tsx
+│   │   └── checkbox.tsx
+│   ├── layout/
+│   │   ├── container.tsx
+│   │   ├── sidebar.tsx
+│   │   └── header.tsx
+│   └── feedback/
+│       ├── alert.tsx
+│       └── toast.tsx
+├── hooks/
+│   ├── use-form.ts
+│   ├── use-toast.ts
+│   └── use-media-query.ts
+├── providers/
+│   ├── theme-provider.tsx
+│   └── toast-provider.tsx
+└── styles/
+    ├── theme.ts
+    └── animations.ts
+```
+
+### ファイル命名規則
+
+| パターン                   | 規則                                          | 例                                  |
+| -------------------------- | --------------------------------------------- | ----------------------------------- |
+| Entityファイル             | `{名詞}.entity.ts`                            | `user.entity.ts`                    |
+| Value Objectファイル       | `{名詞}[-{名詞}].vo.ts`                       | `email.vo.ts`, `user-id.vo.ts`      |
+| Repositoryインターフェース | `{名詞}.repository.interface.ts`              | `user.repository.interface.ts`      |
+| Repository実装             | `{名詞}.repository.ts`                        | `user.repository.ts`                |
+| UseCaseファイル            | `{動詞}-{名詞}.usecase.ts`                    | `create-user.usecase.ts`            |
+| DTOファイル                | `{名詞}.dto.ts` または `{動詞}-{名詞}.dto.ts` | `user.dto.ts`, `create-user.dto.ts` |
+| Mapperファイル             | `{名詞}.mapper.ts`                            | `user.mapper.ts`                    |
+| テストファイル             | 対象ファイルと同じ名前に `.test.ts` を追加    | `user.entity.test.ts`               |
+| Enumファイル               | `{名詞}[-{名詞}].enum.ts`                     | `user-role.enum.ts`                 |
+| 共通ユーティリティ         | `{名詞}.utils.ts`                             | `date.utils.ts`                     |
+
+### ルートパッケージ.jsonの設定
+
+```json
+{
+  "name": "aistart",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "turbo": "^1.10.0",
+    "prettier": "^3.0.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^13.0.0"
+  }
+}
+```
 
 ⸻
