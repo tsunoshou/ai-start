@@ -120,8 +120,13 @@ jobs:
       - name: Node.js セットアップ
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22.x' # lint-and-test ジョブと合わせる
           cache: 'npm'
+
+      - name: npm バージョン設定
+        run: |
+          npm install -g npm@10.9.2
+          npm --version
 
       - name: 依存関係インストール
         run: npm ci
@@ -139,6 +144,8 @@ jobs:
           # --- staging Environment Secrets を参照 ---
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} # APIテスト認証用
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }} # Vercel保護バイパス用
           # 必要に応じて他のシークレットも追加
           # AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           # TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}

@@ -12,6 +12,7 @@ import type { LoggerInterface } from '@/shared/logger/logger.interface';
 import { LoggerToken } from '@/shared/logger/logger.token';
 import type { AppResult, Identifier } from '@/shared/types/common.types';
 import type { EntityBase } from '@/shared/types/entity-base.interface';
+import { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
 
 /**
  * @description Base abstract class for repositories providing common structure.
@@ -26,7 +27,8 @@ export abstract class BaseRepository<
   TID extends Identifier<string>,
   TDomain extends EntityBase<TID>,
   TDbSelect extends Record<string, unknown>,
-  TDbInsert extends Record<string, unknown>,
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  TDbInsert extends { updated_at?: string | Date; [key: string]: unknown },
   TSchema extends PgTable,
 > {
   constructor(
@@ -110,14 +112,17 @@ export abstract class BaseRepository<
 
   /**
    * Saves (inserts or updates) an entity to the database.
+   * Automatically sets the `updated_at` field before persisting.
    * @param entity The domain entity to save.
    * @returns An AppResult containing void or an AppError.
    */
   async save(entity: TDomain): Promise<AppResult<void>> {
     let persistenceData: TDbInsert;
+    const now = DateTimeString.now();
 
     try {
       persistenceData = this._toPersistence(entity);
+      persistenceData.updated_at = now.value;
     } catch (mappingError) {
       this.logger.error(
         {
