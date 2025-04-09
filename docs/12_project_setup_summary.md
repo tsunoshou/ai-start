@@ -1,6 +1,6 @@
 # プロジェクトセットアップ概要
 
-最終更新日: 2024-04-05
+最終更新日: 2025-04-09
 
 ## 目的
 
@@ -68,6 +68,9 @@
     *   `@testing-library/react`: 14.3.1 (*`devDependencies`*) - React テストユーティリティ
     *   `@testing-library/jest-dom`: 6.6.3 (*devDependencies*) - DOM マッチャー
     *   `@types/testing-library__jest-dom`: 5.14.9 (*devDependencies*)
+*   **Testcontainers:**
+    *   `testcontainers`: 10.24.0 (*devDependencies*) - テストコンテナ基本ライブラリ
+    *   `@testcontainers/postgresql`: 10.24.0 (*devDependencies*) - PostgreSQL用テストコンテナ
 
 **Linting & Formatting:**
 *   **ESLint**: 8.57.0 (*`devDependencies`*)
@@ -129,7 +132,7 @@
 1.  **プロジェクト初期化 & 基本設定**:
     *   **Next.js (v14.2.26, React 18.3.1)** プロジェクト (`ai-start`) を **TypeScript (v5.8.2)** で作成。
     *   Git リポジトリを初期化。
-    *   `package.json` にプロジェクト情報、スクリプト、依存関係を定義 (現バージョン: `0.3.1`)。
+    *   `package.json` にプロジェクト情報、スクリプト、依存関係を定義 (現バージョン: `0.4.0`)。
     *   `tsconfig.json` で TypeScript コンパイラオプションを設定 (strict モード有効)。
     *   **Node.js (v22.x)** を開発環境として使用 (Vercel環境との互換性のため)。
 
@@ -173,7 +176,7 @@
 9.  **バージョン管理 & ブランチ戦略**:
     *   基本的な Git ブランチ戦略を定義・運用。
     *   上記設定変更をコミットし、`development` ブランチへ統合。
-    *   `package.json` のバージョンを **`0.3.1`** に更新。
+    *   `package.json` のバージョンを **`0.4.0`** に更新。
 
 10. **ドキュメンテーション**:
     *   `docs/` ディレクトリを作成し、プロジェクトの目的、要件、アーキテクチャ、実装ルールなどを定義する Markdown ドキュメント群 (`01_requirements_definition.md`, `02_architecture_design.md`, etc.) を作成・整備。
