@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true, // Base config should usually not emit, let individual packages decide
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler", // Keep 'bundler' or change to 'node' if preferred for libraries
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve", // Or 'react-jsx' if preferred
+    "incremental": true,
+    "experimentalDecorators": true, // Keep if needed across packages
+    "emitDecoratorMetadata": true, // Keep if needed across packages
+    // "plugins" are typically package-specific
+    // "paths" will be configured per package or removed if not needed at base level
+    // Add any other common options needed for all packages
+    "declaration": true, // Often useful for library packages
+    "declarationMap": true, // Often useful for library packages
+    "sourceMap": true, // Often useful for debugging
+    "composite": true // Important for project references in monorepos
+  },
+  // "include" and "exclude" are typically defined per package
+  // Do not include "next-env.d.ts", "**/*.ts", etc. here
+  "exclude": ["node_modules", "dist", ".next"] // Exclude common build/dependency folders
+}
