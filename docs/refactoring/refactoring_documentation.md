@@ -42,7 +42,7 @@
 
 - **ORM**: Drizzle ORM
 - **データベース**: PostgreSQL
-- **認証**: Supabase Auth
+- **認証**: Auth.js (NextAuth.js v5)
 - **テスト**: Vitest (Unit/Integration), Playwright (E2E)
 
 ## 🏗️ 全体アーキテクチャ
@@ -824,66 +824,27 @@ export interface BaseRepository<T extends AggregateRoot<any>, IDType> {
 
 ### Result 型
 
-操作の成功/失敗を表現するResult型を実装します。
+操作の成功/失敗を表現するために、[neverthrow](https://github.com/supermacro/neverthrow) ライブラリを利用します。
+`neverthrow` は、関数型プログラミングにおける Result パターンを TypeScript で堅牢に実装するためのライブラリです。
+
+基本的な使い方:
+- 成功を表す値: `ok(value)`
+- 失敗を表すエラー: `err(error)`
+- 結果のチェック: `result.isOk()`, `result.isErr()`
+- 値の取り出し: `result.map(...)`, `result.unwrapOr(...)` など
+
+フレームワーク全体、特に Use Case や Repository の戻り値では、`AppResult<T>` 型を使用します。
+これは `shared/types/common.types.ts` で定義されており、`neverthrow` の `Result<T, AppError>` のエイリアスです。
+これにより、アプリケーション全体で一貫したエラーハンドリングが可能になります。
 
 ```typescript
-// @core/shared/src/result/result.ts
-export class Result<T, E extends Error> {
-  private readonly _value?: T;
-  private readonly _error?: E;
-  private readonly _isSuccess: boolean;
+// shared/types/common.types.ts
+import { Result } from 'neverthrow';
+import { AppError } from '@/shared/errors/app.error';
 
-  private constructor(isSuccess: boolean, value?: T, error?: E) {
-    this._isSuccess = isSuccess;
-    this._value = value;
-    this._error = error;
-  }
+// ...
 
-  public static ok<T, E extends Error>(value: T): Result<T, E> {
-    return new Result<T, E>(true, value);
-  }
-
-  public static fail<T, E extends Error>(error: E): Result<T, E> {
-    return new Result<T, E>(false, undefined, error);
-  }
-
-  public isSuccess(): boolean {
-    return this._isSuccess;
-  }
-
-  public isFailure(): boolean {
-    return !this._isSuccess;
-  }
-
-  public getValue(): T {
-    if (!this._isSuccess) {
-      throw new Error('Cannot get value from failed result');
-    }
-    return this._value!;
-  }
-
-  public getError(): E {
-    if (this._isSuccess) {
-      throw new Error('Cannot get error from successful result');
-    }
-    return this._error!;
-  }
-
-  public static combine<T, E extends Error>(
-    results: Result<T, E>[]
-  ): Result<T[], E> {
-    const values: T[] = [];
-    
-    for (const result of results) {
-      if (result.isFailure()) {
-        return Result.fail(result.getError());
-      }
-      values.push(result.getValue());
-    }
-    
-    return Result.ok(values);
-  }
-}
+export type AppResult<T> = Result<T, AppError>;
 ```
 
 ### 基本エラークラス
@@ -2037,11 +1998,15 @@ Core SaaS Frameworkは、単なるテンプレートから「製品」へと進�
 ├── cli/                 # CLIツールパッケージ
 ├── create-core-app/     # プロジェクト初期化ツールパッケージ
 ├── shared/              # 共通基盤ライブラリ
-├── infrastructure/      # インフラストラクチャライブラリ
+├── infrastructure/      # インフラストラクチャライブラリ (DB, Logger など Auth.js 連携部は auth パッケージへ)
+├── ui/                  # UIコンポーネントライブラリ (移行後)
 ├── user/                # ユーザー管理ドメインライブラリ (DDD)
 ├── billing/             # 課金管理ドメインライブラリ (DDD)
-├── mcp-client/          # MCPクライアントライブラリ (非DDDの例)
-├── realtime-service/    # リアルタイム機能ライブラリ (非DDDの例)
+├── auth/                # 認証・認可ドメインライブラリ (DDD, Auth.js ベース) // 修正
+├── ai-agent/            # (追加) AIエージェント機能
+├── prompt-graph/        # (追加) プロンプトワークフロー管理
+├── mcp-client/          # (追加) Multi-Cloud Platform連携クライアント (非DDDの例)
+├── realtime-service/    # (追加) リアルタイム機能ライブラリ (非DDDの例)
 ├── templates/           # プロジェクトテンプレート
 │   ├── next-app/          # Nextベースアプリ
 │   ├── express-api/       # Express APIサーバー
@@ -2057,10 +2022,10 @@ Core SaaS Frameworkは、単なるテンプレートから「製品」へと進�
    ```bash
    # 新規プロジェクト作成 (pnpm を使用)
    pnpm dlx create-core-app my-saas-app
-   
+
    # テンプレート指定
    pnpm dlx create-core-app my-saas-app --template full-stack
-   
+
    # 特定ドメインのみ選択
    pnpm dlx create-core-app my-saas-app --domains user,billing
    ```
@@ -2069,13 +2034,13 @@ Core SaaS Frameworkは、単なるテンプレートから「製品」へと進�
    ```bash
    # 新規ドメイン生成
    core generate domain product
-   
+
    # 値オブジェクト生成
    core generate value-object product-name --domain product
-   
+
    # エンティティ生成
    core generate entity product --domain product
-   
+
    # ユースケース生成
    core generate use-case create-product --domain product
    ```
@@ -2084,31 +2049,39 @@ Core SaaS Frameworkは、単なるテンプレートから「製品」へと進�
    ```bash
    # マイグレーション生成
    core db:migrate:generate create-products
-   
+
    # マイグレーション実行
    core db:migrate:latest
-   
+
    # マイグレーションロールバック
    core db:migrate:rollback
    ```
 
 4. **テスト補助**:
    ```bash
-   # 単体テスト実行
-   core test:unit --domain product
-   
-   # E2Eテスト実行
-   core test:e2e --feature product-creation
-   
+   # 単体テスト実行 (特定のドメイン、または全体)
+   core test:unit [--domain product]
+   # または Turborepo を直接利用
+   turbo run test:unit [--filter=@core/product]
+
+   # 統合テスト実行
+   core test:integration [--domain product]
+   turbo run test:integration [--filter=@core/product]
+
+   # E2Eテスト実行 (特定のアプリ)
+   core test:e2e --app saas-app [--feature product-creation]
+   turbo run test:e2e --filter=saas-app
+
    # テスト環境セットアップ
    core test:setup
    ```
+   *補足: `core test:*` コマンドは内部的に `turbo run test:*` を適切な引数で呼び出すラッパーとして機能します。ファイル命名規則 (`*.unit.test.ts`, `*.integration.test.ts`, `*.e2e.test.ts`) に基づき、テストタイプを自動判別し、効率的なテスト実行を支援します。*
 
 5. **デプロイメント**:
    ```bash
    # デプロイ準備
    core deploy:prepare --env production
-   
+
    # 環境変数検証
    core deploy:validate-env --env production
    ```
@@ -2126,7 +2099,7 @@ import { generateUseCase } from '../generators/use-case-generator';
 export function registerGenerateCommands(program: Command): void {
   const generate = program.command('generate')
     .description('各種コード生成コマンド');
-  
+
   generate
     .command('domain <name>')
     .description('新規ドメインを生成')
@@ -2134,7 +2107,7 @@ export function registerGenerateCommands(program: Command): void {
     .action((name, options) => {
       generateDomain(name, options);
     });
-  
+
   generate
     .command('entity <name>')
     .description('新規エンティティを生成')
@@ -2143,7 +2116,7 @@ export function registerGenerateCommands(program: Command): void {
     .action((name, options) => {
       generateEntity(name, options);
     });
-  
+
   // Value Objectコマンド
   generate
     .command('value-object <name>')
@@ -2154,7 +2127,7 @@ export function registerGenerateCommands(program: Command): void {
     .action((name, options) => {
       generateValueObject(name, options);
     });
-  
+
   // ユースケースコマンド
   generate
     .command('use-case <name>')
@@ -2199,7 +2172,8 @@ export function registerGenerateCommands(program: Command): void {
    ```typescript
    // @core/shared/value-objects/index.ts
    export * from './email';
-   export * from './password';
+   // export * from './password'; // auth ドメインへ
+   // export * from './password-hash'; // auth ドメインへ
    export * from './phone-number';
    export * from './money';
    export * from './address';
@@ -2217,7 +2191,7 @@ export function registerGenerateCommands(program: Command): void {
 
 ### ドメイン別ライブラリ化
 
-1. **ユーザー管理ライブラリ**:
+1. **ユーザー管理ライブラリ (@core/user)**: (内容は既存のまま)
    ```typescript
    // @core/user/index.ts
    // ドメイン層のエクスポート
@@ -2225,35 +2199,63 @@ export function registerGenerateCommands(program: Command): void {
    export * from './src/domain/value-objects';
    export * from './src/domain/repositories';
    export * from './src/domain/events';
-   
+
    // ユースケースのエクスポート
    export * from './src/application/use-cases';
    export * from './src/application/dtos';
-   
+
    // 実装のエクスポート（オプショナル）
    export * from './src/infrastructure/repositories';
-   export * from './src/infrastructure/auth';
-   
-   // フロントエンド用フックのエクスポート
-   export * from './src/presentation/hooks';
+   // export * from './src/infrastructure/auth'; // auth ドメインへ
+
+   // フロントエンド用フックのエクスポート (認証関連は auth へ)
+   // export * from './src/presentation/hooks';
    ```
 
-2. **課金管理ライブラリ**:
+2. **課金管理ライブラリ (@core/billing)**: (内容は既存のまま)
    ```typescript
    // @core/billing/index.ts
    export * from './src/domain/entities';
    export * from './src/domain/value-objects';
    export * from './src/domain/repositories';
    export * from './src/domain/services';
-   
+
    export * from './src/application/use-cases';
    export * from './src/application/dtos';
-   
+
    export * from './src/infrastructure/payment-providers';
    export * from './src/infrastructure/repositories';
-   
+
    export * from './src/presentation/hooks';
    ```
+
+3. **(追加) 認証・認可ライブラリ (@core/auth)**:
+   - 責務: ユーザー認証（ログイン、パスワード検証、ソーシャル認証等）、セッション管理、JWT生成・検証、ロールベースのアクセス制御（認可）など、Auth.js を利用した認証フロー全体。
+   - 依存: `@core/shared`, `@core/infrastructure` (DBアダプター等), `@core/user` (ユーザー情報の参照や更新のため), `next-auth` (Auth.js)
+   - コンポーネント例: `AuthService` (Auth.js コールバック実装等), `JwtService`, `PasswordHash` (Value Object), `CredentialsProvider`, `GoogleProvider` (設定), `LoginUseCase`, `VerifyTokenUseCase`, `AuthorizeUseCase`, `AuthAdapter` (DB連携)
+
+4. **(追加) AIエージェントライブラリ (@core/ai-agent)**:
+   - 責務: AIエージェントの定義、状態管理、ツール連携、LLMとのインタラクション抽象化。
+   - 依存: `@core/shared`, `@core/infrastructure` (LLMクライアント等), `@core/prompt-graph` (任意)
+   - コンポーネント例: `AgentExecutor`, `AgentState`, `ToolInterface`, `LLMClient` (Adapter)
+
+5. **(追加) プロンプトグラフライブラリ (@core/prompt-graph)**:
+   - 責務: 複雑なプロンプトシーケンス、条件分岐、ループなどを定義・管理・実行するワークフローエンジン。
+   - 依存: `@core/shared`
+   - コンポーネント例: `GraphRunner`, `NodeDefinition`, `EdgeDefinition`, `GraphState`
+
+6. **(追加) MCPクライアントライブラリ (@core/mcp-client)**:
+   - 責務: 複数のクラウドプロバイダー (AWS, GCP, Azure等) の主要サービスへのアクセスを抽象化するクライアント。
+   - 依存: `@core/shared`, 各クラウドSDK
+   - コンポーネント例: `StorageClient` (S3/GCS/Blob共通インターフェース), `ComputeClient` (EC2/GCE/VM共通インターフェース)
+
+7. **(追加) リアルタイムサービスライブラリ (@core/realtime-service)**:
+   - 責務: WebSocketベースのリアルタイム通信基盤、CRDTを用いた状態同期機能の提供。
+   - 依存: `@core/shared`, `ws`, CRDTライブラリ (例: `yjs`)
+   - コンポーネント例:
+     - `WebSocketAdapter`: WebSocket接続の抽象化、メッセージ送受信、認証連携。
+     - `RoomStateManager`: リアルタイムセッション（ルーム）ごとの参加者や共有ドキュメント状態の管理。
+     - `CRDTProvider`: YjsなどのCRDT実装をラップし、ドキュメントの同期、永続化ストアとの連携を提供。
 
 ### パッケージ公開戦略
 
@@ -2274,11 +2276,13 @@ export function registerGenerateCommands(program: Command): void {
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "lint": "eslint \"src/**/*.ts\"",
-    "test": "jest",
+    "test": "vitest run", // jest から vitest に変更
+    "test:unit": "vitest run --config vitest.config.unit.ts", // 追加
+    "test:integration": "vitest run --config vitest.config.integration.ts", // 追加
     "prepublishOnly": "pnpm run build"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public" // 公開範囲は要検討 (最初は private でも可)
   },
   "keywords": [
     "core",
@@ -2290,13 +2294,63 @@ export function registerGenerateCommands(program: Command): void {
   "author": "Core SaaS Framework Team",
   "license": "MIT",
   "dependencies": {
-    "uuid": "^9.0.0"
+    "tslib": "^2.6.2", // tsup ビルド時に必要になる可能性
+    "uuid": "^9.0.1" // バージョン更新例
   },
   "devDependencies": {
-    // 開発依存関係
+    // 開発依存関係 (tsup, eslint, vitest, @types/node など)
+    "tsup": "^8.0.2",
+    "vitest": "^1.6.0",
+    "@vitest/coverage-v8": "^1.6.0", // カバレッジ用
+    "typescript": "^5.4.5",
+    "eslint": "^8.57.0",
+    "@types/uuid": "^9.0.8",
+    "@types/node": "^20.12.12"
   }
 }
 ```
+
+## 🚀 (新設) 将来的な技術拡張への対応
+
+Core SaaS Frameworkは、将来的な技術トレンドへの適応力を持つことを目指します。特に以下の領域への対応を計画しています。
+
+### AI・LLM・MCP構造への統合
+AI、大規模言語モデル（LLM）、Multi-Cloud Platform（MCP）技術の統合を容易にする設計を採用します。
+- **`@core/ai-agent`**: AIエージェントのコアロジック、状態管理、外部ツール連携を担当。
+- **`@core/prompt-graph`**: 複雑なプロンプトシーケンスや条件分岐を管理・実行。視覚的な編集ツールとの連携も視野。
+- **`@core/mcp-client`**: 複数クラウドサービスを抽象化し、統一的なインターフェースを提供。
+
+### CRDT・Realtime構造の部品化
+リアルタイム共同編集などの機能を実現するため、CRDTとWebSocketベースのリアルタイム通信基盤を部品化します。
+- **`@core/realtime-service`**: バックエンドサービスを提供。
+  - `WebSocketAdapter`: WebSocket接続管理。
+  - `RoomStateManager`: ルームの状態管理。
+  - `CRDTProvider`: データ同期のコア機能 (Yjs等を利用)。
+
+### テスト戦略の高度化
+テストの効率性と信頼性をさらに向上させます。
+- **テストの自動分類と実行**:
+  - ファイル命名規則 (`*.unit.test.ts`, `*.integration.test.ts`, `*.e2e.test.ts`) に基づきテスト種別を自動判別。
+  - Turborepoのスクリプト (`turbo.json` の `pipeline`) と `package.json` のスクリプトを連携させ、効率的なテスト実行を実現。
+    ```json
+    // turbo.json (pipeline の例)
+    "pipeline": {
+      "test:unit": {
+        "dependsOn": ["^build"],
+        "outputs": ["coverage/**"]
+      },
+      "test:integration": {
+        "dependsOn": ["^build"], // DBコンテナ起動などが含まれる可能性
+        "outputs": ["coverage/**"]
+      },
+      "test:e2e": {
+        "dependsOn": ["build"] // アプリケーションのビルドが必要
+      }
+      // ... 他のタスク ...
+    }
+    ```
+    - `turbo run test:unit`, `turbo run test:integration --filter=<package-name>` 等のコマンドで実行。
+- **カバレッジレポートの統合**: モノレポ全体のテストカバレッジを計測・統合する仕組みを検討 (例: Codecov連携)。
 
 ## 🔄 移行戦略
 
@@ -2483,6 +2537,8 @@ export function registerGenerateCommands(program: Command): void {
 - **Playwright**: Microsoft が開発した E2E (End-to-End) テストフレームワーク。主要なブラウザでの自動操作をサポートする。
 - **Drizzle ORM**: TypeScript/JavaScript 向けの SQL ライクな ORM。型安全性が高く、スキーマ定義から型を生成できる。
 - **Supabase**: オープンソースの Firebase 代替。認証、データベース (PostgreSQL)、ストレージなどの機能を提供する BaaS (Backend as a Service)。
+- **Auth.js (NextAuth.js v5)**: Webアプリケーション向けの認証ライブラリ。OAuth, Email/Password, Magic Linkなど多様な認証方式に対応し、セッション管理やJWT処理機能を提供。Next.js との親和性が高い。
+- **neverthrow**: TypeScript向けの関数型エラーハンドリングライブラリ。Result パターン (成功値 `Ok` と失敗エラー `Err` を持つ型) を提供し、例外ではなく値としてエラーを扱うことを促進する。型安全なエラー処理を実現する。
 
 ## 🗺️ ディレクトリ単位で移行可能なフォルダ
 
