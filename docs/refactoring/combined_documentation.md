@@ -431,14 +431,15 @@ packages/user/
    - 共通の `tsconfig.base.json` の設定
 
 3. **パッケージマネージャー設定** (例: pnpm)
-   - ルート `package.json` でのワークスペース設定 (`"workspaces": ["apps/*", "packages/*"]`)
-   - 共通開発依存関係の設定
+   - ルートに `pnpm-workspace.yaml` ファイルを作成し、ワークスペース (`apps/*`, `packages/*`) を定義します。
+   - ルート `package.json` で共通の開発依存関係を設定します。
 
 ```sh
 # 実行コマンド例 (pnpmを使用する場合)
 mkdir -p apps packages
-touch turbo.json tsconfig.base.json
-# ルートの package.json を設定
+touch turbo.json tsconfig.base.json pnpm-workspace.yaml
+# ルートの package.json と pnpm-workspace.yaml を設定
+# pnpm install # 依存関係をインストール
 ```
 
 ### フェーズ2: 共有パッケージの作成と移行
@@ -2054,14 +2055,14 @@ Core SaaS Frameworkは、単なるテンプレートから「製品」へと進�
 
 1. **プロジェクト生成**:
    ```bash
-   # 新規プロジェクト作成
-   npx create-core-app my-saas-app
+   # 新規プロジェクト作成 (pnpm を使用)
+   pnpm dlx create-core-app my-saas-app
    
    # テンプレート指定
-   npx create-core-app my-saas-app --template full-stack
+   pnpm dlx create-core-app my-saas-app --template full-stack
    
    # 特定ドメインのみ選択
-   npx create-core-app my-saas-app --domains user,billing
+   pnpm dlx create-core-app my-saas-app --domains user,billing
    ```
 
 2. **コード生成**:
@@ -2274,7 +2275,7 @@ export function registerGenerateCommands(program: Command): void {
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "jest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "pnpm run build"
   },
   "publishConfig": {
     "access": "public"
@@ -2463,7 +2464,7 @@ export function registerGenerateCommands(program: Command): void {
 このドキュメントで使用される主要な用語について解説します。
 
 - **モノレポ (Monorepo)**: 複数のプロジェクトやパッケージを単一のリポジトリで管理する開発スタイル。コード共有、一貫性維持、依存関係管理が容易になる。
-- **Turborepo**: 高速なJavaScript/TypeScript向けビルドシステム。モノレポ内のタスク（ビルド、テストなど）の実行を効率化し、キャッシュを活用して時間を短縮する。
+- **Turborepo**: 高速なJavaScript/TypeScript向けビルドシステム。モノレポ内のタスク（ビルド、テストなど）の実行を効率化し、キャッシュを活用して時間を短縮する。`pnpm` などのパッケージマネージャーと連携して動作する。
 - **Clean Architecture**: ソフトウェアの関心事をレイヤーに分離する設計原則。依存関係の方向を内側（ドメイン層）に向けることで、変更に強くテストしやすい構造を目指す。
 - **ドメイン駆動設計 (DDD - Domain-Driven Design)**: ソフトウェアの複雑性を、対象領域（ドメイン）のモデルを中心に据えて攻略する設計アプローチ。
   - **ドメイン (Domain)**: ソフトウェアが対象とする問題領域やビジネス領域。
