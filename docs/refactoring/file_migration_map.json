@@ -384,7 +384,7 @@
     "to": "packages/ui/providers/I18nProvider.tsx"
   },
   {
-    "from": "presentation/components/common/ui/",
+    "from": "presentation/components/ui/",
     "to": "packages/ui/components/ui/"
   }
 ]

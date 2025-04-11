@@ -402,7 +402,7 @@ packages/user/
 | `presentation/components/common/ConnectionTest.tsx` | `packages/ui/components/dev/ConnectionTest.tsx`  | 接続テスト用コンポーネント。UIパッケージ (dev用) へ。               |
 | `presentation/hooks/use-toast.ts`                | `packages/ui/hooks/use-toast.ts`                 | トースト表示用カスタムフック。UIパッケージへ。                     |
 | `presentation/providers/I18nProvider.tsx`        | `packages/ui/providers/I18nProvider.tsx`         | i18nプロバイダー。UIパッケージへ。                               | 
-| `presentation/components/common/ui/` | `packages/ui/components/ui/` | Shadcn/UIコンポーネント群。UIパッケージへ。 |
+| `presentation/components/ui/` | `packages/ui/components/ui/` | Shadcn/UIコンポーネント群。UIパッケージへ。 |
 
 ## 🗺️ 移行ロードマップ
 
@@ -2544,7 +2544,7 @@ AI、大規模言語モデル（LLM）、Multi-Cloud Platform（MCP）技術の�
 
 // ... existing code ...
 | `config`                               | `packages/config/*`             | 設定ファイル群 (例: ESLint, Prettier, TSConfig)         |
-| `presentation/components/common/ui/` | `packages/web/components/ui/` | Shadcn/UIコンポーネント群。Webアプリ固有UI。 |
+| `presentation/components/ui/` | `packages/web/components/ui/` | Shadcn/UIコンポーネント群。Webアプリ固有UI。 |
 
 ## 🗺️ ファイル単位での移行が必要なフォルダ
 
