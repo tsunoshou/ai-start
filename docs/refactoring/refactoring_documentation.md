@@ -406,116 +406,179 @@ packages/user/
 
 ## 🗺️ 移行ロードマップ
 
-### フェーズ0: 準備
+**前提:** このロードマップでは、`pnpm` と `Turborepo` の導入を最終フェーズまで遅らせます。これにより、途中のフェーズではモノレポツールによる依存関係解決やタスク実行ができず、**各フェーズ完了時点での完全なビルド・テスト検証は困難になります。** 検証は最終フェーズで集中的に行います。
 
-1. **設計ドキュメントの最終化**
-   - 理想的なアーキテクチャ設計（`01_ideal_design.md`）の確認と合意
-   - 各ドメインの責任範囲と境界の明確化
+### フェーズ0: 準備とパスエイリアス設定 (変更なし)
 
-2. **移行ブランチの作成**
-   - 既存機能を維持したまま並行開発できる環境を準備
-   - CI/CDパイプラインの調整
+1.  **設計ドキュメントの最終化**
+    - 理想的なアーキテクチャ設計（`01_ideal_design.md`）の確認と合意
+    - 各ドメインの責任範囲と境界の明確化
 
-3. **テストカバレッジの確認**
-   - 既存機能の正常動作を保証するテスト（Vitest, Playwright）の充実度確認
-   - 必要に応じてテストの追加
+2.  **移行ブランチの作成**
+    - 既存機能を維持したまま並行開発できる環境を準備 (`refactoring/phase1` など)
+    - CI/CDパイプラインの調整 (一時的に無効化または調整が必要な場合あり)
 
-### フェーズ1: モノレポ基本構造の構築
+3.  **テストカバレッジの確認**
+    - 既存機能の正常動作を保証するテスト（Vitest, Playwright）の充実度確認
+    - 必要に応じてテストの追加
 
-1. **モノレポツールの設定** (**Turborepo**)
-   - `turbo.json` の作成
-   - ビルド・テスト・リントのパイプライン設定 (`turbo run build`, `turbo run test` など)
+4.  **ルート `tsconfig.base.json` の作成とパスエイリアス設定**
+    - プロジェクトルートに `tsconfig.base.json` を作成します。
+    - 共通のコンパイラオプションと、将来の `packages` ディレクトリ構造を想定した**パスエイリアス** (`@core/*`, `@/*`) を設定します。
+    ```json
+    // tsconfig.base.json の例
+    {
+      "compilerOptions": { /* ...基本的な設定... */,
+        "baseUrl": ".",
+        "paths": {
+          "@core/shared/*": ["packages/shared/src/*"],
+          "@core/infrastructure/*": ["packages/infrastructure/src/*"],
+          "@core/ui/*": ["packages/ui/src/*"],
+          "@core/user/*": ["packages/user/src/*"],
+          /* 他のドメイン */
+          "@/*": ["apps/saas-app/src/*"]
+        }
+      },
+      "exclude": ["node_modules"]
+    }
+    ```
 
-2. **基本ディレクトリ構造の作成**
-   - `apps` と `packages` ディレクトリの作成
-   - 共通の `tsconfig.base.json` の設定
+5.  **(削除)** ルート `package.json` と `pnpm-workspace.yaml` の準備はフェーズ3で行います。
 
-3. **パッケージマネージャー設定** (例: pnpm)
-   - ルートに `pnpm-workspace.yaml` ファイルを作成し、ワークスペース (`apps/*`, `packages/*`) を定義します。
-   - ルート `package.json` で共通の開発依存関係を設定します。
+### フェーズ1: ファイルの物理的な移動とパスエイリアスを使用したインポート修正
 
-```sh
-# 実行コマンド例 (pnpmを使用する場合)
-mkdir -p apps packages
-touch turbo.json tsconfig.base.json pnpm-workspace.yaml
-# ルートの package.json と pnpm-workspace.yaml を設定
-# pnpm install # 依存関係をインストール
-```
+**目的**: コードを新しいディレクトリ構造に物理的に配置し、定義済みのパスエイリアスを使用してインポートパスを修正する。
 
-### フェーズ2: 共有パッケージの作成と移行
+1.  **基本ディレクトリ構造の作成**
+    - プロジェクトルートに `apps` と `packages` ディレクトリを作成します。
+    - `mkdir -p apps packages`
 
-1. **共通パッケージの作成**
-   - `@core/shared` パッケージの作成と初期設定
-   - `@core/infrastructure` パッケージの作成と初期設定
-   - `@core/ui` パッケージの作成と初期設定
+2.  **ファイルの物理的な移動**
+    - 前述の「移行ファイル対応表」に基づき、既存のファイルを `apps/` および `packages/` 配下の対応するディレクトリに移動します。
+    - 例: `mv app apps/saas-app`, `mkdir -p packages/user/src/domain && mv domain/models/user packages/user/src/domain/entities` など (**src ディレクトリ**配下に配置することに注意)。
+    - Next.js の設定ファイル (`next.config.js`, `tailwind.config.js`, `.env*` など) も `apps/saas-app` 直下に移動します。
 
-2. **共通コードの移行**
-   - 共通型定義 (`shared/types` → `@core/shared/types`)
-   - ユーティリティ関数 (`shared/utils` → `@core/shared/utils`)
-   - エラー定義 (`shared/errors` → `@core/shared/errors`)
-   - 共通値オブジェクト (`shared/value-objects` → `@core/shared/value-objects`)
-   - UIコンポーネント (`presentation/components` → `@core/ui/components`)
-   - DBクライアント (`infrastructure/database` → `@core/infrastructure/database`)
-   - 認証サービス (`infrastructure/auth` → `@core/infrastructure/auth`)
+3.  **パスエイリアスを使用したインポートパス修正**
+    - ファイル移動に伴い壊れたインポートパスを、**フェーズ0で設定したパスエイリアス (`@core/*`, `@/*`)** を使用して修正します。
+    - 例: `import { User } from '@core/user/domain/entities/user.entity'` のように修正。
+    - **IDE/エディタの設定**: TypeScript Language Server がプロジェクトルートの `tsconfig.base.json` を認識し、パスエイリアスを解決できるように設定されていることを確認してください。
+    - **注意:** この段階では依存関係が解決されておらず、ビルドやテストは実行できません。パスエイリアスがエディタ上でエラーなく解決されていれば次に進みます。
+    - **ツール**: IDEの検索・置換機能や `jscodeshift` を活用します。
 
-3. **テストの移行**
-   - 共有コードに対応する単体テスト (`*.unit.test.ts`) を各パッケージの対応するコードと同じディレクトリ内の `__tests__` に移行。
-   - インフラ関連の統合テスト (`*.integration.test.ts`) を `@core/infrastructure` パッケージ内の対応するコードと同じディレクトリ内の `__tests__` に移行。
+### フェーズ2: 各パッケージ/アプリの `package.json`, `tsconfig.json` 作成と依存関係定義
 
-4. **パッケージ間の依存関係設定**
-   - 各パッケージの `package.json` で適切な依存関係を設定
-   - **Turborepo** パイプラインの調整 (`turbo.json`)
+**目的**: 各パッケージとアプリケーションの基本的な設定ファイルを作成し、依存関係を（最終的な `pnpm` / `Turborepo` 導入を見越して）定義する。
 
-### フェーズ3: ドメインパッケージの構築 (例: user)
+1.  **`package.json` の作成**
+    - すべての `apps/*` ディレクトリと `packages/*` ディレクトリ内に、それぞれ `package.json` を作成します。
+    - `name` (`"@core/shared"`, `"saas-app"` など), `version` (`"0.0.0"`), `private: true` などの基本情報を記述します。
+    - 各 `package.json` に、そのパッケージ/アプリが必要とする**外部ライブラリ**の依存関係 (`dependencies`, `devDependencies`) を記述します。
+    - 他のローカルパッケージ (`@core/*`) への依存関係も記述しますが、バージョンは `"0.0.0"` や `"*"` のような**プレースホルダー**にしておきます (フェーズ3で `workspace:*` に置換)。
+    ```json
+    // packages/user/package.json の例
+    {
+      "name": "@core/user",
+      "version": "0.0.0",
+      "private": true,
+      "main": "dist/index.js", // 仮
+      "types": "dist/index.d.ts", // 仮
+      "scripts": {
+        "build": "echo 'Build script TBD'", // 仮
+        "test:unit": "echo 'Test script TBD'" // 仮
+      },
+      "dependencies": {
+        "@core/shared": "0.0.0", // プレースホルダー
+        "neverthrow": "^6.0.0"
+      },
+      "devDependencies": { ... }
+    }
+    ```
 
-1. **ユーザードメインパッケージの作成**
-   - `@core/user` パッケージの作成
-   - `domain`, `application`, `infrastructure` ディレクトリ構造の作成
+2.  **`tsconfig.json` の作成/調整**
+    - 各 `apps/*` および `packages/*` ディレクトリに `tsconfig.json` を作成または調整します。
+    - それぞれの `tsconfig.json` で、ルートの `tsconfig.base.json` を `extends` します。
+    - パッケージ固有の設定 (`compilerOptions.outDir`, `include`, `exclude` など) や、アプリケーション固有の設定 (Next.js の設定など) を追加します。
+    ```json
+    // packages/user/tsconfig.json の例
+    {
+      "extends": "../../tsconfig.base.json",
+      "compilerOptions": { "outDir": "dist", "rootDir": "src" },
+      "include": ["src"],
+      "exclude": ["node_modules", "dist"]
+    }
+    ```
 
-2. **ユーザードメインコードの移行**
-   - ドメイン層 (`domain/models/user`, `domain/repositories/user.repository.interface.ts` など → `@core/user/domain`)
-   - アプリケーション層 (`application/usecases/user`, `application/dtos/user` → `@core/user/application`)
-   - インフラストラクチャ層 (`infrastructure/repositories/user.repository.ts`, `infrastructure/mappers/user.mapper.ts` → `@core/user/infrastructure`)
+3.  **注意:** このフェーズ完了時点でも、`npm install` は実行せず、ビルドやテストも実行できません。設定ファイルが構造的に配置され、依存関係が（プレースホルダーを含めて）記述されている状態を目指します。
 
-3. **テストの移行**
-   - ユーザードメインの単体テスト・統合テストを `@core/user/**/__tests__` に移行。
-   - テストファイル名を規約に沿って変更 (`*.unit.test.ts`, `*.integration.test.ts`)。
+### フェーズ3: pnpm, Turborepo の導入と最終設定
 
-4. **他のドメインへの展開**
-   - 同様のアプローチで他のドメインパッケージを順次作成・移行
-   - ドメイン間の依存関係を整理
+**目的**: モノレポ管理ツール (pnpm, Turborepo) を導入し、依存関係を解決し、ビルド可能な状態にする。
 
-### フェーズ4: アプリケーション構造の調整
+1.  **ルート `package.json` の調整**
+    - プロジェクトルートの `package.json` を確認・調整します。
+    - ワークスペース全体の共通**開発依存関係** (`typescript`, `eslint`, `prettier`, `husky`, `turbo`, `@types/node`, `vitest`, `@playwright/test` など) を `devDependencies` に設定します。
+    - `"private": true` を設定します。
 
-1. **Next.js アプリの移動**
-   - `app` ディレクトリ全体を `apps/saas-app` に移動
-   - 関連する設定ファイル (`next.config.js`, `tailwind.config.js`, `.env*` など) を移動
+2.  **`pnpm-workspace.yaml` の作成**
+    - プロジェクトルートに `pnpm-workspace.yaml` ファイルを作成し、`packages:` に `apps/*` と `packages/*` を指定します。
 
-2. **アプリケーションからのパッケージ依存設定**
-   - `apps/saas-app/package.json` に `@core/*` パッケージへの依存関係を追加
-   - アプリケーション内のインポートパスを新しいパッケージ名に修正 (`import ... from '@core/user/...'`)
+3.  **内部依存関係のバージョン更新**
+    - すべての `apps/*/package.json` と `packages/*/package.json` を確認し、他のローカルパッケージ (`@core/*`) への依存関係のバージョンを `"workspace:*"` に置換します。
+    ```diff
+    // packages/user/package.json の変更例
+    "dependencies": {
+-     "@core/shared": "0.0.0",
++     "@core/shared": "workspace:*",
+      "neverthrow": "^6.0.0"
+    },
+    ```
 
-3. **API Routes の調整**
-   - ドメインパッケージのユースケースを使用するように API Routes をリファクタリング
-   - **依存関係の注入方法の標準化**: DIコンテナ (例: `tsyringe`) の利用を推奨し、コンストラクタインジェクションなどを通じて依存関係を注入する。
+4.  **依存関係のインストール (`pnpm install`)**
+    - プロジェクトルートで `pnpm install` を実行します。これにより、pnpm workspace が依存関係を解決し、`node_modules` がインストールされ、ローカルパッケージ間のリンクが行われます。
+    - **注意:** このステップで初めて依存関係がインストールされるため、多数のファイルが `node_modules` に生成されます。
 
-4. **E2Eテストの移行と調整**
-   - `tests/e2e` を `apps/saas-app/tests/e2e` に移動
-   - E2Eテスト内のパスやセレクタを調整
+5.  **Turborepo の設定 (`turbo.json`)**
+    - プロジェクトルートに `turbo.json` を作成します。
+    - `$schema`, `globalDependencies`, および `pipeline` を定義します。`build`, `test`, `lint`, `dev` などのタスクと、パッケージ間の依存関係 (`dependsOn: ["^build"]` など) を適切に設定します。
+    ```json
+    // turbo.json の例
+    {
+      "$schema": "https://turbo.build/schema.json",
+      "globalDependencies": ["**/.env.*local", "tsconfig.base.json"],
+      "pipeline": {
+        "build": {
+          "dependsOn": ["^build"],
+          "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+        },
+        "lint": { "outputs": [] },
+        "test:unit": { "outputs": ["coverage/**"] },
+        /* 他のパイプライン */
+        "dev": { "cache": false, "persistent": true }
+      }
+    }
+    ```
 
-### フェーズ5: 検証と調整
+### フェーズ4: 全体検証と調整
 
-1. **ビルドテスト**
-   - 全パッケージと全アプリのビルド実行 (`turbo run build`)
-   - ビルドエラーの解消
+**目的**: 移行後のコードが正しくビルド、テスト、動作することを確認し、問題を修正する。
 
-2. **機能テスト**
-   - 全単体テスト・統合テストの実行 (`turbo run test`)
-   - E2Eテスト (`apps/saas-app` 内で `pnpm run test:e2e` または `turbo run test:e2e --filter=saas-app`) での動作確認
+1.  **ビルドテスト (`turbo run build`)**
+    - プロジェクトルートで `turbo run build` を実行し、ワークスペース全体がエラーなくビルドできることを確認します。
+    - ビルドエラーが発生した場合は、型定義、依存関係、設定ファイル、インポートパスなどを修正します。
 
-3. **パフォーマンス最適化**
-   - ビルド時間の最適化 (Turborepo キャッシュ活用)
-   - バンドルサイズの確認と最適化
+2.  **静的解析 (`turbo run lint`, `turbo run format:check`, etc.)**
+    - `turbo run lint`, `turbo run format:check`, `turbo run type-check` などを実行し、静的解析のエラーがないことを確認します。
+
+3.  **機能テスト (`turbo run test`, `turbo run test:e2e`)**
+    - `turbo run test` (または `test:unit`, `test:integration`) を実行し、すべての単体・統合テストが合格することを確認します。
+    - `turbo run test:e2e --filter=<app-name>` を実行し、E2Eテストがパスすることを確認します。
+    - テストが失敗する場合は、コードロジック、テストコード、または設定を修正します。
+
+4.  **動作確認 (`turbo run dev`)**
+    - `turbo run dev --filter=<app-name>` などで開発サーバーを起動し、実際のアプリケーションの動作を確認します。
+
+5.  **調整**
+    - 検証中に発見された問題を修正します。必要に応じて `turbo.json` のパイプライン設定や各パッケージの設定を調整します。
 
 ## 🔑 優先順位付けと成功基準
 
