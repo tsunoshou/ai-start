@@ -1,5 +1,6 @@
 # dependencies
-/node_modules
+# /node_modules
+node_modules/ # Ignore all node_modules directories
 /.pnp
 .pnp.js
 
@@ -66,3 +67,4 @@ storybook-static/
 
 # Turborepo Cache
 .turbo/
+node_modules

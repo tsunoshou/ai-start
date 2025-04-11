@@ -1,0 +1,392 @@
+[
+  {
+    "original_path": "app/page.tsx",
+    "new_path": "apps/saas-app/app/page.tsx"
+  },
+  {
+    "original_path": "app/layout.tsx",
+    "new_path": "apps/saas-app/app/layout.tsx"
+  },
+  {
+    "original_path": "app/globals.css",
+    "new_path": "apps/saas-app/app/globals.css"
+  },
+  {
+    "original_path": "app/dev-test/user-management/page.tsx",
+    "new_path": "apps/saas-app/app/dev-test/user-management/page.tsx"
+  },
+  {
+    "original_path": "app/api/test-connections/route.ts",
+    "new_path": "apps/saas-app/app/api/test-connections/route.ts"
+  },
+  {
+    "original_path": "app/api/users/[id]/route.ts",
+    "new_path": "apps/saas-app/app/api/users/[id]/route.ts"
+  },
+  {
+    "original_path": "app/api/users/route.ts",
+    "new_path": "apps/saas-app/app/api/users/route.ts"
+  },
+  {
+    "original_path": "application/dtos/user.dto.ts",
+    "new_path": "packages/user/application/dtos/user.dto.ts"
+  },
+  {
+    "original_path": "application/usecases/user/__tests__/create-user.usecase.test.ts",
+    "new_path": "packages/user/application/usecases/__tests__/create-user.usecase.test.ts"
+  },
+  {
+    "original_path": "application/usecases/user/__tests__/delete-user.usecase.test.ts",
+    "new_path": "packages/user/application/usecases/__tests__/delete-user.usecase.test.ts"
+  },
+  {
+    "original_path": "application/usecases/user/__tests__/get-user-by-id.usecase.test.ts",
+    "new_path": "packages/user/application/usecases/__tests__/get-user-by-id.usecase.test.ts"
+  },
+  {
+    "original_path": "application/usecases/user/__tests__/list-users.usecase.test.ts",
+    "new_path": "packages/user/application/usecases/__tests__/list-users.usecase.test.ts"
+  },
+  {
+    "original_path": "application/usecases/user/__tests__/update-user-profile.usecase.test.ts",
+    "new_path": "packages/user/application/usecases/__tests__/update-user-profile.usecase.test.ts"
+  },
+  {
+    "original_path": "application/usecases/user/create-user.usecase.ts",
+    "new_path": "packages/user/application/usecases/create-user.usecase.ts"
+  },
+  {
+    "original_path": "application/usecases/user/delete-user.usecase.ts",
+    "new_path": "packages/user/application/usecases/delete-user.usecase.ts"
+  },
+  {
+    "original_path": "application/usecases/user/get-user-by-id.usecase.ts",
+    "new_path": "packages/user/application/usecases/get-user-by-id.usecase.ts"
+  },
+  {
+    "original_path": "application/usecases/user/list-users.usecase.ts",
+    "new_path": "packages/user/application/usecases/list-users.usecase.ts"
+  },
+  {
+    "original_path": "application/usecases/user/update-user-profile.usecase.ts",
+    "new_path": "packages/user/application/usecases/update-user-profile.usecase.ts"
+  },
+  {
+    "original_path": "config/container.config.ts",
+    "new_path": "apps/saas-app/config/container.config.ts"
+  },
+  {
+    "original_path": "config/environment.ts",
+    "new_path": "apps/saas-app/config/environment.ts"
+  },
+  {
+    "original_path": "domain/repositories/user.repository.interface.ts",
+    "new_path": "packages/user/domain/repositories/user.repository.interface.ts"
+  },
+  {
+    "original_path": "domain/repositories/base.repository.interface.ts",
+    "new_path": "packages/shared/domain/repositories/base.repository.interface.ts"
+  },
+  {
+    "original_path": "domain/models/user/user.entity.ts",
+    "new_path": "packages/user/domain/models/user.entity.ts"
+  },
+  {
+    "original_path": "domain/models/user/user-role.enum.ts",
+    "new_path": "packages/user/domain/models/user-role.enum.ts"
+  },
+  {
+    "original_path": "domain/models/user/user-name.vo.ts",
+    "new_path": "packages/user/domain/models/user-name.vo.ts"
+  },
+  {
+    "original_path": "domain/models/user/user-id.vo.ts",
+    "new_path": "packages/user/domain/models/user-id.vo.ts"
+  },
+  {
+    "original_path": "domain/models/user/__tests__/user.entity.test.ts",
+    "new_path": "packages/user/domain/models/__tests__/user.entity.test.ts"
+  },
+  {
+    "original_path": "domain/models/user/__tests__/user-name.vo.test.ts",
+    "new_path": "packages/user/domain/models/__tests__/user-name.vo.test.ts"
+  },
+  {
+    "original_path": "domain/models/user/__tests__/user-id.vo.test.ts",
+    "new_path": "packages/user/domain/models/__tests__/user-id.vo.test.ts"
+  },
+  {
+    "original_path": "domain/models/base/base.entity.ts",
+    "new_path": "packages/shared/domain/models/base/base.entity.ts"
+  },
+  {
+    "original_path": "domain/services/ai/AIService.ts",
+    "new_path": "packages/ai/domain/services/ai.service.ts"
+  },
+  {
+    "original_path": "i18n/client.ts",
+    "new_path": "packages/shared/i18n/client.ts"
+  },
+  {
+    "original_path": "i18n/config/settings.ts",
+    "new_path": "packages/shared/i18n/config/settings.ts"
+  },
+  {
+    "original_path": "i18n/index.ts",
+    "new_path": "packages/shared/i18n/index.ts"
+  },
+  {
+    "original_path": "i18n/locales/en/common.json",
+    "new_path": "packages/shared/i18n/locales/en/common.json"
+  },
+  {
+    "original_path": "i18n/locales/ja/common.json",
+    "new_path": "packages/shared/i18n/locales/ja/common.json"
+  },
+  {
+    "original_path": "i18n/server.ts",
+    "new_path": "packages/shared/i18n/server.ts"
+  },
+  {
+    "original_path": "infrastructure/ai/AIServiceFactory.ts",
+    "new_path": "packages/shared/infrastructure/ai/AIServiceFactory.ts"
+  },
+  {
+    "original_path": "infrastructure/ai/OpenAIService.ts",
+    "new_path": "packages/shared/infrastructure/ai/OpenAIService.ts"
+  },
+  {
+    "original_path": "infrastructure/database/client.ts",
+    "new_path": "packages/shared/infrastructure/database/client.ts"
+  },
+  {
+    "original_path": "infrastructure/database/db.ts",
+    "new_path": "packages/shared/infrastructure/database/db.ts"
+  },
+  {
+    "original_path": "infrastructure/database/client/postgres.ts",
+    "new_path": "packages/shared/infrastructure/database/client/postgres.ts"
+  },
+  {
+    "original_path": "infrastructure/database/client/supabase.ts",
+    "new_path": "packages/shared/infrastructure/database/client/supabase.ts"
+  },
+  {
+    "original_path": "infrastructure/database/helpers/crud.helpers.ts",
+    "new_path": "packages/shared/infrastructure/database/helpers/crud.helpers.ts"
+  },
+  {
+    "original_path": "infrastructure/database/migrations",
+    "new_path": "packages/shared/infrastructure/database/migrations",
+    "isDirectory": true
+  },
+  {
+    "original_path": "infrastructure/database/repositories/base.repository.ts",
+    "new_path": "packages/shared/base/infrastructure/repositories/base.repository.ts"
+  },
+  {
+    "original_path": "infrastructure/database/repositories/user.repository.ts",
+    "new_path": "packages/user/infrastructure/database/repositories/user.repository.ts"
+  },
+  {
+    "original_path": "infrastructure/database/repositories/__tests__/user.repository.integration.test.ts",
+    "new_path": "packages/user/infrastructure/database/repositories/__tests__/user.repository.integration.test.ts"
+  },
+  {
+    "original_path": "infrastructure/database/schema/_common.ts",
+    "new_path": "packages/shared/infrastructure/database/schema/_common.ts"
+  },
+  {
+    "original_path": "infrastructure/database/schema/index.ts",
+    "new_path": "packages/shared/infrastructure/database/schema/index.ts"
+  },
+  {
+    "original_path": "infrastructure/database/schema/users.schema.ts",
+    "new_path": "packages/user/infrastructure/database/schema/users.schema.ts"
+  },
+  {
+    "original_path": "infrastructure/database/utils/migrate-all.ts",
+    "new_path": "packages/shared/infrastructure/database/utils/migrate-all.ts"
+  },
+  {
+    "original_path": "infrastructure/database/utils/migrate-env.ts",
+    "new_path": "packages/shared/infrastructure/database/utils/migrate-env.ts"
+  },
+  {
+    "original_path": "infrastructure/database/utils/test-db-connection.ts",
+    "new_path": "packages/shared/infrastructure/database/utils/test-db-connection.ts"
+  },
+  {
+    "original_path": "infrastructure/mappers/base.mapper.ts",
+    "new_path": "packages/shared/base/infrastructure/mappers/base.mapper.ts"
+  },
+  {
+    "original_path": "infrastructure/mappers/user.mapper.ts",
+    "new_path": "packages/user/infrastructure/mappers/user.mapper.ts"
+  },
+  {
+    "original_path": "infrastructure/mappers/utils/mapping-helpers.ts",
+    "new_path": "packages/shared/base/infrastructure/utils/mapping-helpers.ts"
+  },
+  {
+    "original_path": "infrastructure/mappers/__tests__/base.mapper.test.ts",
+    "new_path": "packages/shared/base/infrastructure/mappers/__tests__/base.mapper.test.ts"
+  },
+  {
+    "original_path": "infrastructure/mappers/__tests__/user.mapper.test.ts",
+    "new_path": "packages/user/infrastructure/mappers/__tests__/user.mapper.test.ts"
+  },
+  {
+    "original_path": "shared/enums/export-format.enum.ts",
+    "new_path": "packages/shared/enums/export-format.enum.ts"
+  },
+  {
+    "original_path": "shared/enums/language.enum.ts",
+    "new_path": "packages/shared/enums/language.enum.ts"
+  },
+  {
+    "original_path": "shared/errors/app.error.ts",
+    "new_path": "packages/shared/errors/app.error.ts"
+  },
+  {
+    "original_path": "shared/errors/base.error.ts",
+    "new_path": "packages/shared/errors/base.error.ts"
+  },
+  {
+    "original_path": "shared/errors/error-code.enum.ts",
+    "new_path": "packages/shared/enums/error-code.enum.ts"
+  },
+  {
+    "original_path": "shared/errors/infrastructure.error.ts",
+    "new_path": "packages/shared/errors/infrastructure.error.ts"
+  },
+  {
+    "original_path": "shared/errors/validation.error.ts",
+    "new_path": "packages/shared/errors/validation.error.ts"
+  },
+  {
+    "original_path": "shared/logger/console.logger.ts",
+    "new_path": "packages/shared/logger/console.logger.ts"
+  },
+  {
+    "original_path": "shared/logger/logger.interface.ts",
+    "new_path": "packages/shared/logger/logger.interface.ts"
+  },
+  {
+    "original_path": "shared/logger/logger.token.ts",
+    "new_path": "packages/shared/logger/logger.token.ts"
+  },
+  {
+    "original_path": "shared/types/common.types.ts",
+    "new_path": "packages/shared/types/common.types.ts"
+  },
+  {
+    "original_path": "shared/types/data.types.ts",
+    "new_path": "packages/shared/types/data.types.ts"
+  },
+  {
+    "original_path": "shared/types/entity-base.interface.ts",
+    "new_path": "packages/shared/base/domain/interfaces/entity-base.interface.ts"
+  },
+  {
+    "original_path": "shared/types/utility.types.ts",
+    "new_path": "packages/shared/types/utility.types.ts"
+  },
+  {
+    "original_path": "shared/utils/api.utils.ts",
+    "new_path": "packages/shared/utils/api.utils.ts"
+  },
+  {
+    "original_path": "shared/utils/identifier.utils.ts",
+    "new_path": "packages/shared/utils/identifier.utils.ts"
+  },
+  {
+    "original_path": "shared/utils/ui.ts",
+    "new_path": "packages/shared/utils/ui.ts"
+  },
+  {
+    "original_path": "shared/utils/__tests__/api.utils.test.ts",
+    "new_path": "packages/shared/utils/__tests__/api.utils.test.ts"
+  },
+  {
+    "original_path": "shared/utils/__tests__/identifier.utils.test.ts",
+    "new_path": "packages/shared/utils/__tests__/identifier.utils.test.ts"
+  },
+  {
+    "original_path": "shared/utils/__tests__/ui.utils.test.ts",
+    "new_path": "packages/shared/utils/__tests__/ui.utils.test.ts"
+  },
+  {
+    "original_path": "shared/utils/security/password.utils.ts",
+    "new_path": "packages/shared/utils/security/password.utils.ts"
+  },
+  {
+    "original_path": "shared/utils/security/__tests__/password.utils.test.ts",
+    "new_path": "packages/shared/utils/security/__tests__/password.utils.test.ts"
+  },
+  {
+    "original_path": "shared/value-objects/base-id.vo.ts",
+    "new_path": "packages/shared/base/domain/value-objects/base-id.vo.ts"
+  },
+  {
+    "original_path": "shared/value-objects/base.vo.ts",
+    "new_path": "packages/shared/base/domain/value-objects/base.vo.ts"
+  },
+  {
+    "original_path": "shared/value-objects/date-time-string.vo.ts",
+    "new_path": "packages/shared/value-objects/date-time-string.vo.ts"
+  },
+  {
+    "original_path": "shared/value-objects/email.vo.ts",
+    "new_path": "packages/shared/value-objects/email.vo.ts"
+  },
+  {
+    "original_path": "shared/value-objects/password-hash.vo.ts",
+    "new_path": "packages/shared/value-objects/password-hash.vo.ts"
+  },
+  {
+    "original_path": "shared/value-objects/password.vo.ts",
+    "new_path": "packages/shared/value-objects/password.vo.ts"
+  },
+  {
+    "original_path": "shared/value-objects/url.vo.ts",
+    "new_path": "packages/shared/value-objects/url.vo.ts"
+  },
+  {
+    "original_path": "shared/value-objects/__tests__/date-time-string.vo.test.ts",
+    "new_path": "packages/shared/value-objects/__tests__/date-time-string.vo.test.ts"
+  },
+  {
+    "original_path": "shared/value-objects/__tests__/email.vo.test.ts",
+    "new_path": "packages/shared/value-objects/__tests__/email.vo.test.ts"
+  },
+  {
+    "original_path": "shared/value-objects/__tests__/password-hash.vo.test.ts",
+    "new_path": "packages/shared/value-objects/__tests__/password-hash.vo.test.ts"
+  },
+  {
+    "original_path": "shared/value-objects/__tests__/password.vo.test.ts",
+    "new_path": "packages/shared/value-objects/__tests__/password.vo.test.ts"
+  },
+  {
+    "original_path": "shared/value-objects/__tests__/url.vo.test.ts",
+    "new_path": "packages/shared/value-objects/__tests__/url.vo.test.ts"
+  },
+  {
+    "original_path": "presentation/components/common/ConnectionTest.tsx",
+    "new_path": "packages/web/components/dev/ConnectionTest.tsx"
+  },
+  {
+    "original_path": "presentation/hooks/use-toast.ts",
+    "new_path": "packages/web/hooks/use-toast.ts"
+  },
+  {
+    "original_path": "presentation/providers/I18nProvider.tsx",
+    "new_path": "packages/web/providers/I18nProvider.tsx"
+  },
+  {
+    "original_path": "presentation/components/common/ui",
+    "new_path": "packages/web/components/ui",
+    "isDirectory": true
+  }
+] 
