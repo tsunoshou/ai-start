@@ -7,7 +7,7 @@
 
 import { Result } from 'neverthrow';
 
-import { AppError } from '@core/shared/errors/app.error.ts';
+import { AppError } from '@core/shared/errors/app.error';
 
 /**
  * Represents a date and time string in ISO 8601 format (e.g., "2023-10-27T10:00:00.000Z").

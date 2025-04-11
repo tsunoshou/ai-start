@@ -5,7 +5,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 
 import drizzleConfig from '../../../drizzle.config';
-import * as schema from '../../../infrastructure/database/schema'; // スキーマをインポート
+import * as schema from '@core/shared/infrastructure/database/schema'; // スキーマをインポート
 
 // コンテナとDB接続情報を保持する変数
 let postgresContainer: StartedPostgreSqlContainer;

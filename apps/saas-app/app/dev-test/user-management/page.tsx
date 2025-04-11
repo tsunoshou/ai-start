@@ -15,7 +15,7 @@ import { Input } from '@core/ui/components/ui/input';
 import { Label } from '@core/ui/components/ui/label';
 import { Separator } from '@core/ui/components/ui/separator';
 import { Textarea } from '@core/ui/components/ui/textarea';
-import { UserDto } from '@core/user/application/dtos/user.dto.ts';
+import { UserDTO } from '@core/user/application/dtos/user.dto';
 
 /**
  * 開発テスト用: ユーザー管理機能テストページ

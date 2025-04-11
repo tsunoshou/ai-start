@@ -1,6 +1,6 @@
 import { AppError } from './app.error';
 import { BaseErrorOptions } from './base.error';
-import { ErrorCode } from './error-code.enum';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
 
 /**
  * @class InfrastructureError

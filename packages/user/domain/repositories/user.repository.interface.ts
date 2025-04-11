@@ -1,9 +1,9 @@
-import { UserId } from '@core/user/domain/value-objects/user-id.vo.ts';
-import { User } from '@core/user/domain/entities/user.entity.ts';
-import { AppResult } from '@core/shared/types/common.types.ts';
-import { Email } from '@core/shared/value-objects/email.vo.ts';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo';
+import { User } from '@core/user/domain/entities/user.entity';
+import { AppResult } from '@core/shared/types/common.types';
+import { Email } from '@core/shared/value-objects/email.vo';
 
-import { BaseRepositoryInterface } from './base.repository.interface'; // Import base interface
+import { BaseRepositoryInterface } from '@core/shared/base/domain/repositories/base.repository.interface'; // Import base interface
 
 /**
  * @interface UserRepositoryInterface

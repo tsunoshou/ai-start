@@ -1,8 +1,8 @@
 import { validate as uuidValidate } from 'uuid';
 import { describe, it, expect } from 'vitest';
 
-import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
-import { ValidationError } from '@core/shared/errors/validation.error.ts';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { ValidationError } from '@core/shared/errors/validation.error';
 
 import { UserId } from '../user-id.vo';
 

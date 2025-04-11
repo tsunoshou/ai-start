@@ -13,16 +13,16 @@ import { Pool } from 'pg';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { UserId } from '@core/user/domain/value-objects/user-id.vo.ts';
-import { UserName } from '@core/user/domain/value-objects/user-name.vo.ts';
-import { User } from '@core/user/domain/entities/user.entity.ts';
-import { UserRepository } from '@core/user/infrastructure/repositories/user.repository.ts';
-import { users } from '@core/shared/infrastructure/database/schema/index.ts';
-import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper.ts';
-import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
-import { DateTimeString } from '@core/shared/value-objects/date-time-string.vo.ts';
-import { Email } from '@core/shared/value-objects/email.vo.ts';
-import { PasswordHash } from '@core/shared/value-objects/password-hash.vo.ts';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo';
+import { User } from '@core/user/domain/entities/user.entity';
+import { UserRepository } from '@core/user/infrastructure/repositories/user.repository';
+import { users } from '@core/shared/infrastructure/database/schema/index';
+import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface';
+import { DateTimeString } from '@core/shared/value-objects/date-time-string.vo';
+import { Email } from '@core/shared/value-objects/email.vo';
+import { PasswordHash } from '@core/shared/value-objects/password-hash.vo';
 
 // 型エラーを回避するための eslint-disable
 /* eslint-disable @typescript-eslint/no-explicit-any */

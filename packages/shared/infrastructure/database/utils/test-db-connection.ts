@@ -2,9 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import postgres from 'postgres';
 import { container } from 'tsyringe';
 
-import { ENV } from '@/config/environment.ts';
-import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
-import { LoggerToken } from '@core/shared/logger/logger.token.ts';
+import { ENV } from '@/config/environment';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface';
+import { LoggerToken } from '@core/shared/logger/logger.token';
 
 // DIコンテナからロガーを取得
 const logger = container.resolve<LoggerInterface>(LoggerToken);

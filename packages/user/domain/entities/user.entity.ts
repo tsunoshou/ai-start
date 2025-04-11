@@ -1,13 +1,13 @@
 import { Result, ok, err } from 'neverthrow';
 
-import { BaseEntity } from '@core/shared/base/domain/entities/base.entity.ts';
-import { BaseError } from '@core/shared/errors/base.error.ts';
-import * as DateTimeStringModule from '@core/shared/value-objects/date-time-string.vo.ts';
-import { Email } from '@core/shared/value-objects/email.vo.ts';
-import { PasswordHash } from '@core/shared/value-objects/password-hash.vo.ts';
+import { BaseEntity } from '@core/shared/base/domain/entities/base.entity';
+import { BaseError } from '@core/shared/errors/base.error';
+import * as DateTimeStringModule from '@core/shared/value-objects/date-time-string.vo';
+import { Email } from '@core/shared/value-objects/email.vo';
+import { PasswordHash } from '@core/shared/value-objects/password-hash.vo';
 
-import { UserId } from './user-id.vo';
-import { UserName } from './user-name.vo';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo';
 
 /**
  * @class User

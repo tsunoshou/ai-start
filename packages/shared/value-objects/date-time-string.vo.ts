@@ -14,7 +14,7 @@ import { z } from 'zod';
 
 import { ValidationError } from '../errors/validation.error';
 
-import { BaseValueObject } from './base.vo';
+import { BaseValueObject } from '@core/shared/base/domain/value-objects/base.vo';
 
 // Zod schema for ISO 8601 datetime string validation
 // .datetime() includes offset validation by default.

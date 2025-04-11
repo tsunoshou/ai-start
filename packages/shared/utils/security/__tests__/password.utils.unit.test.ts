@@ -1,8 +1,8 @@
 import bcrypt from 'bcrypt';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { AppError } from '@core/shared/errors/app.error.ts';
-import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import { AppError } from '@core/shared/errors/app.error';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
 
 import { hashPassword, verifyPassword } from '../password.utils';
 

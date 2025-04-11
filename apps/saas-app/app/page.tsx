@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import React from 'react';
 
-import { ConnectionTest } from '@core/ui/components/dev/ConnectionTest';
+import ConnectionTest from '@core/ui/components/dev/ConnectionTest';
 import { Button } from '@core/ui/components/ui/button';
 
 export default function Home() {

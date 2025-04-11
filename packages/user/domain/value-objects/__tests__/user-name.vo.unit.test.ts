@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { BaseError } from '@core/shared/errors/base.error.ts';
-import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import { BaseError } from '@core/shared/errors/base.error';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
 
 import { UserName } from '../user-name.vo';
 

@@ -7,9 +7,9 @@ import {
   testDatabaseConnection,
   testSupabaseConnection,
   testOpenAIConnection,
-} from '@core/shared/infrastructure/database/utils/test-db-connection.ts';
-import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
-import { LoggerToken } from '@core/shared/logger/logger.token.ts';
+} from '@core/shared/infrastructure/database/utils/test-db-connection';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface';
+import { LoggerToken } from '@core/shared/logger/logger.token';
 
 // DIコンテナからロガーを取得
 const logger = container.resolve<LoggerInterface>(LoggerToken);

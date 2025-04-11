@@ -3,7 +3,7 @@
  */
 
 import { BaseError, BaseErrorOptions } from './base.error';
-import { ErrorCode } from './error-code.enum'; // ErrorCodeをインポート
+import { ErrorCode } from '@core/shared/enums/error-code.enum'; // ErrorCodeをインポート
 
 /**
  * BaseErrorOptions を再エクスポート（オプション）-> 不要になるためコメントアウト

@@ -11,8 +11,8 @@
 import { Result, ok, err } from 'neverthrow';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 
-import { BaseError } from '@core/shared/errors/base.error.ts';
-import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import { BaseError } from '@core/shared/errors/base.error';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
 
 /**
  * 新しい一意な UUID v4 文字列を生成します。

@@ -1,12 +1,12 @@
 import { Result, ok, err } from 'neverthrow';
 import { z } from 'zod';
 
-import { AppError } from '@core/shared/errors/app.error.ts';
-import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
-import { ValidationError } from '@core/shared/errors/validation.error.ts';
-import { verifyPassword } from '@core/shared/utils/security/password.utils.ts';
+import { AppError } from '@core/shared/errors/app.error';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { ValidationError } from '@core/shared/errors/validation.error';
+import { verifyPassword } from '@core/shared/utils/security/password.utils';
 
-import { BaseValueObject } from './base.vo';
+import { BaseValueObject } from '@core/shared/base/domain/value-objects/base.vo';
 import { PasswordHash } from './password-hash.vo'; // Import PasswordHash for fromHash
 
 // Schema for plain text password validation (minimum 8 characters)

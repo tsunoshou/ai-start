@@ -5,7 +5,7 @@ import * as React from 'react';
 
 import { Toast, ToastProps } from '@core/ui/components/ui/toast';
 import { useToast } from '@core/ui/hooks/use-toast';
-import { cn } from '@core/shared/utils/ui.ts';
+import { cn } from '@core/shared/utils/ui';
 
 export function Toaster() {
   const { toasts } = useToast();

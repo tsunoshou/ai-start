@@ -2,9 +2,9 @@ import 'reflect-metadata';
 import { Result, ok, err } from 'neverthrow';
 import { beforeEach, describe, it, expect } from 'vitest';
 
-import { AppError } from '@core/shared/errors/app.error.ts';
-import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
-import { InfrastructureError } from '@core/shared/errors/infrastructure.error.ts';
+import { AppError } from '@core/shared/errors/app.error';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { InfrastructureError } from '@core/shared/errors/infrastructure.error';
 
 import {
   BaseEntityMapper,

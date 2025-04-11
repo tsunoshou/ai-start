@@ -4,20 +4,20 @@ import { PgColumn } from 'drizzle-orm/pg-core';
 import { Result, ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
-import { UserId } from '@core/user/domain/value-objects/user-id.vo.ts';
-import { User } from '@core/user/domain/entities/user.entity.ts';
-import { UserRepositoryInterface } from '@core/user/domain/repositories/user.repository.interface.ts';
-import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper.ts';
-import { AppError } from '@core/shared/errors/app.error.ts';
-import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
-import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
-import { LoggerToken } from '@core/shared/logger/logger.token.ts';
-import { AppResult } from '@core/shared/types/common.types.ts';
-import { Email } from '@core/shared/value-objects/email.vo.ts';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo';
+import { User } from '@core/user/domain/entities/user.entity';
+import { UserRepositoryInterface } from '@core/user/domain/repositories/user.repository.interface';
+import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper';
+import { AppError } from '@core/shared/errors/app.error';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface';
+import { LoggerToken } from '@core/shared/logger/logger.token';
+import { AppResult } from '@core/shared/types/common.types';
+import { Email } from '@core/shared/value-objects/email.vo';
 
-import { users } from '../schema/users.schema';
+import { users } from '@core/user/infrastructure/database/schema/users.schema';
 
-import { BaseRepository } from './base.repository';
+import { BaseRepository } from '@core/shared/base/infrastructure/repositories/base.repository';
 
 // Drizzle schema selection/insertion types (adjust if schema file exports these)
 // eslint-disable-next-line @typescript-eslint/naming-convention

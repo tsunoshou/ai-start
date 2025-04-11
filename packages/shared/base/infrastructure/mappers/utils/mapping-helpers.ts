@@ -1,6 +1,6 @@
 import { Result } from 'neverthrow';
 
-import { AppError } from '@core/shared/errors/app.error.ts';
+import { AppError } from '@core/shared/errors/app.error';
 
 /**
  * 値オブジェクトをマッパーインターフェースに変換するヘルパー関数

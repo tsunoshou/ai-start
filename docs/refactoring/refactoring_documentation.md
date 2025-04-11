@@ -1634,7 +1634,7 @@ export class CreateUserUseCase implements BaseUseCase<CreateUserDto, Result<User
 import { DrizzleD1Database } from 'drizzle-orm/d1';
 import { Result } from '@core/shared/result';
 import { User } from '../../domain/entities/user.entity';
-import { UserRepositoryInterface } from '../../domain/repositories/user.repository.interface.ts';
+import { UserRepositoryInterface } from '../../domain/repositories/user.repository.interface';
 import { Email } from '@core/shared/value-objects/email.vo';
 import { UserId } from '../../domain/value-objects/user-id.vo';
 import { UserMapper } from '../mappers/user.mapper';

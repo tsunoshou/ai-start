@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
-import { ValidationError } from '@core/shared/errors/validation.error.ts';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { ValidationError } from '@core/shared/errors/validation.error';
 
 import { DateTimeString } from '../date-time-string.vo';
 

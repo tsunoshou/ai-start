@@ -3,24 +3,24 @@ import { Result, ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
 // Domain Layer
-import { UserDTO } from '@core/user/application/dtos/user.dto.ts';
-import { UserName } from '@core/user/domain/value-objects/user-name.vo.ts';
-import { User } from '@core/user/domain/entities/user.entity.ts';
+import { UserDTO } from '@core/user/application/dtos/user.dto';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo';
+import { User } from '@core/user/domain/entities/user.entity';
 import {
   type UserRepositoryInterface,
   UserRepositoryToken,
-} from '@core/user/domain/repositories/user.repository.interface.ts';
+} from '@core/user/domain/repositories/user.repository.interface';
 // Shared Layer
-import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper.ts';
-import { AppError } from '@core/shared/errors/app.error.ts';
-import { BaseError } from '@core/shared/errors/base.error.ts';
-import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
-import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
-import { LoggerToken } from '@core/shared/logger/logger.token.ts';
-import { AppResult } from '@core/shared/types/common.types.ts';
-import { hashPassword } from '@core/shared/utils/security/password.utils.ts';
-import { Email } from '@core/shared/value-objects/email.vo.ts';
-import { PasswordHash } from '@core/shared/value-objects/password-hash.vo.ts';
+import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper';
+import { AppError } from '@core/shared/errors/app.error';
+import { BaseError } from '@core/shared/errors/base.error';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface';
+import { LoggerToken } from '@core/shared/logger/logger.token';
+import { AppResult } from '@core/shared/types/common.types';
+import { hashPassword } from '@core/shared/utils/security/password.utils';
+import { Email } from '@core/shared/value-objects/email.vo';
+import { PasswordHash } from '@core/shared/value-objects/password-hash.vo';
 
 // Application Layer
 

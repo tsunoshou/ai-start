@@ -607,7 +607,7 @@ export const promptVariablesRelations = relations(promptVariables, ({ one }) => 
 ```typescript
 // src/store/features/user/userSlice.ts (例：Redux Toolkit)
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { UserResponseDto } from '@/interfaces/http/rest/v1/dtos/user.dto.ts';
+import type { UserResponseDto } from '@/interfaces/http/rest/v1/dtos/user.dto';
 
 export interface UserState {
   currentUser: UserResponseDto | null;
@@ -669,8 +669,8 @@ export default userSlice.reducer;
 ```typescript
 // src/shared/utils/type-guards.ts
 
-import { UserResponseDto } from '@/interfaces/http/rest/v1/dtos/user.dto.ts';
-import { AIPromptResponseDto } from '@/interfaces/http/rest/v1/dtos/ai-prompt.dto.ts';
+import { UserResponseDto } from '@/interfaces/http/rest/v1/dtos/user.dto';
+import { AIPromptResponseDto } from '@/interfaces/http/rest/v1/dtos/ai-prompt.dto';
 
 /**
  * UserResponseDto かどうかを判定する型ガード関数
@@ -716,7 +716,7 @@ export function isAIPromptResponse(obj: unknown): obj is AIPromptResponseDto {
 
 import { User as DomainUser } from '@/domain/models/entities/user';
 import { users as PersistenceUser } from '@/infrastructure/database/drizzle/schema'; // Drizzle Schemaから生成される型
-import { UserResponseDto } from '@/interfaces/http/rest/v1/dtos/user.dto.ts';
+import { UserResponseDto } from '@/interfaces/http/rest/v1/dtos/user.dto';
 
 /** ドメインモデルから永続化モデルへのマッパー関数型 */
 export type MapDomainToPersistence = (domainUser: DomainUser) => Omit<PersistenceUser, 'createdAt' | 'updatedAt' | 'id'> & { id?: string };

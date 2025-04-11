@@ -1,18 +1,18 @@
 import { Result } from 'neverthrow';
 import { injectable } from 'tsyringe';
 
-import { UserDTO } from '@core/user/application/dtos/user.dto.ts';
-import { UserId } from '@core/user/domain/value-objects/user-id.vo.ts';
-import { UserName } from '@core/user/domain/value-objects/user-name.vo.ts';
-import { User } from '@core/user/domain/entities/user.entity.ts';
-import { users } from '@core/user/infrastructure/database/schema/users.schema.ts';
-import { InfrastructureError } from '@core/shared/errors/infrastructure.error.ts';
-import * as DateTimeStringModule from '@core/shared/value-objects/date-time-string.vo.ts';
-import { Email } from '@core/shared/value-objects/email.vo.ts';
-import { PasswordHash } from '@core/shared/value-objects/password-hash.vo.ts';
+import { UserDTO } from '@core/user/application/dtos/user.dto';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo';
+import { User } from '@core/user/domain/entities/user.entity';
+import { users } from '@core/user/infrastructure/database/schema/users.schema';
+import { InfrastructureError } from '@core/shared/errors/infrastructure.error';
+import * as DateTimeStringModule from '@core/shared/value-objects/date-time-string.vo';
+import { Email } from '@core/shared/value-objects/email.vo';
+import { PasswordHash } from '@core/shared/value-objects/password-hash.vo';
 
-import { BaseEntityMapper, DomainMappingConfig, PropertyMapping } from './base.mapper';
-import { asValueObjectMapper, asType, toISOString } from './utils/mapping-helpers';
+import { BaseEntityMapper, DomainMappingConfig, PropertyMapping } from '@core/shared/base/infrastructure/mappers/base.mapper';
+import { asValueObjectMapper, asType, toISOString } from '@core/shared/base/infrastructure/mappers/utils/mapping-helpers';
 
 // DrizzleスキーマからDBの型を取得
 export type UserDbSelect = typeof users.$inferSelect;

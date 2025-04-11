@@ -1,6 +1,6 @@
 import { pgTable, varchar } from 'drizzle-orm/pg-core';
 
-import { idColumn, timestampColumns } from './_common';
+import { idColumn, timestampColumns } from '@core/shared/infrastructure/database/schema/_common';
 
 /**
  * ユーザー情報を格納するテーブルスキーマ定義。
