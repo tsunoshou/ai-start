@@ -12,7 +12,7 @@ import {
   AIConversationOptions,
   AIConversationResponse,
   MessageRole,
-} from '../../domain/services/ai/AIService';
+} from '@core/ai/domain/services/ai.service';
 
 /**
  * OpenAIサービスの実装クラス

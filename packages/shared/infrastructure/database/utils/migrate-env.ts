@@ -3,7 +3,7 @@ import { container } from 'tsyringe';
 import type { LoggerInterface } from '@core/shared/logger/logger.interface';
 import { LoggerToken } from '@core/shared/logger/logger.token';
 
-import { getDatabaseUrl } from '../../../config/environment';
+import { getDatabaseUrl } from '@/config/environment';
 import { runMigrationToSpecificDB } from '../client';
 
 // DIコンテナからロガーを取得

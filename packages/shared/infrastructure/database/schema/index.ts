@@ -5,6 +5,7 @@
  */
 
 // export * from './users'; // Removed users export
-export * from './users.schema';
+export * from '@core/user/infrastructure/database/schema/users.schema';
 
 import { users } from '@core/user/infrastructure/database/schema/users.schema';
+export { users };

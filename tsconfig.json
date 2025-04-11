@@ -22,20 +22,14 @@
     ],
     "paths": {
       "@/*": ["./apps/saas-app/*"],
-      "@/app/*": ["./app/*"],
-      "@/domain/*": ["./domain/*"],
-      "@/application/*": ["./application/*"],
-      "@/infrastructure/*": ["./infrastructure/*"],
-      "@/presentation/*": ["./presentation/*"],
-      "@/shared/*": ["./shared/*"],
-      "@/config/*": ["./config/*"],
       "@/i18n/*": ["./i18n/*"],
       "@core/shared/*": ["./packages/shared/*"],
       "@core/infrastructure/*": ["./packages/infrastructure/*"],
       "@core/ui/*": ["./packages/ui/*"],
       "@core/user/*": ["./packages/user/*"],
       "@core/billing/*": ["./packages/billing/*"],
-      "@core/auth/*": ["./packages/auth/*"]
+      "@core/auth/*": ["./packages/auth/*"],
+      "@core/ai/*": ["./packages/ai/*"]
     }
   },
   "include": [

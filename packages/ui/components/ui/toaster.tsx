@@ -2,10 +2,21 @@
 
 import { X } from 'lucide-react';
 import * as React from 'react';
-
-import { Toast, ToastProps } from '@core/ui/components/ui/toast';
-import { useToast } from '@core/ui/hooks/use-toast';
+import {
+  ToastActionElement,
+  ToastProps,
+} from '@core/ui/components/ui/toast';
 import { cn } from '@core/shared/utils/ui';
+import { useToast } from '@core/ui/hooks/use-toast';
+import {
+  ToastProvider,
+  ToastViewport,
+  Toast,
+  ToastTitle,
+  ToastDescription,
+  ToastClose,
+  ToastAction,
+} from '@radix-ui/react-toast';
 
 export function Toaster() {
   const { toasts } = useToast();

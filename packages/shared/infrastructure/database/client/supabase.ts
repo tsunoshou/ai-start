@@ -7,7 +7,7 @@ import {
   getSupabaseServiceRoleKey,
   isStaging,
   isProduction,
-} from '../../../config/environment';
+} from '@/config/environment';
 
 // 環境変数からSupabase接続情報を取得
 const SUPABASE_URL = getSupabaseUrl();

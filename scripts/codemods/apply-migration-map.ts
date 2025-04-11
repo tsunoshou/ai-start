@@ -20,9 +20,12 @@ try {
   const mapData = fs.readFileSync(migrationMapPath, 'utf8');
   MIGRATION_MAP = JSON.parse(mapData);
 } catch (error) {
-  console.error(`[FATAL] Could not load migration map from ${migrationMapPath}. Error: ${error.message}`);
-  // Throw error to stop the script if map cannot be loaded
-  throw new Error('Migration map is essential and could not be loaded.');
+  let errorMessage = 'Unknown error occurred while loading migration map.';
+  if (error instanceof Error) {
+    errorMessage = error.message;
+  }
+  console.error(`[FATAL] Could not load migration map from ${migrationMapPath}. Error: ${errorMessage}`);
+  process.exit(1);
 }
 
 // --- Helper Functions ---
