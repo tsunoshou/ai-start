@@ -220,7 +220,8 @@ export default function transformer(file: FileInfo, api: API, _options: Options)
 
         // If the source changed, update the AST
         if (newSource !== originalSource) {
-          importLiteral.value = newSource;
+          // Always strip extension from the final path
+          importLiteral.value = STRIP_EXTENSION(newSource); 
           changed = true;
         }
 
