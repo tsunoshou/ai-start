@@ -1,5 +1,5 @@
-import type { AppResult, Identifier } from '@/shared/types/common.types';
-import type { EntityBase } from '@/shared/types/entity-base.interface';
+import type { AppResult, Identifier } from '@core/shared/types/common.types.ts';
+import type { EntityBase } from '@core/shared/base/domain/interfaces/entity-base.interface.ts';
 
 /**
  * @interface BaseRepositoryInterface

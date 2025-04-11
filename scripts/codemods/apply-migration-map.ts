@@ -1,17 +1,29 @@
 import { API, FileInfo, Options, StringLiteral } from 'jscodeshift';
-// import fs from 'fs'; // Remove unused import
+import fs from 'fs'; // Import fs again
 import path from 'path';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore migrationMap is generated and might not exist initially
-import migrationMapJson from '../../../docs/refactoring/file_migration_map.json';
+// const migrationMapJson = require('../../../docs/refactoring/file_migration_map.json');
 
 interface MigrationItem {
   from: string;
   to: string;
 }
 
-const MIGRATION_MAP: MigrationItem[] = migrationMapJson; // UPPER_CASE
-const PROJECT_ROOT = path.resolve(__dirname, '../../../'); // UPPER_CASE, Adjust if script location changes
+// Determine project root dynamically using process.cwd()
+const PROJECT_ROOT = process.cwd(); // Use current working directory
+
+// Load migration map using fs.readFileSync
+const migrationMapPath = path.resolve(PROJECT_ROOT, 'docs/refactoring/file_migration_map.json');
+let MIGRATION_MAP: MigrationItem[];
+try {
+  const mapData = fs.readFileSync(migrationMapPath, 'utf8');
+  MIGRATION_MAP = JSON.parse(mapData);
+} catch (error) {
+  console.error(`[FATAL] Could not load migration map from ${migrationMapPath}. Error: ${error.message}`);
+  // Throw error to stop the script if map cannot be loaded
+  throw new Error('Migration map is essential and could not be loaded.');
+}
 
 // --- Helper Functions ---
 
@@ -115,23 +127,53 @@ export default function transformer(file: FileInfo, api: API, _options: Options)
         // 1. Handle old '@/...' aliases
         if (originalSource.startsWith('@/')) {
           const relativePath = originalSource.substring(2);
-          const oldAbsoluteImportPath = NORMALIZE_PATH(path.resolve(PROJECT_ROOT, relativePath)); // Use UPPER_CASE func, Use UPPER_CASE
-          const oldAbsoluteImportPathNoExt = STRIP_EXTENSION(oldAbsoluteImportPath); // Use UPPER_CASE func
+          const oldAbsoluteImportPathBase = NORMALIZE_PATH(path.resolve(PROJECT_ROOT, relativePath)); // Use UPPER_CASE func, Use UPPER_CASE
+
+          // Try resolving with different extensions/index files
+          let newAbsoluteImportPath: string | undefined;
+          const possibleSuffixes = ['', '.ts', '.tsx', '/index.ts', '/index.tsx'];
+          for (const suffix of possibleSuffixes) {
+            const potentialOldPath = oldAbsoluteImportPathBase + suffix;
+            if (ABSOLUTE_FROM_TO_MAP[potentialOldPath]) {
+                newAbsoluteImportPath = ABSOLUTE_FROM_TO_MAP[potentialOldPath];
+                // console.log(`Alias Matched: ${potentialOldPath} -> ${newAbsoluteImportPath}`);
+                break; // Found a match
+            }
+            // Also check without extension in the map (less likely for aliases but good to check)
+            const potentialOldPathNoExt = STRIP_EXTENSION(potentialOldPath);
+             if (potentialOldPathNoExt !== potentialOldPath && ABSOLUTE_FROM_TO_MAP[potentialOldPathNoExt]) {
+                 newAbsoluteImportPath = ABSOLUTE_FROM_TO_MAP[potentialOldPathNoExt];
+                 // console.log(`Alias Matched (NoExt Key): ${potentialOldPathNoExt} -> ${newAbsoluteImportPath}`);
+                 break;
+             }
+          }
 
           // Find the corresponding new path using the precomputed map
-          const newAbsoluteImportPath = ABSOLUTE_FROM_TO_MAP[oldAbsoluteImportPath] ?? ABSOLUTE_FROM_TO_MAP[oldAbsoluteImportPathNoExt]; // Use UPPER_CASE
+          // const newAbsoluteImportPath = ABSOLUTE_FROM_TO_MAP[oldAbsoluteImportPath] ?? ABSOLUTE_FROM_TO_MAP[oldAbsoluteImportPathNoExt]; // Use UPPER_CASE // OLD LOGIC REMOVED
 
           if (newAbsoluteImportPath) {
             const packageInfo = FIND_PACKAGE_FOR_NEW_PATH(newAbsoluteImportPath); // Use UPPER_CASE func
             if (packageInfo) {
               // Construct new alias path (stripping extension)
-              newSource = packageInfo.alias + '/' + STRIP_EXTENSION(packageInfo.pathInPkg); // Use UPPER_CASE func
+              // Ensure the resulting path doesn't end with /index if it points to an index file
+              let finalPathInPkg = STRIP_EXTENSION(packageInfo.pathInPkg);
+              if (finalPathInPkg.endsWith('/index')) {
+                finalPathInPkg = finalPathInPkg.substring(0, finalPathInPkg.length - '/index'.length);
+                // Handle root index case (e.g., @core/shared/index -> @core/shared)
+                if (!finalPathInPkg) {
+                     newSource = packageInfo.alias;
+                } else {
+                     newSource = packageInfo.alias + '/' + finalPathInPkg;
+                }
+              } else {
+                   newSource = packageInfo.alias + '/' + finalPathInPkg;
+              }
               // console.log(`Alias Update: ${originalSource} -> ${newSource} in ${currentNewAbsolutePath}`);
             } else {
               console.warn(`[WARN] Could not determine package for new path: ${newAbsoluteImportPath} (from old alias: ${originalSource}) in ${currentNewAbsolutePath}`);
             }
           } else {
-            console.warn(`[WARN] Could not find new path for old alias import: ${originalSource} (resolved to ${oldAbsoluteImportPath}) in ${currentNewAbsolutePath}`);
+            console.warn(`[WARN] Could not find new path for old alias import: ${originalSource} (tried base: ${oldAbsoluteImportPathBase} with suffixes) in ${currentNewAbsolutePath}`);
           }
         }
         // 2. Handle relative imports './...' or '../...'

@@ -2,10 +2,10 @@ import 'reflect-metadata'; // Required for tsyringe
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
-import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
-import { ListUsersUsecase } from '@/application/usecases/user/list-users.usecase';
-import container from '@/config/container.config'; // Import DI container
-import { processApiRequest } from '@/shared/utils/api.utils';
+import { CreateUserUsecase } from '@core/user/application/usecases/create-user.usecase.ts';
+import { ListUsersUsecase } from '@core/user/application/usecases/list-users.usecase.ts';
+import container from '@/config/container.config.ts'; // Import DI container
+import { processApiRequest } from '@core/shared/utils/api.utils.ts';
 
 // Zod schema for POST request body validation
 const createUserSchema = z.object({

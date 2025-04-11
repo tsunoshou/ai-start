@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import container from '@/config/container.config';
-import { AppError } from '@/shared/errors/app.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
-import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.token';
+import container from '@/config/container.config.ts';
+import { AppError } from '@core/shared/errors/app.error.ts';
+import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
+import { LoggerToken } from '@core/shared/logger/logger.token.ts';
 
 /**
  * @interface ApiErrorResponse

@@ -3,9 +3,9 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgTable, PgColumn } from 'drizzle-orm/pg-core';
 import { Result, ok, err } from 'neverthrow';
 
-import { AppError } from '@/shared/errors/app.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
-import type { LoggerInterface } from '@/shared/logger/logger.interface';
+import { AppError } from '@core/shared/errors/app.error.ts';
+import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
 
 /**
  * Finds a single database record by its ID column.

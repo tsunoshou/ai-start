@@ -1,13 +1,13 @@
 import 'reflect-metadata';
 import { describe, it, expect } from 'vitest';
 
-import { UserDTO } from '@/application/dtos/user.dto';
-import { UserId } from '@/domain/models/user/user-id.vo';
-import { UserName } from '@/domain/models/user/user-name.vo';
-import { User } from '@/domain/models/user/user.entity';
-import { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
-import { Email } from '@/shared/value-objects/email.vo';
-import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+import { UserDTO } from '@core/user/application/dtos/user.dto.ts';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo.ts';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo.ts';
+import { User } from '@core/user/domain/entities/user.entity.ts';
+import { DateTimeString } from '@core/shared/value-objects/date-time-string.vo.ts';
+import { Email } from '@core/shared/value-objects/email.vo.ts';
+import { PasswordHash } from '@core/shared/value-objects/password-hash.vo.ts';
 
 import { UserMapper, UserDbSelect } from '../user.mapper'; // Adjust path if necessary
 

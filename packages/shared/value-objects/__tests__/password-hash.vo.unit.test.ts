@@ -1,9 +1,9 @@
 import { ok, err, Result } from 'neverthrow';
 import { describe, it, expect, vi } from 'vitest';
 
-import { AppError } from '@/shared/errors/app.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
-import { ValidationError } from '@/shared/errors/validation.error';
+import { AppError } from '@core/shared/errors/app.error.ts';
+import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import { ValidationError } from '@core/shared/errors/validation.error.ts';
 
 import { PasswordHash } from '../password-hash.vo';
 

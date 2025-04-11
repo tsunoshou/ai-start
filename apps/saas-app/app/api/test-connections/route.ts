@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import '@/config/container.config'; // DIコンテナ設定を明示的にインポート
+import '@/config/container.config.ts'; // DIコンテナ設定を明示的にインポート
 import { NextResponse } from 'next/server';
 import { container } from 'tsyringe';
 
@@ -7,9 +7,9 @@ import {
   testDatabaseConnection,
   testSupabaseConnection,
   testOpenAIConnection,
-} from '@/infrastructure/database/utils/test-db-connection';
-import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.token';
+} from '@core/shared/infrastructure/database/utils/test-db-connection.ts';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
+import { LoggerToken } from '@core/shared/logger/logger.token.ts';
 
 // DIコンテナからロガーを取得
 const logger = container.resolve<LoggerInterface>(LoggerToken);

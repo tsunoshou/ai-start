@@ -3,7 +3,7 @@
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import * as React from 'react';
 
-import { cn } from '@/shared/utils/ui';
+import { cn } from '@core/shared/utils/ui.ts';
 
 const Slider = React.forwardRef<
   React.ElementRef<typeof SliderPrimitive.Root>,

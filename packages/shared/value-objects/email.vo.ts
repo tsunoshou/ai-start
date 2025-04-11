@@ -11,7 +11,7 @@
 import { Result, ok, err } from 'neverthrow';
 import { z } from 'zod';
 
-import { ValidationError } from '@/shared/errors/validation.error';
+import { ValidationError } from '@core/shared/errors/validation.error.ts';
 
 import { BaseValueObject } from './base.vo'; // BaseValueObject をインポート
 

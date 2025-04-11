@@ -4,8 +4,8 @@
 import { ReactNode } from 'react';
 
 // parent & sibling
-import { I18N_PROVIDER_CLIENT } from '@/i18n/client';
-import { DEFAULT_LOCALE } from '@/i18n/config/settings';
+import { I18N_PROVIDER_CLIENT } from '@core/shared/i18n/client.ts';
+import { DEFAULT_LOCALE } from '@core/shared/i18n/config/settings.ts';
 
 interface I18nProviderProps {
   children: ReactNode;

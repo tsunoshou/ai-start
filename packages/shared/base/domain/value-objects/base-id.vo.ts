@@ -1,4 +1,4 @@
-import { Identifier } from '@/shared/types/common.types';
+import { Identifier } from '@core/shared/types/common.types.ts';
 
 /**
  * @abstract

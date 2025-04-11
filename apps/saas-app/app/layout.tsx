@@ -2,9 +2,9 @@ import 'reflect-metadata';
 import type { Metadata } from 'next';
 
 import './globals.css';
-import { DEFAULT_LOCALE } from '@/i18n/config/settings';
+import { DEFAULT_LOCALE } from '@core/shared/i18n/config/settings.ts';
 import { Toaster } from '@/presentation/components/ui/toaster';
-import { I18nProvider } from '@/presentation/providers/I18nProvider';
+import { I18nProvider } from '@core/ui/providers/I18nProvider.tsx';
 
 export const metadata: Metadata = {
   title: 'AiStart - AI支援によるビジネスプラン作成支援SaaS',

@@ -5,19 +5,19 @@ import type { Mock } from 'vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Import only the schema and derive the type implicitly where needed
-import { userDtoSchema } from '@/application/dtos/user.dto';
-import type { UserId } from '@/domain/models/user/user-id.vo';
-import type { UserName } from '@/domain/models/user/user-name.vo';
-import { User } from '@/domain/models/user/user.entity';
-import { UserRepositoryInterface } from '@/domain/repositories/user.repository.interface';
-import { AppError } from '@/shared/errors/app.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
-import { InfrastructureError } from '@/shared/errors/infrastructure.error';
-import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import * as passwordUtils from '@/shared/utils/security/password.utils';
-import type { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
-import type { Email } from '@/shared/value-objects/email.vo';
-import type { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+import { userDtoSchema } from '@core/user/application/dtos/user.dto.ts';
+import type { UserId } from '@core/user/domain/value-objects/user-id.vo.ts';
+import type { UserName } from '@core/user/domain/value-objects/user-name.vo.ts';
+import { User } from '@core/user/domain/entities/user.entity.ts';
+import { UserRepositoryInterface } from '@core/user/domain/repositories/user.repository.interface.ts';
+import { AppError } from '@core/shared/errors/app.error.ts';
+import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import { InfrastructureError } from '@core/shared/errors/infrastructure.error.ts';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
+import * as passwordUtils from '@core/shared/utils/security/password.utils.ts';
+import type { DateTimeString } from '@core/shared/value-objects/date-time-string.vo.ts';
+import type { Email } from '@core/shared/value-objects/email.vo.ts';
+import type { PasswordHash } from '@core/shared/value-objects/password-hash.vo.ts';
 
 import { CreateUserUsecase } from '../create-user.usecase';
 

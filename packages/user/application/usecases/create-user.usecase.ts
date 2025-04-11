@@ -3,24 +3,24 @@ import { Result, ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
 // Domain Layer
-import { UserDTO } from '@/application/dtos/user.dto';
-import { UserName } from '@/domain/models/user/user-name.vo';
-import { User } from '@/domain/models/user/user.entity';
+import { UserDTO } from '@core/user/application/dtos/user.dto.ts';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo.ts';
+import { User } from '@core/user/domain/entities/user.entity.ts';
 import {
   type UserRepositoryInterface,
   UserRepositoryToken,
-} from '@/domain/repositories/user.repository.interface';
+} from '@core/user/domain/repositories/user.repository.interface.ts';
 // Shared Layer
-import { UserMapper } from '@/infrastructure/mappers/user.mapper';
-import { AppError } from '@/shared/errors/app.error';
-import { BaseError } from '@/shared/errors/base.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
-import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.token';
-import { AppResult } from '@/shared/types/common.types';
-import { hashPassword } from '@/shared/utils/security/password.utils';
-import { Email } from '@/shared/value-objects/email.vo';
-import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper.ts';
+import { AppError } from '@core/shared/errors/app.error.ts';
+import { BaseError } from '@core/shared/errors/base.error.ts';
+import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
+import { LoggerToken } from '@core/shared/logger/logger.token.ts';
+import { AppResult } from '@core/shared/types/common.types.ts';
+import { hashPassword } from '@core/shared/utils/security/password.utils.ts';
+import { Email } from '@core/shared/value-objects/email.vo.ts';
+import { PasswordHash } from '@core/shared/value-objects/password-hash.vo.ts';
 
 // Application Layer
 

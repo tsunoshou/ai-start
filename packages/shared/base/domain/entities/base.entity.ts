@@ -1,6 +1,6 @@
-import { EntityBase } from '@/shared/types/entity-base.interface';
-import { BaseId } from '@/shared/value-objects/base-id.vo';
-import { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
+import { EntityBase } from '@core/shared/base/domain/interfaces/entity-base.interface.ts';
+import { BaseId } from '@core/shared/base/domain/value-objects/base-id.vo.ts';
+import { DateTimeString } from '@core/shared/value-objects/date-time-string.vo.ts';
 
 /**
  * @abstract

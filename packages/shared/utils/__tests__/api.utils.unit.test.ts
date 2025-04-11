@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 
-import { AppError } from '@/shared/errors/app.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
-import { apiSuccess, apiError, handleApiError, processApiRequest } from '@/shared/utils/api.utils';
+import { AppError } from '@core/shared/errors/app.error.ts';
+import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import { apiSuccess, apiError, handleApiError, processApiRequest } from '@core/shared/utils/api.utils.ts';
 
 // モックロガーを直接定義
 const MOCK_LOGGER = {

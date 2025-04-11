@@ -2,7 +2,7 @@
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import Link from 'next/link';
 
-import ConnectionTest from '@/presentation/components/common/ConnectionTest';
+import ConnectionTest from '@core/ui/components/dev/ConnectionTest.tsx';
 import { Button } from '@/presentation/components/ui/button';
 
 export default function Home() {

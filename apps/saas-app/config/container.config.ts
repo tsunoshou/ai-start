@@ -8,20 +8,20 @@ import { container } from 'tsyringe';
 // Import Interfaces & Tokens
 
 // Import Implementations
-import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
-import { DeleteUserUsecase } from '@/application/usecases/user/delete-user.usecase';
-import { GetUserByIdUsecase } from '@/application/usecases/user/get-user-by-id.usecase';
-import { ListUsersUsecase } from '@/application/usecases/user/list-users.usecase';
-import { UpdateUserProfileUsecase } from '@/application/usecases/user/update-user-profile.usecase';
-import { ENV } from '@/config/environment';
+import { CreateUserUsecase } from '@core/user/application/usecases/create-user.usecase.ts';
+import { DeleteUserUsecase } from '@core/user/application/usecases/delete-user.usecase.ts';
+import { GetUserByIdUsecase } from '@core/user/application/usecases/get-user-by-id.usecase.ts';
+import { ListUsersUsecase } from '@core/user/application/usecases/list-users.usecase.ts';
+import { UpdateUserProfileUsecase } from '@core/user/application/usecases/update-user-profile.usecase.ts';
+import { ENV } from '@/config/environment.ts';
 import {
   UserRepositoryInterface,
   UserRepositoryToken,
-} from '@/domain/repositories/user.repository.interface';
-import { UserRepository } from '@/infrastructure/database/repositories/user.repository';
-import { ConsoleLogger } from '@/shared/logger/console.logger';
-import { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.token';
+} from '@core/user/domain/repositories/user.repository.interface.ts';
+import { UserRepository } from '@core/user/infrastructure/repositories/user.repository.ts';
+import { ConsoleLogger } from '@core/shared/logger/console.logger.ts';
+import { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
+import { LoggerToken } from '@core/shared/logger/logger.token.ts';
 
 // --- Dependency Registration ---
 

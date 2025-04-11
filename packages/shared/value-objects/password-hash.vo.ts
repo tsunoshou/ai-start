@@ -1,8 +1,8 @@
 import { Result, ok, err } from 'neverthrow';
 import { z } from 'zod';
 
-import { ValidationError } from '@/shared/errors/validation.error';
-import { BaseValueObject } from '@/shared/value-objects/base.vo';
+import { ValidationError } from '@core/shared/errors/validation.error.ts';
+import { BaseValueObject } from '@core/shared/base/domain/value-objects/base.vo.ts';
 
 // Schema for password hash validation (minimum 8 characters, as an example constraint)
 const PASSWORD_HASH_SCHEMA = z

@@ -3,8 +3,8 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { container } from 'tsyringe';
 
-import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.token';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
+import { LoggerToken } from '@core/shared/logger/logger.token.ts';
 
 import { getDatabaseUrl } from '../../config/environment';
 

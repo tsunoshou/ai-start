@@ -1,19 +1,19 @@
 import { ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
-import { UserDTO } from '@/application/dtos/user.dto';
-import { UserId } from '@/domain/models/user/user-id.vo';
+import { UserDTO } from '@core/user/application/dtos/user.dto.ts';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo.ts';
 // import { User } from '@/domain/models/user/user.entity'; // Removed unused import
 import {
   type UserRepositoryInterface,
   UserRepositoryToken,
-} from '@/domain/repositories/user.repository.interface';
-import { UserMapper } from '@/infrastructure/mappers/user.mapper';
-import { AppError } from '@/shared/errors/app.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
-import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.token';
-import { AppResult } from '@/shared/types/common.types';
+} from '@core/user/domain/repositories/user.repository.interface.ts';
+import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper.ts';
+import { AppError } from '@core/shared/errors/app.error.ts';
+import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
+import { LoggerToken } from '@core/shared/logger/logger.token.ts';
+import { AppResult } from '@core/shared/types/common.types.ts';
 
 // Application Layer
 

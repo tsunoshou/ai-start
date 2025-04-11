@@ -4,21 +4,21 @@ import type { Result } from 'neverthrow';
 import type { Mock } from 'vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import type { UserDTO } from '@/application/dtos/user.dto';
+import type { UserDTO } from '@core/user/application/dtos/user.dto.ts';
 // UpdateUserDTOは存在しない、代わりにupdate-user-profile.usecaseで定義されているInput/Outputを使用
 // import type { UpdateUserDTO } from '@/application/dtos/update-user.dto';
-import { UserId } from '@/domain/models/user/user-id.vo';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo.ts';
 // UserNameはモックとして使用するので、typeをつけない
-import { UserName } from '@/domain/models/user/user-name.vo';
-import { User } from '@/domain/models/user/user.entity';
-import { UserRepositoryInterface } from '@/domain/repositories/user.repository.interface';
-import { AppError } from '@/shared/errors/app.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
-import { InfrastructureError } from '@/shared/errors/infrastructure.error';
-import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import type { DateTimeString } from '@/shared/value-objects/date-time-string.vo';
-import type { Email } from '@/shared/value-objects/email.vo';
-import type { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo.ts';
+import { User } from '@core/user/domain/entities/user.entity.ts';
+import { UserRepositoryInterface } from '@core/user/domain/repositories/user.repository.interface.ts';
+import { AppError } from '@core/shared/errors/app.error.ts';
+import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import { InfrastructureError } from '@core/shared/errors/infrastructure.error.ts';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
+import type { DateTimeString } from '@core/shared/value-objects/date-time-string.vo.ts';
+import type { Email } from '@core/shared/value-objects/email.vo.ts';
+import type { PasswordHash } from '@core/shared/value-objects/password-hash.vo.ts';
 
 import { UpdateUserProfileUsecase } from '../update-user-profile.usecase';
 

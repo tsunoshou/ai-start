@@ -1,8 +1,8 @@
 import { Result, ok, err } from 'neverthrow';
 
-import { AppError } from '@/shared/errors/app.error';
-import { ErrorCode } from '@/shared/errors/error-code.enum';
-import { InfrastructureError } from '@/shared/errors/infrastructure.error';
+import { AppError } from '@core/shared/errors/app.error.ts';
+import { ErrorCode } from '@core/shared/enums/error-code.enum.ts';
+import { InfrastructureError } from '@core/shared/errors/infrastructure.error.ts';
 
 /**
  * 値オブジェクトマッピング定義

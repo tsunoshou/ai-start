@@ -1,9 +1,9 @@
 import { validate as uuidValidate } from 'uuid';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import * as DateTimeStringModule from '@/shared/value-objects/date-time-string.vo';
-import { Email } from '@/shared/value-objects/email.vo';
-import { PasswordHash } from '@/shared/value-objects/password-hash.vo';
+import * as DateTimeStringModule from '@core/shared/value-objects/date-time-string.vo.ts';
+import { Email } from '@core/shared/value-objects/email.vo.ts';
+import { PasswordHash } from '@core/shared/value-objects/password-hash.vo.ts';
 
 import { UserId } from '../user-id.vo';
 import { UserName } from '../user-name.vo';

@@ -1,7 +1,7 @@
-import { UserId } from '@/domain/models/user/user-id.vo';
-import { User } from '@/domain/models/user/user.entity';
-import { AppResult } from '@/shared/types/common.types';
-import { Email } from '@/shared/value-objects/email.vo';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo.ts';
+import { User } from '@core/user/domain/entities/user.entity.ts';
+import { AppResult } from '@core/shared/types/common.types.ts';
+import { Email } from '@core/shared/value-objects/email.vo.ts';
 
 import { BaseRepositoryInterface } from './base.repository.interface'; // Import base interface
 

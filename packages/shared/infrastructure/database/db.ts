@@ -2,10 +2,10 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { container } from 'tsyringe';
 
-import { ENV } from '@/config/environment';
-import * as schema from '@/infrastructure/database/schema'; // スキーマ定義をインポート
-import type { LoggerInterface } from '@/shared/logger/logger.interface';
-import { LoggerToken } from '@/shared/logger/logger.token';
+import { ENV } from '@/config/environment.ts';
+import * as schema from '@core/shared/infrastructure/database/schema/index.ts'; // スキーマ定義をインポート
+import type { LoggerInterface } from '@core/shared/logger/logger.interface.ts';
+import { LoggerToken } from '@core/shared/logger/logger.token.ts';
 
 // DIコンテナからロガーを取得
 const logger = container.resolve<LoggerInterface>(LoggerToken);
