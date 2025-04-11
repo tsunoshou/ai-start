@@ -63,3 +63,9 @@ storybook-static/
 
 # Vitest / Test Results
 /test-results/
+
+# Turborepo cache
+.turbo/
+
+# pnpm store (optional, usually global but good to ignore locally)
+.pnpm-store/
