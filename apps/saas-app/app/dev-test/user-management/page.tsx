@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
-import { Button } from '@/presentation/components/ui/button';
+import { Button } from '@core/ui/components/ui/button';
 import {
   Card,
   CardContent,
@@ -10,11 +10,12 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/presentation/components/ui/card';
-import { Input } from '@/presentation/components/ui/input';
-import { Label } from '@/presentation/components/ui/label';
-import { Separator } from '@/presentation/components/ui/separator';
-import { Textarea } from '@/presentation/components/ui/textarea';
+} from '@core/ui/components/ui/card';
+import { Input } from '@core/ui/components/ui/input';
+import { Label } from '@core/ui/components/ui/label';
+import { Separator } from '@core/ui/components/ui/separator';
+import { Textarea } from '@core/ui/components/ui/textarea';
+import { UserDto } from '@core/user/application/dtos/user.dto.ts';
 
 /**
  * 開発テスト用: ユーザー管理機能テストページ

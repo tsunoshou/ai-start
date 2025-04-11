@@ -1,9 +1,10 @@
 // ESLintルールを一時的に無効化（Reactコンポーネントは大文字で始める必要があるため）
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import Link from 'next/link';
+import React from 'react';
 
-import ConnectionTest from '@core/ui/components/dev/ConnectionTest.tsx';
-import { Button } from '@/presentation/components/ui/button';
+import { ConnectionTest } from '@core/ui/components/dev/ConnectionTest';
+import { Button } from '@core/ui/components/ui/button';
 
 export default function Home() {
   return (
