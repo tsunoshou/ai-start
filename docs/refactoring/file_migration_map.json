@@ -185,11 +185,11 @@
   },
   {
     "from": "infrastructure/database/repositories/user.repository.ts",
-    "to": "packages/user/infrastructure/database/repositories/user.repository.ts"
+    "to": "packages/user/infrastructure/repositories/user.repository.ts"
   },
   {
     "from": "infrastructure/database/repositories/__tests__/user.repository.integration.test.ts",
-    "to": "packages/user/infrastructure/database/repositories/__tests__/user.repository.integration.test.ts"
+    "to": "packages/user/infrastructure/repositories/__tests__/user.repository.integration.test.ts"
   },
   {
     "from": "infrastructure/database/schema/_common.ts",
@@ -373,18 +373,18 @@
   },
   {
     "from": "presentation/components/common/ConnectionTest.tsx",
-    "to": "packages/web/components/dev/ConnectionTest.tsx"
+    "to": "packages/ui/components/dev/ConnectionTest.tsx"
   },
   {
     "from": "presentation/hooks/use-toast.ts",
-    "to": "packages/web/hooks/use-toast.ts"
+    "to": "packages/ui/hooks/use-toast.ts"
   },
   {
     "from": "presentation/providers/I18nProvider.tsx",
-    "to": "packages/web/providers/I18nProvider.tsx"
+    "to": "packages/ui/providers/I18nProvider.tsx"
   },
   {
     "from": "presentation/components/common/ui/",
-    "to": "packages/web/components/ui/"
+    "to": "packages/ui/components/ui/"
   }
 ]

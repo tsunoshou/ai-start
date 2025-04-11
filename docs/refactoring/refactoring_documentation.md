@@ -351,8 +351,8 @@ packages/user/
 | `infrastructure/database/helpers/crud.helpers.ts`                    | `packages/shared/infrastructure/database/helpers/crud.helpers.ts`                            | 汎用的なCRUDヘルパー関数。共有インフラとして `shared` へ。                                                                                                                                              |\
 | `infrastructure/database/migrations/*` (全ファイル)                  | `packages/shared/infrastructure/database/migrations/*`                                         | Drizzleマイグレーションファイル。共通インフラとして `shared` へ。                                                                                                                                        |\
 | `infrastructure/database/repositories/base.repository.ts`            | `packages/shared/base/infrastructure/repositories/base.repository.ts`                    | 汎用ベースリポジトリ。`shared/base` のインフラ層（リポジトリ実装）へ。                                                                                                                  |
-| `infrastructure/database/repositories/user.repository.ts`            | `packages/user/infrastructure/database/repositories/user.repository.ts`                      | Userドメイン固有リポジトリ。`user` パッケージへ。                                                                                                                                               |\
-| `infrastructure/database/repositories/__tests__/user.repository.integration.test.ts` | `packages/user/infrastructure/database/repositories/__tests__/user.repository.integration.test.ts` | Userリポジトリ統合テスト。`user` パッケージへ。                                                                                                                                             |\
+| `infrastructure/database/repositories/user.repository.ts`            | `packages/user/infrastructure/repositories/user.repository.ts`                      | Userドメイン固有リポジトリ。`user` パッケージへ。                                                                                                                                               |\
+| `infrastructure/database/repositories/__tests__/user.repository.integration.test.ts` | `packages/user/infrastructure/repositories/__tests__/user.repository.integration.test.ts` | Userリポジトリ統合テスト。`user` パッケージへ。                                                                                                                                             |\
 | `infrastructure/database/schema/_common.ts`                          | `packages/shared/infrastructure/database/schema/_common.ts`                                  | 共通スキーマ定義（ID、タイムスタンプ等）。共有インフラとして `shared` へ。                                                                                                                         |
 | `infrastructure/database/schema/_common.ts`                          | `packages/shared/infrastructure/database/schema/_common.ts`                                  | 共通スキーマ定義（ID、タイムスタンプ等）。共有インフラとして `shared` へ。                                                                                                                                   |\
 | `infrastructure/database/schema/index.ts`                            | `packages/shared/infrastructure/database/schema/index.ts`                                    | スキーマファイルのエクスポート。共有インフラとして `shared` へ。                                                                                                                                          |\
@@ -399,10 +399,10 @@ packages/user/
 | `shared/value-objects/__tests__/password-hash.vo.test.ts`          | `packages/shared/value-objects/__tests__/password-hash.vo.test.ts`                        | 値オブジェクトのテスト。`shared` パッケージへ。                                                        |\
 | `shared/value-objects/__tests__/password.vo.test.ts`               | `packages/shared/value-objects/__tests__/password.vo.test.ts`                             | 値オブジェクトのテスト。`shared` パッケージへ。                                                        |\
 | `shared/value-objects/__tests__/url.vo.test.ts`                    | `packages/shared/value-objects/__tests__/url.vo.test.ts`                                  | 値オブジェクトのテスト。`shared` パッケージへ。                                                        |\
-| `presentation/components/common/ConnectionTest.tsx` | `packages/web/components/dev/ConnectionTest.tsx`  | 接続テスト用コンポーネント。Webアプリ固有 (dev用)。               |\
-| `presentation/hooks/use-toast.ts`                | `packages/web/hooks/use-toast.ts`                 | トースト表示用カスタムフック。Webアプリ固有。                     |\
-| `presentation/providers/I18nProvider.tsx`        | `packages/web/providers/I18nProvider.tsx`         | i18nプロバイダー。Webアプリ固有。                               | 
-| `presentation/components/common/ui/` | `packages/web/components/ui/` | Shadcn/UIコンポーネント群。Webアプリ固有UI。 |\
+| `presentation/components/common/ConnectionTest.tsx` | `packages/ui/components/dev/ConnectionTest.tsx`  | 接続テスト用コンポーネント。UIパッケージ (dev用) へ。               |
+| `presentation/hooks/use-toast.ts`                | `packages/ui/hooks/use-toast.ts`                 | トースト表示用カスタムフック。UIパッケージへ。                     |
+| `presentation/providers/I18nProvider.tsx`        | `packages/ui/providers/I18nProvider.tsx`         | i18nプロバイダー。UIパッケージへ。                               | 
+| `presentation/components/common/ui/` | `packages/ui/components/ui/` | Shadcn/UIコンポーネント群。UIパッケージへ。 |
 
 ## 🗺️ 移行ロードマップ
 
@@ -1767,7 +1767,7 @@ export class UserRepository implements UserRepositoryInterface {
 import { NextRequest, NextResponse } from 'next/server';
 import { container } from 'tsyringe';
 import { CreateUserUseCase } from '@core/user/application/usecases/create-user.usecase';
-import { CreateUserDto } from '@core/user/application/dtos/create-user.dto'; // パスワードを含まないDTO
+import { CreateUserDto } from '@core/user/application/dtos/create-user.dto'; // email, name のみ
 import { UserAlreadyExistsError } from '@core/user/domain/errors/user-already-exists.error';
 import { ValidationError } from '@core/shared/errors';
 
