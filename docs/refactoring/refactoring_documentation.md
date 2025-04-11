@@ -431,12 +431,12 @@ packages/user/
       "compilerOptions": { /* ...基本的な設定... */,
         "baseUrl": ".",
         "paths": {
-          "@core/shared/*": ["packages/shared/src/*"],
-          "@core/infrastructure/*": ["packages/infrastructure/src/*"],
-          "@core/ui/*": ["packages/ui/src/*"],
-          "@core/user/*": ["packages/user/src/*"],
+          "@core/shared/*": ["packages/shared/*"], // 修正: src/ を削除
+          "@core/infrastructure/*": ["packages/infrastructure/*"], // 修正: src/ を削除
+          "@core/ui/*": ["packages/ui/*"], // 修正: src/ を削除
+          "@core/user/*": ["packages/user/*"], // 修正: src/ を削除
           /* 他のドメイン */
-          "@/*": ["apps/saas-app/src/*"]
+          "@/*": ["apps/saas-app/*"] // 修正: src/ を削除 (app側も src を使わない場合)
         }
       },
       "exclude": ["node_modules"]
@@ -455,7 +455,7 @@ packages/user/
 
 2.  **ファイルの物理的な移動**
     - 前述の「移行ファイル対応表」に基づき、既存のファイルを `apps/` および `packages/` 配下の対応するディレクトリに移動します。
-    - 例: `mv app apps/saas-app`, `mkdir -p packages/user/src/domain && mv domain/models/user packages/user/src/domain/entities` など (**src ディレクトリ**配下に配置することに注意)。
+    - 例: `mv app apps/saas-app`, `mkdir -p packages/user/domain && mv domain/models/user packages/user/domain/entities` など。
     - Next.js の設定ファイル (`next.config.js`, `tailwind.config.js`, `.env*` など) も `apps/saas-app` 直下に移動します。
 
 3.  **パスエイリアスを使用したインポートパス修正**
@@ -502,9 +502,9 @@ packages/user/
     // packages/user/tsconfig.json の例
     {
       "extends": "../../tsconfig.base.json",
-      "compilerOptions": { "outDir": "dist", "rootDir": "src" },
-      "include": ["src"],
-      "exclude": ["node_modules", "dist"]
+      "compilerOptions": { "outDir": "dist" }, // 修正: rootDir を削除
+      "include": ["."], // 修正: src を . に変更 (パッケージ全体を含む)
+      "exclude": ["node_modules", "dist", "__tests__"] // dist とテストを除外
     }
     ```
 
@@ -638,43 +638,20 @@ packages/user/
 
 ```
 @core/shared/
-├── src/
-│   ├── base/              # 基本クラス・インターフェース
-│   │   ├── entity.ts      # Entity基底クラス
-│   │   ├── value-object.ts # ValueObject基底クラス
-│   │   ├── aggregate-root.ts # AggregateRoot基底クラス
-│   │   ├── repository.ts  # Repository基底インターフェース
-│   │   ├── service.ts     # DomainService基底クラス
-│   │   └── use-case.ts    # UseCase基底クラス
-│   │
-│   ├── errors/            # エラー定義
-│   │   ├── application-error.ts # アプリケーションエラー基底クラス
-│   │   ├── domain-error.ts # ドメインエラー基底クラス
-│   │   ├── infrastructure-error.ts # インフラエラー基底クラス
-│   │   └── index.ts       # エラーのエクスポート
-│   │
-│   ├── result/            # 結果型
-│   │   ├── result.ts      # 成功/失敗を表現する Result<T, E> 型
-│   │   ├── async-result.ts # 非同期結果を表現する AsyncResult<T, E> 型
-│   │   └── index.ts       # Resultのエクスポート
-│   │
-│   ├── types/             # 共通型定義
-│   │   ├── common.ts      # 共通型
-│   │   ├── id.ts          # ID関連型
-│   │   └── index.ts       # 型のエクスポート
-│   │
-│   ├── utils/             # ユーティリティ関数
-│   │   ├── validation.ts  # バリデーション
-│   │   ├── string.ts      # 文字列操作
-│   │   ├── date.ts        # 日付操作
-│   │   └── index.ts       # ユーティリティのエクスポート
-│   │
-│   └── value-objects/     # 共通値オブジェクト
-│       ├── email.ts       # メールアドレス
-│       ├── phone-number.ts # 電話番号
-│       ├── password.ts    # パスワード
-│       └── index.ts       # 値オブジェクトのエクスポート
-│
+├── base/              # 基本クラス・インターフェース
+│   ├── entity.ts      # Entity基底クラス
+│   ├── value-object.ts # ValueObject基底クラス
+│   // ... 他の base ファイル
+├── errors/            # エラー定義
+│   // ... エラーファイル
+├── result/            # 結果型
+│   // ... 結果型ファイル
+├── types/             # 共通型定義
+│   // ... 型定義ファイル
+├── utils/             # ユーティリティ関数
+│   // ... ユーティリティファイル
+└── value-objects/     # 共通値オブジェクト
+│   // ... 値オブジェクトファイル
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -684,29 +661,17 @@ packages/user/
 
 ```
 @core/infrastructure/
-├── src/
-│   ├── database/          # データベース
-│   │   ├── client.ts      # DBクライアント (Drizzle)
-│   │   ├── transaction.ts # トランザクション管理
-│   │   └── index.ts       # DBエクスポート
-│   │
-│   ├── auth/              # 認証基盤
-│   │   ├── jwt.ts         # JWT操作
-│   │   ├── password.ts    # パスワードハッシュ
-│   │   └── index.ts       # 認証エクスポート
-│   │
-│   ├── storage/           # ストレージ
-│   │   ├── file-storage.ts # ファイルストレージ
-│   │   └── index.ts       # ストレージエクスポート
-│   │
-│   ├── logger/            # ロギング
-│   │   ├── logger.ts      # ロガー
-│   │   └── index.ts       # ロガーエクスポート
-│   │
-│   └── http/              # HTTP/API連携
-│       ├── client.ts      # HTTP/APIクライアント
-│       └── index.ts       # HTTPエクスポート
-│
+├── database/          # データベース
+│   ├── client.ts      # DBクライアント (Drizzle)
+│   // ... 他の DB ファイル
+├── auth/              # 認証基盤
+│   // ... 認証ファイル
+├── storage/           # ストレージ
+│   // ... ストレージファイル
+├── logger/            # ロギング
+│   // ... ロガーファイル
+└── http/              # HTTP/API連携
+│   // ... HTTP ファイル
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -1393,49 +1358,21 @@ Userドメインの主な責務:
 │   │   ├── __tests__/       # テスト (Vitest)
 │   │   │   └── user.entity.unit.test.ts
 │   │   └── user.entity.ts
-│   │
-│   ├── value-objects/       # 値オブジェクト
-│   │   ├── __tests__/       # テスト (Vitest)
-│   │   │   └── user-name.vo.unit.test.ts
-│   │   ├── user-id.vo.ts
-│   │   └── user-name.vo.ts
-│   │   # PasswordHash.vo.ts は auth ドメインへ移動
-│   │
-│   ├── enums/               # 列挙型
-│   │   ├── __tests__/       # テスト (Vitest)
-│   │   │   └── user-role.enum.unit.test.ts
-│   │   └── user-role.enum.ts # ユーザーの役割を示すEnum (認可ロジック自体はauthドメイン)
-│   │
-│   ├── repositories/        # リポジトリインターフェース
-│   │   └── user.repository.interface.ts
-│   │
-│   └── services/            # ドメインサービス (Userドメイン固有のものがあれば)
-│       # authentication.service.ts は auth ドメインへ移動
-│
+│   // ... 他の domain ファイル
 ├── application/             # アプリケーション層
 │   ├── usecases/            # ユースケース
 │   │   ├── __tests__/       # テスト (Vitest)
-│   │   │   ├── create-user.usecase.unit.test.ts
-│   │   │   └── create-user.usecase.integration.test.ts
-│   │   ├── create-user.usecase.ts
-│   │   └── find-user-by-id.usecase.ts
-│   │   # authenticate-user.usecase.ts は auth ドメインへ移動
-│   │
+│   │   │   └── create-user.usecase.unit.test.ts
+│   │   └── create-user.usecase.ts
 │   └── dtos/                # データ転送オブジェクト
-│       ├── user.dto.ts
-│       └── create-user.dto.ts # パスワードは含まない
-│
+│       └── user.dto.ts
 ├── infrastructure/          # インフラストラクチャ層
 │   ├── repositories/        # リポジトリ実装
 │   │   ├── __tests__/       # テスト (Vitest)
 │   │   │   └── user.repository.integration.test.ts
-│   │   └── user.repository.ts  # Drizzleによる実装
-│   │
+│   │   └── user.repository.ts
 │   └── mappers/             # マッパー
-│       ├── __tests__/       # テスト (Vitest)
-│       │   └── user.mapper.unit.test.ts
 │       └── user.mapper.ts
-│
 ├── README.md
 └── package.json
 ```
@@ -1448,8 +1385,8 @@ Userドメインの主な責務:
 
 ```typescript
 // @core/user/domain/entities/user.entity.ts
-import { BaseEntity } from '@core/shared/base';
-import { Result } from '@core/shared/result';
+import { BaseEntity } from '@core/shared/base/entity'; // 修正: /base のみでOK
+import { Result } from '@core/shared/result/result'; // 修正: /result のみでOK
 import { Email } from '@core/shared/value-objects/email.vo';
 import { UserId, UserName } from '../value-objects'; // PasswordHash は削除
 import { UserRoleEnum } from '../enums/user-role.enum';
@@ -2258,30 +2195,30 @@ export function registerGenerateCommands(program: Command): void {
    ```typescript
    // @core/user/index.ts
    // ドメイン層のエクスポート
-   export * from './src/domain/entities';
-   export * from './src/domain/value-objects';
-   export * from './src/domain/repositories';
-   export * from './src/domain/events';
+   export * from './domain/entities';
+   export * from './domain/value-objects';
+   export * from './domain/repositories';
+   export * from './domain/events';
 
    // ユースケースのエクスポート
-   export * from './src/application/use-cases';
-   export * from './src/application/dtos';
+   export * from './application/use-cases';
+   export * from './application/dtos';
 
    // 実装のエクスポート（オプショナル）
-   export * from './src/infrastructure/repositories';
-   // export * from './src/infrastructure/auth'; // auth ドメインへ
+   export * from './infrastructure/repositories';
+   // export * from './infrastructure/auth'; // auth ドメインへ
 
    // フロントエンド用フックのエクスポート (認証関連は auth へ)
-   // export * from './src/presentation/hooks';
+   // export * from './presentation/hooks';
    ```
 
 2. **課金管理ライブラリ (@core/billing)**: (内容は既存のまま)
    ```typescript
    // @core/billing/index.ts
-   export * from './src/domain/entities';
-   export * from './src/domain/value-objects';
-   export * from './src/domain/repositories';
-   export * from './src/domain/services';
+   export * from './domain/entities';
+   export * from './domain/value-objects';
+   export * from './domain/repositories';
+   export * from './domain/services';
 
    export * from './src/application/use-cases';
    export * from './src/application/dtos';
