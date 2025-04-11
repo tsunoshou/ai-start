@@ -33,23 +33,23 @@
   },
   {
     "from": "application/usecases/user/__tests__/create-user.usecase.test.ts",
-    "to": "packages/user/application/usecases/__tests__/create-user.usecase.test.ts"
+    "to": "packages/user/application/usecases/__tests__/create-user.usecase.unit.test.ts"
   },
   {
     "from": "application/usecases/user/__tests__/delete-user.usecase.test.ts",
-    "to": "packages/user/application/usecases/__tests__/delete-user.usecase.test.ts"
+    "to": "packages/user/application/usecases/__tests__/delete-user.usecase.unit.test.ts"
   },
   {
     "from": "application/usecases/user/__tests__/get-user-by-id.usecase.test.ts",
-    "to": "packages/user/application/usecases/__tests__/get-user-by-id.usecase.test.ts"
+    "to": "packages/user/application/usecases/__tests__/get-user-by-id.usecase.unit.test.ts"
   },
   {
     "from": "application/usecases/user/__tests__/list-users.usecase.test.ts",
-    "to": "packages/user/application/usecases/__tests__/list-users.usecase.test.ts"
+    "to": "packages/user/application/usecases/__tests__/list-users.usecase.unit.test.ts"
   },
   {
     "from": "application/usecases/user/__tests__/update-user-profile.usecase.test.ts",
-    "to": "packages/user/application/usecases/__tests__/update-user-profile.usecase.test.ts"
+    "to": "packages/user/application/usecases/__tests__/update-user-profile.usecase.unit.test.ts"
   },
   {
     "from": "application/usecases/user/create-user.usecase.ts",
@@ -105,15 +105,15 @@
   },
   {
     "from": "domain/models/user/__tests__/user.entity.test.ts",
-    "to": "packages/user/domain/entities/__tests__/user.entity.test.ts"
+    "to": "packages/user/domain/entities/__tests__/user.entity.unit.test.ts"
   },
   {
     "from": "domain/models/user/__tests__/user-name.vo.test.ts",
-    "to": "packages/user/domain/value-objects/__tests__/user-name.vo.test.ts"
+    "to": "packages/user/domain/value-objects/__tests__/user-name.vo.unit.test.ts"
   },
   {
     "from": "domain/models/user/__tests__/user-id.vo.test.ts",
-    "to": "packages/user/domain/value-objects/__tests__/user-id.vo.test.ts"
+    "to": "packages/user/domain/value-objects/__tests__/user-id.vo.unit.test.ts"
   },
   {
     "from": "domain/models/base/base.entity.ts",
@@ -229,11 +229,11 @@
   },
   {
     "from": "infrastructure/mappers/__tests__/base.mapper.test.ts",
-    "to": "packages/shared/base/infrastructure/mappers/__tests__/base.mapper.test.ts"
+    "to": "packages/shared/base/infrastructure/mappers/__tests__/base.mapper.unit.test.ts"
   },
   {
     "from": "infrastructure/mappers/__tests__/user.mapper.test.ts",
-    "to": "packages/user/infrastructure/mappers/__tests__/user.mapper.test.ts"
+    "to": "packages/user/infrastructure/mappers/__tests__/user.mapper.unit.test.ts"
   },
   {
     "from": "shared/enums/export-format.enum.ts",
@@ -305,15 +305,15 @@
   },
   {
     "from": "shared/utils/__tests__/api.utils.test.ts",
-    "to": "packages/shared/utils/__tests__/api.utils.test.ts"
+    "to": "packages/shared/utils/__tests__/api.utils.unit.test.ts"
   },
   {
     "from": "shared/utils/__tests__/identifier.utils.test.ts",
-    "to": "packages/shared/utils/__tests__/identifier.utils.test.ts"
+    "to": "packages/shared/utils/__tests__/identifier.utils.unit.test.ts"
   },
   {
     "from": "shared/utils/__tests__/ui.utils.test.ts",
-    "to": "packages/shared/utils/__tests__/ui.utils.test.ts"
+    "to": "packages/shared/utils/__tests__/ui.utils.unit.test.ts"
   },
   {
     "from": "shared/utils/security/password.utils.ts",
@@ -321,7 +321,7 @@
   },
   {
     "from": "shared/utils/security/__tests__/password.utils.test.ts",
-    "to": "packages/shared/utils/security/__tests__/password.utils.test.ts"
+    "to": "packages/shared/utils/security/__tests__/password.utils.unit.test.ts"
   },
   {
     "from": "shared/value-objects/base-id.vo.ts",
@@ -353,23 +353,23 @@
   },
   {
     "from": "shared/value-objects/__tests__/date-time-string.vo.test.ts",
-    "to": "packages/shared/value-objects/__tests__/date-time-string.vo.test.ts"
+    "to": "packages/shared/value-objects/__tests__/date-time-string.vo.unit.test.ts"
   },
   {
     "from": "shared/value-objects/__tests__/email.vo.test.ts",
-    "to": "packages/shared/value-objects/__tests__/email.vo.test.ts"
+    "to": "packages/shared/value-objects/__tests__/email.vo.unit.test.ts"
   },
   {
     "from": "shared/value-objects/__tests__/password-hash.vo.test.ts",
-    "to": "packages/shared/value-objects/__tests__/password-hash.vo.test.ts"
+    "to": "packages/shared/value-objects/__tests__/password-hash.vo.unit.test.ts"
   },
   {
     "from": "shared/value-objects/__tests__/password.vo.test.ts",
-    "to": "packages/shared/value-objects/__tests__/password.vo.test.ts"
+    "to": "packages/shared/value-objects/__tests__/password.vo.unit.test.ts"
   },
   {
     "from": "shared/value-objects/__tests__/url.vo.test.ts",
-    "to": "packages/shared/value-objects/__tests__/url.vo.test.ts"
+    "to": "packages/shared/value-objects/__tests__/url.vo.unit.test.ts"
   },
   {
     "from": "presentation/components/common/ConnectionTest.tsx",
