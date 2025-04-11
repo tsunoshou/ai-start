@@ -74,35 +74,35 @@ module.exports = {
       {
         selector: 'function',
         filter: {
-          // app/ ディレクトリ内のページ/レイアウトコンポーネントに一致
-          regex: '^.+/(page|layout|loading|error|template|not-found)\\.[jt]sx?$',
+          // app/ ディレクトリ内のページ/レイアウトコンポーネントに一致 -> apps/saas-app/app/ に変更
+          regex: '^apps/saas-app/app/(page|layout|loading|error|template|not-found)\\\\.[jt]sx?$',
           match: true,
         },
         format: ['PascalCase'],
       },
-      // presentation/components/ ディレクトリ内の関数はPascalCaseを許可
+      // presentation/components/ ディレクトリ内の関数はPascalCaseを許可 -> packages/ui or packages/web に変更 (仮に両方許可)
       {
         selector: 'function',
         filter: {
-          regex: '^.+/components/.+\\.[jt]sx?$',
+          regex: '^packages/(ui|web)/components/.+\\\\.[jt]sx?$',
           match: true,
         },
         format: ['PascalCase'],
       },
-      // components/ui/ ディレクトリ内の関数はPascalCaseを許可（Shadcn/UI用）
+      // components/ui/ ディレクトリ内の関数はPascalCaseを許可（Shadcn/UI用） -> packages/ui or packages/web に変更 (仮に両方許可)
       {
         selector: 'function',
         filter: {
-          regex: '^.+/components/ui/.+\\.[jt]sx?$',
+          regex: '^packages/(ui|web)/components/ui/.+\\\\.[jt]sx?$',
           match: true,
         },
         format: ['PascalCase', 'camelCase'],
       },
-      // components/ui/ ディレクトリ内の変数はPascalCase, camelCaseを許可（Shadcn/UI用）
+      // components/ui/ ディレクトリ内の変数はPascalCase, camelCaseを許可（Shadcn/UI用） -> packages/ui or packages/web に変更 (仮に両方許可)
       {
         selector: 'variable',
         filter: {
-          regex: '^.+/components/ui/.+\\.[jt]sx?$',
+          regex: '^packages/(ui|web)/components/ui/.+\\\\.[jt]sx?$',
           match: true,
         },
         format: ['PascalCase', 'camelCase', 'UPPER_CASE'],
@@ -189,15 +189,16 @@ module.exports = {
   },
   settings: {
     'import/resolver': {
-      typescript: {},
+      typescript: {}, // モノレポでは通常これで動作するはず
     },
   },
   // .eslintrc.jsファイル自体を検証対象から除外
-  ignorePatterns: ['.eslintrc.js'],
+  ignorePatterns: ['.eslintrc.js', '.turbo/', 'node_modules/', 'dist/', 'build/', 'out/', 'coverage/'], // ignorePatternsにビルド成果物等を追加
   // コンポーネントライブラリのファイルに対する特別なルール
   overrides: [
     {
-      files: ['**/components/ui/**/*.{ts,tsx}', '**/presentation/components/ui/**/*.{ts,tsx}'],
+      // presentation/components/ui/** -> packages/ui, packages/web に変更 (仮に両方)
+      files: ['**/packages/ui/components/ui/**/*.{ts,tsx}', '**/packages/web/components/ui/**/*.{ts,tsx}'],
       rules: {
         '@typescript-eslint/naming-convention': [
           'error',
@@ -238,15 +239,18 @@ module.exports = {
       },
     },
     {
-      files: ['**/presentation/hooks/use-toast.ts'],
+      // presentation/hooks/use-toast.ts -> packages/web/hooks/use-toast.ts に変更
+      files: ['**/packages/web/hooks/use-toast.ts'],
       rules: {
         '@typescript-eslint/naming-convention': 'off',
       },
     },
     // ロガー関連ファイルでのコンソール使用を許可
     {
+      // shared/logger/** -> packages/shared/logger/** に変更
       files: [
-        '**/shared/logger/**/*.ts',
+        '**/packages/shared/logger/**/*.ts',
+        // テストファイルのパターンは変更不要なはず
         '**/__tests__/**/*.test.ts',
         '**/__tests__/**/*.test.tsx',
         '**/__tests__/**/*.spec.ts',

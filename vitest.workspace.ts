@@ -9,8 +9,11 @@ const DIR_NAME =
 
 // More info at: https://storybook.js.org/docs/writing-tests/test-addon
 export default defineWorkspace([
-  'vitest.config.ts',
+  // 'vitest.config.ts', // ルートの設定はextendsで読み込む方が推奨
+  'apps/*/vitest.config.ts',
+  'packages/*/vitest.config.ts',
   {
+    // extends: './vitest.config.ts', // ルート設定を継承する場合
     plugins: [
       // The plugin will run tests for the stories defined in your Storybook config
       // See options at: https://storybook.js.org/docs/writing-tests/test-addon#storybooktest
@@ -18,13 +21,14 @@ export default defineWorkspace([
     ],
     test: {
       name: 'storybook',
+      include: ['**/*.stories.?(m)jsx', '**/*.stories.?(m)tsx'], // Storybookテスト対象 (tsxも追加)
       browser: {
         enabled: true,
         headless: true,
         provider: 'playwright',
-        instances: [{ browser: 'chromium' }],
+        // instances: [{ browser: 'chromium' }], // 必要に応じてブラウザ指定
       },
-      setupFiles: ['.storybook/vitest.setup.ts'],
+      // setupFiles: ['.storybook/vitest.setup.ts'], // Storybook固有セットアップ
     },
   },
 ]);

@@ -16,7 +16,6 @@ public/
 
 # テスト関連
 coverage/
-jest.setup.js
 
 # Supabase
 supabase/

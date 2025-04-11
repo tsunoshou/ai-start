@@ -11,8 +11,8 @@ try {
 
 // Define the configuration object
 const config = {
-  schema: './infrastructure/database/schema/index.ts', // スキーマ定義ファイルのパス
-  out: './infrastructure/database/migrations', // マイグレーションファイルの出力先
+  schema: './packages/shared/infrastructure/database/schema/index.ts', // 修正後のパス
+  out: './packages/shared/infrastructure/database/migrations', // 修正後のパス
   dialect: 'postgresql', // Specify the dialect
   dbCredentials: {
     // 環境変数 DATABASE_URL を優先的に使用

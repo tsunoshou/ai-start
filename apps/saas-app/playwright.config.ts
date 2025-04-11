@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
 const WEB_SERVER_CONFIG = process.env.PLAYWRIGHT_BASE_URL
   ? undefined // PLAYWRIGHT_BASE_URL があれば webServer を無効化
   : {
-      command: 'npm run dev', // ローカル開発時は `npm run dev` を使うことが多い
+      command: 'npm run dev --filter=saas-app', // Turborepo経由でsaas-appを起動
       url: 'http://localhost:3000',
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,

@@ -2,22 +2,23 @@
   "name": "ai-start",
   "version": "0.4.0",
   "private": true,
+  "packageManager": "npm@10.8.1",
   "engines": {
     "node": "22.x",
     "npm": ">=10.9.0"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "turbo run lint",
     "lint:fix": "eslint --fix --ext .js,.jsx,.ts,.tsx .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "type-check": "tsc --noEmit --skipLibCheck",
     "check": "npm run lint && npm run format:check && npm run type-check",
     "fix": "npm run lint:fix && npm run format",
-    "test": "vitest",
+    "test": "turbo run test",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:e2e": "playwright test --workers=1",
@@ -35,7 +36,10 @@
     "prepare": "husky",
     "fmt": "prettier --write .",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "lint:root": "eslint . --ignore-path .eslintignore --cache",
+    "typecheck": "turbo run typecheck",
+    "typecheck:root": "tsc --noEmit -p tsconfig.json"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -152,7 +156,7 @@
     "autoprefixer": "^10.4.21",
     "drizzle-kit": "^0.30.6",
     "esbuild": "^0.25.2",
-    "eslint": "^8.57.1",
+    "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.26",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.31.0",
@@ -175,14 +179,19 @@
     "tailwindcss": "^3.4.17",
     "testcontainers": "^10.24.0",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.3",
+    "typescript": "^5.4.5",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.1.1"
+    "vitest": "^3.1.1",
+    "turbo": "^2.0.6"
   },
   "overrides": {
     "esbuild": "^0.25.2",
     "inflight": "npm:lru-cache@^10.2.0",
     "@humanwhocodes/object-schema": "npm:@eslint/object-schema@^2.1.6",
     "@humanwhocodes/config-array": "npm:@eslint/config-array@^0.20.0"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

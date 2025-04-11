@@ -1,0 +1,220 @@
+
+
+> saas-app@0.1.0 typecheck
+> tsc --noEmit
+
+[1G[0K[96mapp/api/test-connections/route.ts[0m:[93m10[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/infrastructure/database/utils/test-db-connection' or its corresponding type declarations.
+
+[7m10[0m } from '@/infrastructure/database/utils/test-db-connection';
+[7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/test-connections/route.ts[0m:[93m11[0m:[93m38[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/shared/logger/logger.interface' or its corresponding type declarations.
+
+[7m11[0m import type { LoggerInterface } from '@/shared/logger/logger.interface';
+[7m  [0m [91m                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/test-connections/route.ts[0m:[93m12[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/shared/logger/logger.token' or its corresponding type declarations.
+
+[7m12[0m import { LoggerToken } from '@/shared/logger/logger.token';
+[7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/[id]/route.ts[0m:[93m5[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/application/usecases/user/delete-user.usecase' or its corresponding type declarations.
+
+[7m5[0m import { DeleteUserUsecase } from '@/application/usecases/user/delete-user.usecase';
+[7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/[id]/route.ts[0m:[93m6[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/application/usecases/user/get-user-by-id.usecase' or its corresponding type declarations.
+
+[7m6[0m import { GetUserByIdUsecase } from '@/application/usecases/user/get-user-by-id.usecase';
+[7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/[id]/route.ts[0m:[93m7[0m:[93m42[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/application/usecases/user/update-user-profile.usecase' or its corresponding type declarations.
+
+[7m7[0m import { UpdateUserProfileUsecase } from '@/application/usecases/user/update-user-profile.usecase';
+[7m [0m [91m                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/[id]/route.ts[0m:[93m8[0m:[93m23[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/config/container.config' or its corresponding type declarations.
+
+[7m8[0m import container from '@/config/container.config';
+[7m [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/[id]/route.ts[0m:[93m9[0m:[93m26[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/shared/errors/app.error' or its corresponding type declarations.
+
+[7m9[0m import { AppError } from '@/shared/errors/app.error';
+[7m [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/[id]/route.ts[0m:[93m10[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/shared/errors/error-code.enum' or its corresponding type declarations.
+
+[7m10[0m import { ErrorCode } from '@/shared/errors/error-code.enum';
+[7m  [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/[id]/route.ts[0m:[93m11[0m:[93m54[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/shared/utils/api.utils' or its corresponding type declarations.
+
+[7m11[0m import { apiError, apiSuccess, handleApiError } from '@/shared/utils/api.utils';
+[7m  [0m [91m                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/route.ts[0m:[93m5[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/application/usecases/user/create-user.usecase' or its corresponding type declarations.
+
+[7m5[0m import { CreateUserUsecase } from '@/application/usecases/user/create-user.usecase';
+[7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/route.ts[0m:[93m6[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/application/usecases/user/list-users.usecase' or its corresponding type declarations.
+
+[7m6[0m import { ListUsersUsecase } from '@/application/usecases/user/list-users.usecase';
+[7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/route.ts[0m:[93m7[0m:[93m23[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/config/container.config' or its corresponding type declarations.
+
+[7m7[0m import container from '@/config/container.config'; // Import DI container
+[7m [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/route.ts[0m:[93m8[0m:[93m35[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/shared/utils/api.utils' or its corresponding type declarations.
+
+[7m8[0m import { processApiRequest } from '@/shared/utils/api.utils';
+[7m [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/api/users/route.ts[0m:[93m67[0m:[93m21[0m - [91merror[0m[90m TS7006: [0mParameter 'createUserDto' implicitly has an 'any' type.
+
+[7m67[0m     handler: async (createUserDto) => {
+[7m  [0m [91m                    ~~~~~~~~~~~~~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m5[0m:[93m24[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/presentation/components/ui/button' or its corresponding type declarations.
+
+[7m5[0m import { Button } from '@/presentation/components/ui/button';
+[7m [0m [91m                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m13[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/presentation/components/ui/card' or its corresponding type declarations.
+
+[7m13[0m } from '@/presentation/components/ui/card';
+[7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m14[0m:[93m23[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/presentation/components/ui/input' or its corresponding type declarations.
+
+[7m14[0m import { Input } from '@/presentation/components/ui/input';
+[7m  [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m15[0m:[93m23[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/presentation/components/ui/label' or its corresponding type declarations.
+
+[7m15[0m import { Label } from '@/presentation/components/ui/label';
+[7m  [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m16[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/presentation/components/ui/separator' or its corresponding type declarations.
+
+[7m16[0m import { Separator } from '@/presentation/components/ui/separator';
+[7m  [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m17[0m:[93m26[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/presentation/components/ui/textarea' or its corresponding type declarations.
+
+[7m17[0m import { Textarea } from '@/presentation/components/ui/textarea';
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m255[0m:[93m28[0m - [91merror[0m[90m TS7006: [0mParameter 'e' implicitly has an 'any' type.
+
+[7m255[0m                 onChange={(e) => setCreateName(e.target.value)}
+[7m   [0m [91m                           ~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m266[0m:[93m28[0m - [91merror[0m[90m TS7006: [0mParameter 'e' implicitly has an 'any' type.
+
+[7m266[0m                 onChange={(e) => setCreateEmail(e.target.value)}
+[7m   [0m [91m                           ~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m278[0m:[93m28[0m - [91merror[0m[90m TS7006: [0mParameter 'e' implicitly has an 'any' type.
+
+[7m278[0m                 onChange={(e) => setCreatePassword(e.target.value)}
+[7m   [0m [91m                           ~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m319[0m:[93m30[0m - [91merror[0m[90m TS7006: [0mParameter 'e' implicitly has an 'any' type.
+
+[7m319[0m                   onChange={(e) => setListLimit(e.target.value)}
+[7m   [0m [91m                             ~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m331[0m:[93m30[0m - [91merror[0m[90m TS7006: [0mParameter 'e' implicitly has an 'any' type.
+
+[7m331[0m                   onChange={(e) => setListOffset(e.target.value)}
+[7m   [0m [91m                             ~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m343[0m:[93m28[0m - [91merror[0m[90m TS7006: [0mParameter 'e' implicitly has an 'any' type.
+
+[7m343[0m                 onChange={(e) => setListEmail(e.target.value)}
+[7m   [0m [91m                           ~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m382[0m:[93m28[0m - [91merror[0m[90m TS7006: [0mParameter 'e' implicitly has an 'any' type.
+
+[7m382[0m                 onChange={(e) => setGetUserId(e.target.value)}
+[7m   [0m [91m                           ~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m421[0m:[93m28[0m - [91merror[0m[90m TS7006: [0mParameter 'e' implicitly has an 'any' type.
+
+[7m421[0m                 onChange={(e) => setUpdateUserId(e.target.value)}
+[7m   [0m [91m                           ~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m432[0m:[93m28[0m - [91merror[0m[90m TS7006: [0mParameter 'e' implicitly has an 'any' type.
+
+[7m432[0m                 onChange={(e) => setUpdateName(e.target.value)}
+[7m   [0m [91m                           ~[0m
+
+[96mapp/dev-test/user-management/page.tsx[0m:[93m471[0m:[93m28[0m - [91merror[0m[90m TS7006: [0mParameter 'e' implicitly has an 'any' type.
+
+[7m471[0m                 onChange={(e) => setDeleteUserId(e.target.value)}
+[7m   [0m [91m                           ~[0m
+
+[96mapp/layout.tsx[0m:[93m5[0m:[93m32[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/i18n/config/settings' or its corresponding type declarations.
+
+[7m5[0m import { DEFAULT_LOCALE } from '@/i18n/config/settings';
+[7m [0m [91m                               ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/layout.tsx[0m:[93m6[0m:[93m25[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/presentation/components/ui/toaster' or its corresponding type declarations.
+
+[7m6[0m import { Toaster } from '@/presentation/components/ui/toaster';
+[7m [0m [91m                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/layout.tsx[0m:[93m7[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/presentation/providers/I18nProvider' or its corresponding type declarations.
+
+[7m7[0m import { I18nProvider } from '@/presentation/providers/I18nProvider';
+[7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/page.tsx[0m:[93m5[0m:[93m28[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/presentation/components/common/ConnectionTest' or its corresponding type declarations.
+
+[7m5[0m import ConnectionTest from '@/presentation/components/common/ConnectionTest';
+[7m [0m [91m                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mapp/page.tsx[0m:[93m6[0m:[93m24[0m - [91merror[0m[90m TS2307: [0mCannot find module '@/presentation/components/ui/button' or its corresponding type declarations.
+
+[7m6[0m import { Button } from '@/presentation/components/ui/button';
+[7m [0m [91m                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mmiddleware.ts[0m:[93m3[0m:[93m70[0m - [91merror[0m[90m TS2307: [0mCannot find module '@core/shared/i18n/config/settings' or its corresponding type declarations.
+
+[7m3[0m import { DEFAULT_LOCALE, GET_LOCALE_FROM_URL, IS_VALID_LOCALE } from '@core/shared/i18n/config/settings';
+[7m [0m [91m                                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mtests/api/users.spec.ts[0m:[93m7[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../drizzle.config' or its corresponding type declarations.
+
+[7m7[0m import drizzleConfig from '../../../drizzle.config';
+[7m [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96mtests/api/users.spec.ts[0m:[93m8[0m:[93m25[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../infrastructure/database/schema' or its corresponding type declarations.
+
+[7m8[0m import * as schema from '../../../infrastructure/database/schema'; // スキーマをインポート
+[7m [0m [91m                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Found 39 errors in 8 files.
+
+Errors  Files
+     3  app/api/test-connections/route.ts[90m:10[0m
+     7  app/api/users/[id]/route.ts[90m:5[0m
+     5  app/api/users/route.ts[90m:5[0m
+    16  app/dev-test/user-management/page.tsx[90m:5[0m
+     3  app/layout.tsx[90m:5[0m
+     2  app/page.tsx[90m:5[0m
+     1  middleware.ts[90m:3[0m
+     2  tests/api/users.spec.ts[90m:7[0m
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m Lifecycle script `typecheck` failed with error:
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcode[39m [33m2[39m
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mpath[39m /Users/shotaro_tsunoda/Cursor/ai-start/apps/saas-app
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mworkspace[39m saas-app@0.1.0
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mlocation[39m /Users/shotaro_tsunoda/Cursor/ai-start/apps/saas-app
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m command failed
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcommand[39m sh -c tsc --noEmit
+[1G[0K⠙[1G[0K

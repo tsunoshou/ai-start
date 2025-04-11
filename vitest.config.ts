@@ -34,7 +34,8 @@ export default defineConfig({
         '*.cjs',
         '*.js', // ルートの .js ファイル
         '*.mjs', // ルートの .mjs ファイル
-        'middleware.ts',
+        'middleware.ts', // ルートの middleware (移動前)
+        'apps/**/middleware.ts', // 移動後の middleware
         'vitest.workspace.ts', // ワークスペース設定ファイル
         '**/*.d.ts', // 全ての型定義ファイル
 
@@ -43,26 +44,39 @@ export default defineConfig({
         'stories/**',
         'storybook-static/**',
 
-        // UIコンポーネント (Shadcn UIなど)
-        'presentation/components/ui/**',
+        // UIコンポーネント (Shadcn UIなど) -> packages/ui, packages/web
+        // 'presentation/components/ui/**',
+        'packages/ui/components/ui/**',
+        'packages/web/components/ui/**',
 
-        // Next.js App Router pages/layout
-        'app/layout.tsx',
-        'app/page.tsx',
+        // Next.js App Router pages/layout -> apps/saas-app
+        // 'app/layout.tsx',
+        // 'app/page.tsx',
+        'apps/saas-app/app/layout.tsx',
+        'apps/saas-app/app/page.tsx',
 
         // テストファイル自体
         '**/*.test.ts',
         '**/__tests__/**',
-        'tests/**', // tests ディレクトリ全体 (setupなど含む)
+        'tests/**', // ルートの tests ディレクトリ全体 (setupなど含む)
+        'apps/**/tests/**', // 各アプリの tests ディレクトリ
+        'packages/**/tests/**', // 各パッケージの tests ディレクトリ
 
         // その他
-        'i18n/**',
-        'config/**',
-        'infrastructure/database/utils/**',
-        'infrastructure/database/schema/**', // スキーマ定義
-        'shared/types/**', // 共有型定義
-        'shared/enums/**', // 共有Enum
-        'domain/models/**/**.enum.ts', // ドメインEnum
+        // 'i18n/**',
+        'packages/shared/i18n/**',
+        // 'config/**',
+        // configファイルはルートにあるものは既に *.config.ts などで除外されている
+        // 'infrastructure/database/utils/**',
+        'packages/shared/infrastructure/database/utils/**',
+        // 'infrastructure/database/schema/**', // スキーマ定義
+        'packages/**/infrastructure/database/schema/**', // 各パッケージのスキーマも除外
+        // 'shared/types/**', // 共有型定義
+        'packages/shared/types/**',
+        // 'shared/enums/**', // 共有Enum
+        'packages/shared/enums/**',
+        // 'domain/models/**/**.enum.ts', // ドメインEnum
+        'packages/*/domain/**/*.enum.ts',
         '**/index.ts', // エクスポートのみの index.ts
         'next-env.d.ts',
         'vitest.shims.d.ts',
@@ -74,15 +88,15 @@ export default defineConfig({
       ],
       // 計測対象を明示的に指定 (より厳密にする場合)
       // include: [
-      //   'domain/**',
-      //   'application/**',
-      //   'shared/utils/**', // utilsは含める
-      //   'shared/value-objects/**', // VOは含める
-      //   'shared/errors/**', // エラーは含める
-      //   'infrastructure/mappers/**', // マッパーは含める
-      //   'infrastructure/repositories/**', // リポジトリは含める (DB除く場合あり)
-      //   'infrastructure/ai/**', // AIサービスは含める
-      //   'app/api/**' // APIルート含める
+      //   'packages/*/domain/**',
+      //   'packages/*/application/**',
+      //   'packages/shared/utils/**', // utilsは含める
+      //   'packages/shared/value-objects/**', // VOは含める
+      //   'packages/shared/errors/**', // エラーは含める
+      //   'packages/**/infrastructure/mappers/**', // マッパーは含める
+      //   'packages/**/infrastructure/repositories/**', // リポジトリは含める (DB除く場合あり)
+      //   'packages/shared/infrastructure/ai/**', // AIサービスは含める
+      //   'apps/saas-app/app/api/**' // APIルート含める
       // ],
       all: true, // include/exclude に基づいてカバレッジを計算
     },

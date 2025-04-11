@@ -1,0 +1,43 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "tsconfig.base.json",
+    ".eslintrc.js",
+    ".prettierrc.js",
+    "tailwind.config.js",
+    "postcss.config.js",
+    "package-lock.json",
+    "drizzle.config.ts",
+    "middleware.ts",
+    "vitest.workspace.ts",
+    ".env*"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "lint": {
+      "dependsOn": [],
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint:root": {
+      "outputs": []
+    },
+    "typecheck:root": {
+      "outputs": []
+    }
+  }
+} 

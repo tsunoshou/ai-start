@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    /* Base Options: */
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "es2022",
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true, // Recommended for Turborepo/bundler compatibility
+
+    /* Strictness */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+
+    /* If NOT transpiling with TypeScript: */
+    "module": "preserve",
+    "noEmit": true, // Base config doesn't emit, specific projects override this
+
+    /* If your code runs in the DOM: */
+    // "lib": ["es2022", "dom", "dom.iterable"],
+
+    /* If your code doesn't run in the DOM: */
+    "lib": ["es2022"],
+
+    /* Aliases */
+    "baseUrl": ".",
+    "paths": { // 各パッケージのtsconfig.jsonで上書き/拡張する
+      // "@core/shared/*": ["packages/shared/src/*"],
+      // "@core/user/*": ["packages/user/src/*"],
+      // "@/app/*": ["apps/saas-app/app/*"]
+    }
+  },
+  "exclude": ["node_modules", ".turbo", "dist", "build", "out"]
+} 
