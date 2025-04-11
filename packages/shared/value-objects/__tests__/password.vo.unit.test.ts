@@ -1,8 +1,8 @@
 import { ok, err, Result } from 'neverthrow';
 import { describe, it, expect, vi } from 'vitest';
 
-import { AppError } from '@core/shared/errors/app.error';
 import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
 import { ValidationError } from '@core/shared/errors/validation.error';
 import * as PasswordUtils from '@core/shared/utils/security/password.utils';
 

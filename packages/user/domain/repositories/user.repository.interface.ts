@@ -1,9 +1,8 @@
-import { UserId } from '@core/user/domain/value-objects/user-id.vo';
-import { User } from '@core/user/domain/entities/user.entity';
+import { BaseRepositoryInterface } from '@core/shared/base/domain/repositories/base.repository.interface'; // Import base interface
 import { AppResult } from '@core/shared/types/common.types';
 import { Email } from '@core/shared/value-objects/email.vo';
-
-import { BaseRepositoryInterface } from '@core/shared/base/domain/repositories/base.repository.interface'; // Import base interface
+import { User } from '@core/user/domain/entities/user.entity';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo';
 
 /**
  * @interface UserRepositoryInterface

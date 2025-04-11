@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { DEFAULT_LOCALE, GET_LOCALE_FROM_URL, IS_VALID_LOCALE } from '@core/shared/i18n/config/settings';
+import {
+  DEFAULT_LOCALE,
+  GET_LOCALE_FROM_URL,
+  IS_VALID_LOCALE,
+} from '@core/shared/i18n/config/settings';
 
 // 国際化対応のためのミドルウェア
 export function middleware(request: NextRequest) {

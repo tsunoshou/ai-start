@@ -1,16 +1,16 @@
 import { ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
-import { UserId } from '@core/user/domain/value-objects/user-id.vo';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface';
+import { LoggerToken } from '@core/shared/logger/logger.token';
+import { AppResult } from '@core/shared/types/common.types';
 import {
   type UserRepositoryInterface,
   UserRepositoryToken,
 } from '@core/user/domain/repositories/user.repository.interface';
-import { AppError } from '@core/shared/errors/app.error';
-import { ErrorCode } from '@core/shared/enums/error-code.enum';
-import type { LoggerInterface } from '@core/shared/logger/logger.interface';
-import { LoggerToken } from '@core/shared/logger/logger.token';
-import { AppResult } from '@core/shared/types/common.types';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo';
 
 // Input: Requires the user ID to delete
 // eslint-disable-next-line @typescript-eslint/naming-convention

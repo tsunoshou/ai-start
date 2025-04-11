@@ -3,18 +3,18 @@ import { ok, err } from 'neverthrow';
 import type { Mock } from 'vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { UserDTO } from '@core/user/application/dtos/user.dto';
-import { UserId } from '@core/user/domain/value-objects/user-id.vo';
-import { UserName } from '@core/user/domain/value-objects/user-name.vo';
-import { User } from '@core/user/domain/entities/user.entity';
-import { UserRepositoryInterface } from '@core/user/domain/repositories/user.repository.interface';
-import { AppError } from '@core/shared/errors/app.error';
 import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
 import { InfrastructureError } from '@core/shared/errors/infrastructure.error';
 import type { LoggerInterface } from '@core/shared/logger/logger.interface';
 import { DateTimeString } from '@core/shared/value-objects/date-time-string.vo';
 import { Email } from '@core/shared/value-objects/email.vo';
 import { PasswordHash } from '@core/shared/value-objects/password-hash.vo';
+import { UserDTO } from '@core/user/application/dtos/user.dto';
+import { User } from '@core/user/domain/entities/user.entity';
+import { UserRepositoryInterface } from '@core/user/domain/repositories/user.repository.interface';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo';
 
 import { ListUsersUsecase } from '../list-users.usecase';
 

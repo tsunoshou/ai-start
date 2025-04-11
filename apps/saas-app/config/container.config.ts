@@ -8,20 +8,20 @@ import { container } from 'tsyringe';
 // Import Interfaces & Tokens
 
 // Import Implementations
+import { ENV } from '@/config/environment';
+import { ConsoleLogger } from '@core/shared/logger/console.logger';
+import { LoggerInterface } from '@core/shared/logger/logger.interface';
+import { LoggerToken } from '@core/shared/logger/logger.token';
 import { CreateUserUsecase } from '@core/user/application/usecases/create-user.usecase';
 import { DeleteUserUsecase } from '@core/user/application/usecases/delete-user.usecase';
 import { GetUserByIdUsecase } from '@core/user/application/usecases/get-user-by-id.usecase';
 import { ListUsersUsecase } from '@core/user/application/usecases/list-users.usecase';
 import { UpdateUserProfileUsecase } from '@core/user/application/usecases/update-user-profile.usecase';
-import { ENV } from '@/config/environment';
 import {
   UserRepositoryInterface,
   UserRepositoryToken,
 } from '@core/user/domain/repositories/user.repository.interface';
 import { UserRepository } from '@core/user/infrastructure/repositories/user.repository';
-import { ConsoleLogger } from '@core/shared/logger/console.logger';
-import { LoggerInterface } from '@core/shared/logger/logger.interface';
-import { LoggerToken } from '@core/shared/logger/logger.token';
 
 // --- Dependency Registration ---
 

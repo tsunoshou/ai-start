@@ -6,12 +6,12 @@ import { ok, err } from 'neverthrow';
 import { inject } from 'tsyringe';
 
 // Internal modules & types (alphabetical by path)
-import { AppError } from '@core/shared/errors/app.error';
+import type { EntityBase } from '@core/shared/base/domain/interfaces/entity-base.interface';
 import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
 import type { LoggerInterface } from '@core/shared/logger/logger.interface';
 import { LoggerToken } from '@core/shared/logger/logger.token';
 import type { AppResult, Identifier } from '@core/shared/types/common.types';
-import type { EntityBase } from '@core/shared/base/domain/interfaces/entity-base.interface';
 import { DateTimeString } from '@core/shared/value-objects/date-time-string.vo';
 
 /**

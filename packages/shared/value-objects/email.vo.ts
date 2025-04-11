@@ -11,9 +11,8 @@
 import { Result, ok, err } from 'neverthrow';
 import { z } from 'zod';
 
-import { ValidationError } from '@core/shared/errors/validation.error';
-
 import { BaseValueObject } from '@core/shared/base/domain/value-objects/base.vo'; // BaseValueObject をインポート
+import { ValidationError } from '@core/shared/errors/validation.error';
 
 // Schema for email validation
 const EMAIL_SCHEMA = z

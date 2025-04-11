@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { BaseError } from '@core/shared/errors/base.error';
 import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { BaseError } from '@core/shared/errors/base.error';
 
 import { UserName } from '../user-name.vo';
 

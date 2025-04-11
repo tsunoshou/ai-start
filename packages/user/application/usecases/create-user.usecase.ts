@@ -3,24 +3,24 @@ import { Result, ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
 // Domain Layer
-import { UserDTO } from '@core/user/application/dtos/user.dto';
-import { UserName } from '@core/user/domain/value-objects/user-name.vo';
-import { User } from '@core/user/domain/entities/user.entity';
-import {
-  type UserRepositoryInterface,
-  UserRepositoryToken,
-} from '@core/user/domain/repositories/user.repository.interface';
 // Shared Layer
-import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
 import { AppError } from '@core/shared/errors/app.error';
 import { BaseError } from '@core/shared/errors/base.error';
-import { ErrorCode } from '@core/shared/enums/error-code.enum';
 import type { LoggerInterface } from '@core/shared/logger/logger.interface';
 import { LoggerToken } from '@core/shared/logger/logger.token';
 import { AppResult } from '@core/shared/types/common.types';
 import { hashPassword } from '@core/shared/utils/security/password.utils';
 import { Email } from '@core/shared/value-objects/email.vo';
 import { PasswordHash } from '@core/shared/value-objects/password-hash.vo';
+import { UserDTO } from '@core/user/application/dtos/user.dto';
+import { User } from '@core/user/domain/entities/user.entity';
+import {
+  type UserRepositoryInterface,
+  UserRepositoryToken,
+} from '@core/user/domain/repositories/user.repository.interface';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo';
+import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper';
 
 // Application Layer
 

@@ -12,9 +12,9 @@
 import { Result, ok, err } from 'neverthrow';
 import { z } from 'zod';
 
-import { ValidationError } from '../errors/validation.error';
-
 import { BaseValueObject } from '@core/shared/base/domain/value-objects/base.vo';
+
+import { ValidationError } from '../errors/validation.error';
 
 // Zod schema for ISO 8601 datetime string validation
 // .datetime() includes offset validation by default.

@@ -1,10 +1,9 @@
 import { container } from 'tsyringe';
 
-import type { LoggerInterface } from '@core/shared/logger/logger.interface';
-import { LoggerToken } from '@core/shared/logger/logger.token';
-
 import { ENV } from '@/config/environment';
 import { AIProvider, AIService } from '@core/ai/domain/services/ai.service';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface';
+import { LoggerToken } from '@core/shared/logger/logger.token';
 
 import { OpenAIService } from './OpenAIService';
 

@@ -13,10 +13,10 @@ import { Result, ok, err } from 'neverthrow';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
-import { AppError } from '@core/shared/errors/app.error';
-import { ErrorCode } from '@core/shared/enums/error-code.enum';
-import { ValidationError } from '@core/shared/errors/validation.error';
 import { BaseId } from '@core/shared/base/domain/value-objects/base-id.vo';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
+import { ValidationError } from '@core/shared/errors/validation.error';
 
 // UUID v4 schema for validation
 const UUID_SCHEMA = z.string().uuid({ message: 'Invalid UUID v4 format for UserId.' });

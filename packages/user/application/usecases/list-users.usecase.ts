@@ -1,18 +1,18 @@
 import { ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface';
+import { LoggerToken } from '@core/shared/logger/logger.token';
+import { AppResult } from '@core/shared/types/common.types';
+import { Email } from '@core/shared/value-objects/email.vo';
 import { UserDTO } from '@core/user/application/dtos/user.dto';
 import {
   type UserRepositoryInterface,
   UserRepositoryToken,
 } from '@core/user/domain/repositories/user.repository.interface';
 import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper';
-import { AppError } from '@core/shared/errors/app.error';
-import { ErrorCode } from '@core/shared/enums/error-code.enum';
-import type { LoggerInterface } from '@core/shared/logger/logger.interface';
-import { LoggerToken } from '@core/shared/logger/logger.token';
-import { AppResult } from '@core/shared/types/common.types';
-import { Email } from '@core/shared/value-objects/email.vo';
 
 // Input: Optional pagination/filtering parameters
 /**

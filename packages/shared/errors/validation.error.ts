@@ -2,9 +2,10 @@
  * @file バリデーションエラーを表すクラスを定義します。
  */
 
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+
 import { AppError } from './app.error';
 import type { BaseErrorOptions } from './base.error';
-import { ErrorCode } from '@core/shared/enums/error-code.enum';
 
 /**
  * @class ValidationError

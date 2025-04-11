@@ -12,8 +12,8 @@ import {
   type FieldValues,
 } from 'react-hook-form';
 
-import { Label } from '@core/ui/components/ui/label';
 import { cn } from '@core/shared/utils/ui';
+import { Label } from '@core/ui/components/ui/label';
 
 const Form = FormProvider;
 
@@ -125,7 +125,7 @@ const FormDescription = React.forwardRef<
   return (
     <p
       ref={ref}
-      className={cn('text-[0.8rem] text-muted-foreground', className)}
+      className={cn('text-muted-foreground text-[0.8rem]', className)}
       id={formDescriptionId}
       {...props}
     />
@@ -147,7 +147,7 @@ const FormMessage = React.forwardRef<
   return (
     <p
       ref={ref}
-      className={cn('text-[0.8rem] font-medium text-destructive', className)}
+      className={cn('text-destructive text-[0.8rem] font-medium', className)}
       id={formMessageId}
       {...props}
     >

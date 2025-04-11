@@ -4,8 +4,9 @@
  */
 
 import 'reflect-metadata'; // tsyringe で必要
-
 import { fail } from 'node:assert';
+import path from 'node:path'; // path をインポート
+import { fileURLToPath } from 'node:url'; // url をインポート
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
@@ -13,19 +14,28 @@ import { Pool } from 'pg';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { UserId } from '@core/user/domain/value-objects/user-id.vo';
-import { UserName } from '@core/user/domain/value-objects/user-name.vo';
-import { User } from '@core/user/domain/entities/user.entity';
-import { UserRepository } from '@core/user/infrastructure/repositories/user.repository';
 import { users } from '@core/shared/infrastructure/database/schema/index';
-import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper';
 import type { LoggerInterface } from '@core/shared/logger/logger.interface';
 import { DateTimeString } from '@core/shared/value-objects/date-time-string.vo';
 import { Email } from '@core/shared/value-objects/email.vo';
 import { PasswordHash } from '@core/shared/value-objects/password-hash.vo';
+import { User } from '@core/user/domain/entities/user.entity';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo';
+import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper';
+import { UserRepository } from '@core/user/infrastructure/repositories/user.repository';
 
 // 型エラーを回避するための eslint-disable
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+// 現在のファイルのディレクトリパスを取得
+const __FILENAME = fileURLToPath(import.meta.url);
+const __DIRNAME = path.dirname(__FILENAME);
+// マイグレーションフォルダへのパスを計算
+const MIGRATIONS_PATH = path.resolve(
+  __DIRNAME,
+  '../../../../shared/infrastructure/database/migrations'
+);
 
 describe('UserRepository 統合テスト', () => {
   let container: StartedTestContainer;
@@ -65,7 +75,9 @@ describe('UserRepository 統合テスト', () => {
     // マイグレーションを適用
     console.log('データベースマイグレーションを適用しています...');
     try {
-      await migrate(db, { migrationsFolder: 'infrastructure/database/migrations' });
+      await migrate(db, {
+        migrationsFolder: MIGRATIONS_PATH, // 計算したパスを使用 (UPPER_CASEに変更)
+      });
       console.log('マイグレーションが正常に適用されました。');
     } catch (error) {
       console.error('マイグレーション失敗:', error);

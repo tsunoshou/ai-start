@@ -1,8 +1,8 @@
 import { Result, ok, err } from 'neverthrow';
 import { z } from 'zod';
 
-import { ValidationError } from '@core/shared/errors/validation.error';
 import { BaseValueObject } from '@core/shared/base/domain/value-objects/base.vo';
+import { ValidationError } from '@core/shared/errors/validation.error';
 
 // Schema for user name validation (1 to 50 characters)
 const USER_NAME_SCHEMA = z

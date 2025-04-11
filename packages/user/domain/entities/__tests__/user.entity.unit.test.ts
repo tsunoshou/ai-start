@@ -4,9 +4,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as DateTimeStringModule from '@core/shared/value-objects/date-time-string.vo';
 import { Email } from '@core/shared/value-objects/email.vo';
 import { PasswordHash } from '@core/shared/value-objects/password-hash.vo';
-
 import { UserId } from '@core/user/domain/value-objects/user-id.vo';
 import { UserName } from '@core/user/domain/value-objects/user-name.vo';
+
 import { User } from '../user.entity';
 
 describe('User Entity', () => {

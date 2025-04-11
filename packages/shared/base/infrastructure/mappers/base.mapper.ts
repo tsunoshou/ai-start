@@ -1,7 +1,7 @@
 import { Result, ok, err } from 'neverthrow';
 
-import { AppError } from '@core/shared/errors/app.error';
 import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
 import { InfrastructureError } from '@core/shared/errors/infrastructure.error';
 
 /**

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import container from '@/config/container.config';
-import { AppError } from '@core/shared/errors/app.error';
 import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
 import type { LoggerInterface } from '@core/shared/logger/logger.interface';
 import { LoggerToken } from '@core/shared/logger/logger.token';
 

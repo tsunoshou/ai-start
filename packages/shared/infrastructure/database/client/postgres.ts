@@ -2,10 +2,9 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { container } from 'tsyringe';
 
+import { getDatabaseUrl } from '@/config/environment';
 import type { LoggerInterface } from '@core/shared/logger/logger.interface';
 import { LoggerToken } from '@core/shared/logger/logger.token';
-
-import { getDatabaseUrl } from '@/config/environment';
 
 // DIコンテナからロガーを取得
 const logger = container.resolve<LoggerInterface>(LoggerToken);

@@ -2,8 +2,9 @@
  * @file アプリケーション固有のエラークラスを定義します。
  */
 
-import { BaseError, BaseErrorOptions } from './base.error';
 import { ErrorCode } from '@core/shared/enums/error-code.enum'; // ErrorCodeをインポート
+
+import { BaseError, BaseErrorOptions } from './base.error';
 
 /**
  * BaseErrorOptions を再エクスポート（オプション）-> 不要になるためコメントアウト

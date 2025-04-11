@@ -1,20 +1,20 @@
 import { ok, err } from 'neverthrow';
 import { inject, injectable } from 'tsyringe';
 
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
+import type { LoggerInterface } from '@core/shared/logger/logger.interface';
+import { LoggerToken } from '@core/shared/logger/logger.token';
+import { AppResult } from '@core/shared/types/common.types'; // Import AppResult
 import { UserDTO } from '@core/user/application/dtos/user.dto';
-import { UserId } from '@core/user/domain/value-objects/user-id.vo';
-import { UserName } from '@core/user/domain/value-objects/user-name.vo';
 import { User } from '@core/user/domain/entities/user.entity'; // Import User entity
 import {
   type UserRepositoryInterface,
   UserRepositoryToken,
 } from '@core/user/domain/repositories/user.repository.interface';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo';
 import { UserMapper } from '@core/user/infrastructure/mappers/user.mapper';
-import { AppError } from '@core/shared/errors/app.error';
-import { ErrorCode } from '@core/shared/enums/error-code.enum';
-import type { LoggerInterface } from '@core/shared/logger/logger.interface';
-import { LoggerToken } from '@core/shared/logger/logger.token';
-import { AppResult } from '@core/shared/types/common.types'; // Import AppResult
 
 // Input: Requires the user ID and the fields to update (optional name for now)
 // eslint-disable-next-line @typescript-eslint/naming-convention

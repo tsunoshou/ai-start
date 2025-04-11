@@ -4,21 +4,21 @@ import type { Result } from 'neverthrow';
 import type { Mock } from 'vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import type { UserDTO } from '@core/user/application/dtos/user.dto';
 // UpdateUserDTOは存在しない、代わりにupdate-user-profile.usecaseで定義されているInput/Outputを使用
 // import type { UpdateUserDTO } from '@/application/dtos/update-user.dto';
-import { UserId } from '@core/user/domain/value-objects/user-id.vo';
 // UserNameはモックとして使用するので、typeをつけない
-import { UserName } from '@core/user/domain/value-objects/user-name.vo';
-import { User } from '@core/user/domain/entities/user.entity';
-import { UserRepositoryInterface } from '@core/user/domain/repositories/user.repository.interface';
-import { AppError } from '@core/shared/errors/app.error';
 import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
 import { InfrastructureError } from '@core/shared/errors/infrastructure.error';
 import type { LoggerInterface } from '@core/shared/logger/logger.interface';
 import type { DateTimeString } from '@core/shared/value-objects/date-time-string.vo';
 import type { Email } from '@core/shared/value-objects/email.vo';
 import type { PasswordHash } from '@core/shared/value-objects/password-hash.vo';
+import type { UserDTO } from '@core/user/application/dtos/user.dto';
+import { User } from '@core/user/domain/entities/user.entity';
+import { UserRepositoryInterface } from '@core/user/domain/repositories/user.repository.interface';
+import { UserId } from '@core/user/domain/value-objects/user-id.vo';
+import { UserName } from '@core/user/domain/value-objects/user-name.vo';
 
 import { UpdateUserProfileUsecase } from '../update-user-profile.usecase';
 

@@ -1,8 +1,8 @@
 import { validate as uuidValidate } from 'uuid';
 import { describe, it, expect } from 'vitest';
 
-import { BaseError } from '@core/shared/errors/base.error';
 import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { BaseError } from '@core/shared/errors/base.error';
 
 import { generateUuidV4String, validateUuidV4String } from '../identifier.utils';
 

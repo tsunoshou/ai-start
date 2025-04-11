@@ -131,6 +131,7 @@ module.exports = {
         selector: 'variable',
         modifiers: ['const', 'global'], // export されていないトップレベルの const など
         format: ['UPPER_CASE'],
+        leadingUnderscore: 'allowDouble',
         filter: {
           // 既存の例外に加えて、末尾が Schema の変数を UPPER_CASE 強制から除外
           // さらに logger のような非プリミティブなオブジェクトも除外
@@ -193,7 +194,12 @@ module.exports = {
     },
   },
   // .eslintrc.jsファイル自体を検証対象から除外
-  ignorePatterns: ['.eslintrc.js'],
+  ignorePatterns: [
+    '.eslintrc.js',
+    'packages/ui/components/**', // UI components ディレクトリを除外
+    'packages/ui/hooks/use-toast.ts', // use-toast.ts ファイルを除外
+    'scripts/codemods/apply-migration-map.ts', // Codemodスクリプトを除外
+  ],
   // コンポーネントライブラリのファイルに対する特別なルール
   overrides: [
     {

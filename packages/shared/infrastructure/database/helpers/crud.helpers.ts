@@ -3,8 +3,8 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { PgTable, PgColumn } from 'drizzle-orm/pg-core';
 import { Result, ok, err } from 'neverthrow';
 
-import { AppError } from '@core/shared/errors/app.error';
 import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
 import type { LoggerInterface } from '@core/shared/logger/logger.interface';
 
 /**

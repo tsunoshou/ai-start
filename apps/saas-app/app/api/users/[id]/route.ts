@@ -2,13 +2,13 @@ import 'reflect-metadata';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
+import container from '@/config/container.config';
+import { ErrorCode } from '@core/shared/enums/error-code.enum';
+import { AppError } from '@core/shared/errors/app.error';
+import { apiError, apiSuccess, handleApiError } from '@core/shared/utils/api.utils';
 import { DeleteUserUsecase } from '@core/user/application/usecases/delete-user.usecase';
 import { GetUserByIdUsecase } from '@core/user/application/usecases/get-user-by-id.usecase';
 import { UpdateUserProfileUsecase } from '@core/user/application/usecases/update-user-profile.usecase';
-import container from '@/config/container.config';
-import { AppError } from '@core/shared/errors/app.error';
-import { ErrorCode } from '@core/shared/enums/error-code.enum';
-import { apiError, apiSuccess, handleApiError } from '@core/shared/utils/api.utils';
 
 // Zod schema for PATCH request body validation (only allow known fields to be updated)
 const updateUserProfileSchema = z
