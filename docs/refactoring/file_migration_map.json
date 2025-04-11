@@ -1,0 +1,390 @@
+[
+  {
+    "from": "app/page.tsx",
+    "to": "apps/saas-app/app/page.tsx"
+  },
+  {
+    "from": "app/layout.tsx",
+    "to": "apps/saas-app/app/layout.tsx"
+  },
+  {
+    "from": "app/globals.css",
+    "to": "apps/saas-app/app/globals.css"
+  },
+  {
+    "from": "app/dev-test/user-management/page.tsx",
+    "to": "apps/saas-app/app/dev-test/user-management/page.tsx"
+  },
+  {
+    "from": "app/api/test-connections/route.ts",
+    "to": "apps/saas-app/app/api/test-connections/route.ts"
+  },
+  {
+    "from": "app/api/users/[id]/route.ts",
+    "to": "apps/saas-app/app/api/users/[id]/route.ts"
+  },
+  {
+    "from": "app/api/users/route.ts",
+    "to": "apps/saas-app/app/api/users/route.ts"
+  },
+  {
+    "from": "application/dtos/user.dto.ts",
+    "to": "packages/user/application/dtos/user.dto.ts"
+  },
+  {
+    "from": "application/usecases/user/__tests__/create-user.usecase.test.ts",
+    "to": "packages/user/application/usecases/__tests__/create-user.usecase.test.ts"
+  },
+  {
+    "from": "application/usecases/user/__tests__/delete-user.usecase.test.ts",
+    "to": "packages/user/application/usecases/__tests__/delete-user.usecase.test.ts"
+  },
+  {
+    "from": "application/usecases/user/__tests__/get-user-by-id.usecase.test.ts",
+    "to": "packages/user/application/usecases/__tests__/get-user-by-id.usecase.test.ts"
+  },
+  {
+    "from": "application/usecases/user/__tests__/list-users.usecase.test.ts",
+    "to": "packages/user/application/usecases/__tests__/list-users.usecase.test.ts"
+  },
+  {
+    "from": "application/usecases/user/__tests__/update-user-profile.usecase.test.ts",
+    "to": "packages/user/application/usecases/__tests__/update-user-profile.usecase.test.ts"
+  },
+  {
+    "from": "application/usecases/user/create-user.usecase.ts",
+    "to": "packages/user/application/usecases/create-user.usecase.ts"
+  },
+  {
+    "from": "application/usecases/user/delete-user.usecase.ts",
+    "to": "packages/user/application/usecases/delete-user.usecase.ts"
+  },
+  {
+    "from": "application/usecases/user/get-user-by-id.usecase.ts",
+    "to": "packages/user/application/usecases/get-user-by-id.usecase.ts"
+  },
+  {
+    "from": "application/usecases/user/list-users.usecase.ts",
+    "to": "packages/user/application/usecases/list-users.usecase.ts"
+  },
+  {
+    "from": "application/usecases/user/update-user-profile.usecase.ts",
+    "to": "packages/user/application/usecases/update-user-profile.usecase.ts"
+  },
+  {
+    "from": "config/container.config.ts",
+    "to": "apps/saas-app/config/container.config.ts"
+  },
+  {
+    "from": "config/environment.ts",
+    "to": "apps/saas-app/config/environment.ts"
+  },
+  {
+    "from": "domain/repositories/user.repository.interface.ts",
+    "to": "packages/user/domain/repositories/user.repository.interface.ts"
+  },
+  {
+    "from": "domain/repositories/base.repository.interface.ts",
+    "to": "packages/shared/base/domain/repositories/base.repository.interface.ts"
+  },
+  {
+    "from": "domain/models/user/user.entity.ts",
+    "to": "packages/user/domain/entities/user.entity.ts"
+  },
+  {
+    "from": "domain/models/user/user-role.enum.ts",
+    "to": "packages/user/domain/enums/user-role.enum.ts"
+  },
+  {
+    "from": "domain/models/user/user-name.vo.ts",
+    "to": "packages/user/domain/value-objects/user-name.vo.ts"
+  },
+  {
+    "from": "domain/models/user/user-id.vo.ts",
+    "to": "packages/user/domain/value-objects/user-id.vo.ts"
+  },
+  {
+    "from": "domain/models/user/__tests__/user.entity.test.ts",
+    "to": "packages/user/domain/entities/__tests__/user.entity.test.ts"
+  },
+  {
+    "from": "domain/models/user/__tests__/user-name.vo.test.ts",
+    "to": "packages/user/domain/value-objects/__tests__/user-name.vo.test.ts"
+  },
+  {
+    "from": "domain/models/user/__tests__/user-id.vo.test.ts",
+    "to": "packages/user/domain/value-objects/__tests__/user-id.vo.test.ts"
+  },
+  {
+    "from": "domain/models/base/base.entity.ts",
+    "to": "packages/shared/base/domain/entities/base.entity.ts"
+  },
+  {
+    "from": "domain/services/ai/AIService.ts",
+    "to": "packages/ai/domain/services/ai.service.ts"
+  },
+  {
+    "from": "i18n/client.ts",
+    "to": "packages/shared/i18n/client.ts"
+  },
+  {
+    "from": "i18n/config/settings.ts",
+    "to": "packages/shared/i18n/config/settings.ts"
+  },
+  {
+    "from": "i18n/index.ts",
+    "to": "packages/shared/i18n/index.ts"
+  },
+  {
+    "from": "i18n/locales/en/common.json",
+    "to": "packages/shared/i18n/locales/en/common.json"
+  },
+  {
+    "from": "i18n/locales/ja/common.json",
+    "to": "packages/shared/i18n/locales/ja/common.json"
+  },
+  {
+    "from": "i18n/server.ts",
+    "to": "packages/shared/i18n/server.ts"
+  },
+  {
+    "from": "infrastructure/ai/AIServiceFactory.ts",
+    "to": "packages/shared/infrastructure/ai/AIServiceFactory.ts"
+  },
+  {
+    "from": "infrastructure/ai/OpenAIService.ts",
+    "to": "packages/shared/infrastructure/ai/OpenAIService.ts"
+  },
+  {
+    "from": "infrastructure/database/client.ts",
+    "to": "packages/shared/infrastructure/database/client.ts"
+  },
+  {
+    "from": "infrastructure/database/db.ts",
+    "to": "packages/shared/infrastructure/database/db.ts"
+  },
+  {
+    "from": "infrastructure/database/client/postgres.ts",
+    "to": "packages/shared/infrastructure/database/client/postgres.ts"
+  },
+  {
+    "from": "infrastructure/database/client/supabase.ts",
+    "to": "packages/shared/infrastructure/database/client/supabase.ts"
+  },
+  {
+    "from": "infrastructure/database/helpers/crud.helpers.ts",
+    "to": "packages/shared/infrastructure/database/helpers/crud.helpers.ts"
+  },
+  {
+    "from": "infrastructure/database/migrations/*",
+    "to": "packages/shared/infrastructure/database/migrations/*"
+  },
+  {
+    "from": "infrastructure/database/repositories/base.repository.ts",
+    "to": "packages/shared/base/infrastructure/repositories/base.repository.ts"
+  },
+  {
+    "from": "infrastructure/database/repositories/user.repository.ts",
+    "to": "packages/user/infrastructure/database/repositories/user.repository.ts"
+  },
+  {
+    "from": "infrastructure/database/repositories/__tests__/user.repository.integration.test.ts",
+    "to": "packages/user/infrastructure/database/repositories/__tests__/user.repository.integration.test.ts"
+  },
+  {
+    "from": "infrastructure/database/schema/_common.ts",
+    "to": "packages/shared/infrastructure/database/schema/_common.ts"
+  },
+  {
+    "from": "infrastructure/database/schema/index.ts",
+    "to": "packages/shared/infrastructure/database/schema/index.ts"
+  },
+  {
+    "from": "infrastructure/database/schema/users.schema.ts",
+    "to": "packages/user/infrastructure/database/schema/users.schema.ts"
+  },
+  {
+    "from": "infrastructure/database/utils/migrate-all.ts",
+    "to": "packages/shared/infrastructure/database/utils/migrate-all.ts"
+  },
+  {
+    "from": "infrastructure/database/utils/migrate-env.ts",
+    "to": "packages/shared/infrastructure/database/utils/migrate-env.ts"
+  },
+  {
+    "from": "infrastructure/database/utils/test-db-connection.ts",
+    "to": "packages/shared/infrastructure/database/utils/test-db-connection.ts"
+  },
+  {
+    "from": "infrastructure/mappers/base.mapper.ts",
+    "to": "packages/shared/base/infrastructure/mappers/base.mapper.ts"
+  },
+  {
+    "from": "infrastructure/mappers/user.mapper.ts",
+    "to": "packages/user/infrastructure/mappers/user.mapper.ts"
+  },
+  {
+    "from": "infrastructure/mappers/utils/mapping-helpers.ts",
+    "to": "packages/shared/base/infrastructure/mappers/utils/mapping-helpers.ts"
+  },
+  {
+    "from": "infrastructure/mappers/__tests__/base.mapper.test.ts",
+    "to": "packages/shared/base/infrastructure/mappers/__tests__/base.mapper.test.ts"
+  },
+  {
+    "from": "infrastructure/mappers/__tests__/user.mapper.test.ts",
+    "to": "packages/user/infrastructure/mappers/__tests__/user.mapper.test.ts"
+  },
+  {
+    "from": "shared/enums/export-format.enum.ts",
+    "to": "packages/shared/enums/export-format.enum.ts"
+  },
+  {
+    "from": "shared/enums/language.enum.ts",
+    "to": "packages/shared/enums/language.enum.ts"
+  },
+  {
+    "from": "shared/errors/app.error.ts",
+    "to": "packages/shared/errors/app.error.ts"
+  },
+  {
+    "from": "shared/errors/base.error.ts",
+    "to": "packages/shared/errors/base.error.ts"
+  },
+  {
+    "from": "shared/errors/error-code.enum.ts",
+    "to": "packages/shared/enums/error-code.enum.ts"
+  },
+  {
+    "from": "shared/errors/infrastructure.error.ts",
+    "to": "packages/shared/errors/infrastructure.error.ts"
+  },
+  {
+    "from": "shared/errors/validation.error.ts",
+    "to": "packages/shared/errors/validation.error.ts"
+  },
+  {
+    "from": "shared/logger/console.logger.ts",
+    "to": "packages/shared/logger/console.logger.ts"
+  },
+  {
+    "from": "shared/logger/logger.interface.ts",
+    "to": "packages/shared/logger/logger.interface.ts"
+  },
+  {
+    "from": "shared/logger/logger.token.ts",
+    "to": "packages/shared/logger/logger.token.ts"
+  },
+  {
+    "from": "shared/types/common.types.ts",
+    "to": "packages/shared/types/common.types.ts"
+  },
+  {
+    "from": "shared/types/data.types.ts",
+    "to": "packages/shared/types/data.types.ts"
+  },
+  {
+    "from": "shared/types/entity-base.interface.ts",
+    "to": "packages/shared/base/domain/interfaces/entity-base.interface.ts"
+  },
+  {
+    "from": "shared/types/utility.types.ts",
+    "to": "packages/shared/types/utility.types.ts"
+  },
+  {
+    "from": "shared/utils/api.utils.ts",
+    "to": "packages/shared/utils/api.utils.ts"
+  },
+  {
+    "from": "shared/utils/identifier.utils.ts",
+    "to": "packages/shared/utils/identifier.utils.ts"
+  },
+  {
+    "from": "shared/utils/ui.ts",
+    "to": "packages/shared/utils/ui.ts"
+  },
+  {
+    "from": "shared/utils/__tests__/api.utils.test.ts",
+    "to": "packages/shared/utils/__tests__/api.utils.test.ts"
+  },
+  {
+    "from": "shared/utils/__tests__/identifier.utils.test.ts",
+    "to": "packages/shared/utils/__tests__/identifier.utils.test.ts"
+  },
+  {
+    "from": "shared/utils/__tests__/ui.utils.test.ts",
+    "to": "packages/shared/utils/__tests__/ui.utils.test.ts"
+  },
+  {
+    "from": "shared/utils/security/password.utils.ts",
+    "to": "packages/shared/utils/security/password.utils.ts"
+  },
+  {
+    "from": "shared/utils/security/__tests__/password.utils.test.ts",
+    "to": "packages/shared/utils/security/__tests__/password.utils.test.ts"
+  },
+  {
+    "from": "shared/value-objects/base-id.vo.ts",
+    "to": "packages/shared/base/domain/value-objects/base-id.vo.ts"
+  },
+  {
+    "from": "shared/value-objects/base.vo.ts",
+    "to": "packages/shared/base/domain/value-objects/base.vo.ts"
+  },
+  {
+    "from": "shared/value-objects/date-time-string.vo.ts",
+    "to": "packages/shared/value-objects/date-time-string.vo.ts"
+  },
+  {
+    "from": "shared/value-objects/email.vo.ts",
+    "to": "packages/shared/value-objects/email.vo.ts"
+  },
+  {
+    "from": "shared/value-objects/password-hash.vo.ts",
+    "to": "packages/shared/value-objects/password-hash.vo.ts"
+  },
+  {
+    "from": "shared/value-objects/password.vo.ts",
+    "to": "packages/shared/value-objects/password.vo.ts"
+  },
+  {
+    "from": "shared/value-objects/url.vo.ts",
+    "to": "packages/shared/value-objects/url.vo.ts"
+  },
+  {
+    "from": "shared/value-objects/__tests__/date-time-string.vo.test.ts",
+    "to": "packages/shared/value-objects/__tests__/date-time-string.vo.test.ts"
+  },
+  {
+    "from": "shared/value-objects/__tests__/email.vo.test.ts",
+    "to": "packages/shared/value-objects/__tests__/email.vo.test.ts"
+  },
+  {
+    "from": "shared/value-objects/__tests__/password-hash.vo.test.ts",
+    "to": "packages/shared/value-objects/__tests__/password-hash.vo.test.ts"
+  },
+  {
+    "from": "shared/value-objects/__tests__/password.vo.test.ts",
+    "to": "packages/shared/value-objects/__tests__/password.vo.test.ts"
+  },
+  {
+    "from": "shared/value-objects/__tests__/url.vo.test.ts",
+    "to": "packages/shared/value-objects/__tests__/url.vo.test.ts"
+  },
+  {
+    "from": "presentation/components/common/ConnectionTest.tsx",
+    "to": "packages/web/components/dev/ConnectionTest.tsx"
+  },
+  {
+    "from": "presentation/hooks/use-toast.ts",
+    "to": "packages/web/hooks/use-toast.ts"
+  },
+  {
+    "from": "presentation/providers/I18nProvider.tsx",
+    "to": "packages/web/providers/I18nProvider.tsx"
+  },
+  {
+    "from": "presentation/components/common/ui/",
+    "to": "packages/web/components/ui/"
+  }
+]
